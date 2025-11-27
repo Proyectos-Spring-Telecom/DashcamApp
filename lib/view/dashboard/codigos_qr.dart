@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 
 class CodigosQRPage extends StatefulWidget {
   const CodigosQRPage({super.key});
@@ -30,10 +31,8 @@ class _CodigosQRPageState extends State<CodigosQRPage>
       if (_tabController.index == 0) {
         // General - Navigate to dashboard
         GoRouter.of(context).go(RoutesName.dashboard);
-      } else if (_tabController.index == 2) {
-        // Viajes - Navigate to coming soon
-        GoRouter.of(context).go(RoutesName.comingSoon);
       }
+      // Viajes (index 2) - Show content in same page, no navigation
       // Operaciones (index 3) - Show content in same page, no navigation
     }
   }
@@ -47,27 +46,37 @@ class _CodigosQRPageState extends State<CodigosQRPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2C2C2C), // Dark grey background
-      body: SafeArea(
-        child: Responsive(
-          mobile: mobileWidget(context: context),
-          desktop: desktopWidget(context: context),
-          tablet: mobileWidget(context: context),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
+    return StreamBuilder<AppTheme>(
+      stream: themeBloc.themeStream,
+      initialData: themeBloc.currentTheme,
+      builder: (context, snapshot) {
+        final isDark = snapshot.data?.data.brightness == Brightness.dark;
+        final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: SafeArea(
+            child: Responsive(
+              mobile: mobileWidget(context: context, isDark: isDark),
+              desktop: desktopWidget(context: context, isDark: isDark),
+              tablet: mobileWidget(context: context, isDark: isDark),
+            ),
+          ),
+          bottomNavigationBar:
+              _buildBottomNavigationBar(context, isDark: isDark),
+        );
+      },
     );
   }
 
-  Widget mobileWidget({required BuildContext context}) {
+  Widget mobileWidget({required BuildContext context, required bool isDark}) {
     return Column(
       children: [
         // Header
-        _buildHeader(context),
+        _buildHeader(context, isDark: isDark),
 
         // Tabs
-        _buildTabs(),
+        _buildTabs(isDark: isDark),
 
         // Content
         Expanded(
@@ -79,14 +88,17 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 children: [
                   if (_selectedTabIndex == 1) ...[
                     // Código QR section
-                    _buildCodigoQRSection(context),
+                    _buildCodigoQRSection(context, isDark: isDark),
                     const SizedBox(height: 24.0),
 
                     // Mis códigos section
-                    _buildMisCodigosSection(),
+                    _buildMisCodigosSection(isDark: isDark),
+                  ] else if (_selectedTabIndex == 2) ...[
+                    // Viajes section
+                    _buildViajesSection(isDark: isDark),
                   ] else if (_selectedTabIndex == 3) ...[
                     // Operaciones section
-                    _buildOperacionesSection(),
+                    _buildOperacionesSection(isDark: isDark),
                   ],
                 ],
               ),
@@ -97,14 +109,14 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget desktopWidget({required BuildContext context}) {
+  Widget desktopWidget({required BuildContext context, required bool isDark}) {
     return Column(
       children: [
         // Header
-        _buildHeader(context),
+        _buildHeader(context, isDark: isDark),
 
         // Tabs
-        _buildTabs(),
+        _buildTabs(isDark: isDark),
 
         // Content
         Expanded(
@@ -119,14 +131,17 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                     children: [
                       if (_selectedTabIndex == 1) ...[
                         // Código QR section
-                        _buildCodigoQRSection(context),
+                        _buildCodigoQRSection(context, isDark: isDark),
                         const SizedBox(height: 24.0),
 
                         // Mis códigos section
-                        _buildMisCodigosSection(),
+                        _buildMisCodigosSection(isDark: isDark),
+                      ] else if (_selectedTabIndex == 2) ...[
+                        // Viajes section
+                        _buildViajesSection(isDark: isDark),
                       ] else if (_selectedTabIndex == 3) ...[
                         // Operaciones section
-                        _buildOperacionesSection(),
+                        _buildOperacionesSection(isDark: isDark),
                       ],
                     ],
                   ),
@@ -139,14 +154,15 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, {bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
         children: [
           // Hamburger menu
           IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: Icon(Icons.menu, color: textColor),
             onPressed: () {
               // Abrir drawer o menú
             },
@@ -158,7 +174,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               Text(
                 "Monedero",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -181,40 +197,42 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           // Profile avatar
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.grey[800],
-            child: const Icon(Icons.person, color: Colors.white, size: 24),
+            backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+            child: Icon(Icons.person, color: textColor, size: 24),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTabs() {
+  Widget _buildTabs({bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
           Expanded(
-            child: _buildTabItem('General', 0),
+            child: _buildTabItem('General', 0, textColor: textColor),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildTabItem('Códigos QR', 1),
+            child: _buildTabItem('Códigos QR', 1, textColor: textColor),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildTabItem('Viajes', 2),
+            child: _buildTabItem('Viajes', 2, textColor: textColor),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _buildTabItem('Registros', 3),
+            child: _buildTabItem('Registros', 3, textColor: textColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(String label, int index) {
+  Widget _buildTabItem(String label, int index,
+      {Color textColor = Colors.white}) {
     final isSelected = _selectedTabIndex == index;
     return GestureDetector(
       onTap: () {
@@ -244,11 +262,13 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildCodigoQRSection(BuildContext context) {
+  Widget _buildCodigoQRSection(BuildContext context, {bool isDark = true}) {
+    final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+    final textColor = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Colors.grey[800],
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -260,7 +280,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 Text(
                   "Código QR",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -269,7 +289,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 Text(
                   "Genera código qr para realizar pagos.",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 14,
                   ),
                 ),
@@ -302,14 +322,15 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildMisCodigosSection() {
+  Widget _buildMisCodigosSection({bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Mis códigos",
           style: TextStyle(
-            color: Colors.white,
+            color: textColor,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -321,6 +342,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           date: "01-Mayo-2025",
           amount: "-\$ 15",
           type: "Débito",
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildCodigoItem(
@@ -328,6 +350,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           date: "01-Mayo-2025",
           amount: "-\$ 15",
           type: "Débito",
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildCodigoItem(
@@ -335,6 +358,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           date: "01-Mayo-2025",
           amount: "-\$ 15",
           type: "Débito",
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildCodigoItem(
@@ -342,6 +366,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           date: "01-Mayo-2025",
           amount: "-\$ 15",
           type: "Débito",
+          isDark: isDark,
         ),
       ],
     );
@@ -352,11 +377,14 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     required String date,
     required String amount,
     required String type,
+    bool isDark = true,
   }) {
+    final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+    final textColor = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.grey[800],
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -385,7 +413,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 Text(
                   code,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -408,7 +436,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               Text(
                 amount,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -428,7 +456,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildOperacionesSection() {
+  Widget _buildOperacionesSection({bool isDark = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,6 +470,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 15",
           type: "Débito",
           iconType: 'qr', // QR code icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -450,6 +479,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 10",
           type: "Débito",
           iconType: 'bus', // Bus icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -458,6 +488,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 20",
           type: "Débito",
           iconType: 'qr', // QR code icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -466,6 +497,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "\$ 100",
           type: "Recarga",
           iconType: 'recharge', // Dollar/recharge icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -474,6 +506,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 20",
           type: "Débito",
           iconType: 'bus', // Bus icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -482,6 +515,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 20",
           type: "Débito",
           iconType: 'qr', // QR code icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -490,6 +524,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "\$ 100",
           type: "Recarga",
           iconType: 'recharge', // Dollar/recharge icon
+          isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildTransaccionItem(
@@ -498,6 +533,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           amount: "-\$ 20",
           type: "Débito",
           iconType: 'bus', // Bus icon
+          isDark: isDark,
         ),
       ],
     );
@@ -606,6 +642,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     required String amount,
     required String type,
     required String iconType,
+    bool isDark = true,
   }) {
     IconData iconData;
     Color iconColor;
@@ -622,10 +659,13 @@ class _CodigosQRPageState extends State<CodigosQRPage>
       iconColor = const Color(0xFFA6CE39); // Green
     }
 
+    final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.grey[800],
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -653,7 +693,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 Text(
                   description,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -676,7 +716,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               Text(
                 amount,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -696,10 +736,11 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
+  Widget _buildBottomNavigationBar(BuildContext context, {bool isDark = true}) {
+    final navBarColor = isDark ? Colors.grey[900]! : Colors.grey[100]!;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: navBarColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -709,7 +750,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
         ],
       ),
       child: BottomNavigationBar(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: navBarColor,
         selectedItemColor: const Color(0xFF205AA8), // Blue
         unselectedItemColor: Colors.grey[600],
         currentIndex: 1, // Monedero is selected
@@ -717,12 +758,12 @@ class _CodigosQRPageState extends State<CodigosQRPage>
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Monedero',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Monedero',
+            icon: Icon(Icons.timeline),
+            label: 'Actividad',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
@@ -732,10 +773,255 @@ class _CodigosQRPageState extends State<CodigosQRPage>
         onTap: (index) {
           if (index == 0) {
             GoRouter.of(context).go(RoutesName.dashboard);
+          } else if (index == 1) {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => const MonederoBottomSheet(),
+            );
           } else if (index == 2) {
             GoRouter.of(context).go(RoutesName.comingSoon);
           }
         },
+      ),
+    );
+  }
+
+  // Viajes Section
+  Widget _buildViajesSection({bool isDark = true}) {
+    final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Último Viaje section
+        _buildUltimoViajeSection(
+          textColor: textColor,
+          isDark: isDark,
+          cardColor: cardColor,
+        ),
+        const SizedBox(height: 24.0),
+
+        // Actividad section
+        Text(
+          "Actividad",
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16.0),
+
+        // Activity grid 2x2
+        _buildActivityGrid(
+          textColor: textColor,
+          isDark: isDark,
+          cardColor: cardColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUltimoViajeSection({
+    required Color textColor,
+    required bool isDark,
+    required Color cardColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          // Main content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Último Viaje:",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Calle Ignacio Zaragoza 12",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "27 Nov 25 - 12:13 pm",
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Total aligned to the right
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  "Total: \$ 84.14",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Top right - Green car icon
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFA6CE39), // Green
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.directions_car,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityGrid({
+    required Color textColor,
+    required bool isDark,
+    required Color cardColor,
+  }) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return _buildActivityCard(
+          location: "Ignacio Zaragoza 12",
+          dateTime: "27 Nov 25 - 12:13 pm",
+          cost: "\$ 84.14",
+          textColor: textColor,
+          cardColor: cardColor,
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityCard({
+    required String location,
+    required String dateTime,
+    required String cost,
+    required Color textColor,
+    required Color cardColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                location,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dateTime,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                cost,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          // Detalle button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Obtener el Navigator principal antes de cerrar
+                final navigator = Navigator.of(context, rootNavigator: false);
+                // Cerrar el bottomsheet actual
+                navigator.pop();
+                // Abrir el bottomsheet de detalles del viaje usando el Navigator principal
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (newContext) => const DetallesViajeBottomSheet(),
+                  );
+                });
+              },
+              icon: const Icon(
+                Icons.description,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text(
+                "Detalle",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF205AA8), // Blue
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -59,6 +59,7 @@ dependencies:
   shimmer: ^3.0.0
   carousel_slider: ^5.1.1
   qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
 
   # syncfusion_flutter
   syncfusion_flutter_charts: ^31.2.12

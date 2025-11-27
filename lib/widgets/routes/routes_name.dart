@@ -56,4 +56,7 @@ class RoutesName {
   static String cambioContrasena = "/cambio-contrasena";
   static String metodosPago = "/metodos-pago";
   static String nuevaTarjeta = "/nueva-tarjeta";
+  static String nuevoPerfilFiscal = "/nuevo-perfil-fiscal";
+  static String cargarConstanciaFiscal = "/cargar-constancia-fiscal";
+  static String escaneoQRConstancia = "/escaneo-qr-constancia";
 }

@@ -424,12 +424,12 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Monedero',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Monedero',
+            icon: Icon(Icons.timeline),
+            label: 'Actividad',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
