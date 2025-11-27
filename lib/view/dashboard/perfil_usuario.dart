@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/view/dashboard/datos_fiscales_bottom_sheet.dart';
 
 class PerfilUsuarioPage extends StatelessWidget {
   const PerfilUsuarioPage({super.key});
@@ -69,8 +70,13 @@ class PerfilUsuarioPage extends StatelessWidget {
                             iconColor: const Color(0xFFFDB462), // Yellow
                             textColor: textColor,
                             onTap: () {
-                              // Navigate to tax data
-                              GoRouter.of(context).go(RoutesName.comingSoon);
+                              // Open datos fiscales bottomsheet
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => const DatosFiscalesBottomSheet(),
+                              );
                             },
                           ),
                           Divider(color: Colors.grey, height: 1),
@@ -200,9 +206,9 @@ class PerfilUsuarioPage extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 children: [
                   ListTile(
-                    leading: Icon(Icons.home, color: textColor),
+                    leading: Icon(Icons.account_balance_wallet, color: textColor),
                     title: Text(
-                      "Inicio",
+                      "Monedero",
                       style: TextStyle(
                         color: textColor,
                         fontSize: 16,
@@ -229,10 +235,9 @@ class PerfilUsuarioPage extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    leading:
-                        Icon(Icons.account_balance_wallet, color: textColor),
+                    leading: Icon(Icons.timeline, color: textColor),
                     title: Text(
-                      "Monedero",
+                      "Actividad",
                       style: TextStyle(
                         color: textColor,
                         fontSize: 16,
@@ -441,12 +446,12 @@ class PerfilUsuarioPage extends StatelessWidget {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Monedero',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Monedero',
+            icon: Icon(Icons.timeline),
+            label: 'Actividad',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

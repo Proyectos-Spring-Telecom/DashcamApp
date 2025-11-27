@@ -285,6 +285,33 @@ class AppRoutes {
           },
         ),
         GoRoute(
+          path: RoutesName.nuevoPerfilFiscal,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.nuevoPerfilFiscalScaffoldKey,
+              child: const NuevoPerfilFiscalPage(),
+            );
+          },
+        ),
+        GoRoute(
+          path: RoutesName.cargarConstanciaFiscal,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.cargarConstanciaFiscalScaffoldKey,
+              child: const CargarConstanciaFiscalPage(),
+            );
+          },
+        ),
+        GoRoute(
+          path: RoutesName.escaneoQRConstancia,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.escaneoQRConstanciaScaffoldKey,
+              child: const EscaneoQRConstanciaPage(),
+            );
+          },
+        ),
+        GoRoute(
           path: RoutesName.serverError,
           pageBuilder: (BuildContext context, GoRouterState state) {
             return FadeTransitionPage(

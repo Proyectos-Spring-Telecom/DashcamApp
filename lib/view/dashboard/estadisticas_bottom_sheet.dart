@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 
 class EstadisticasBottomSheet extends StatefulWidget {
   const EstadisticasBottomSheet({super.key});
@@ -80,7 +81,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
                   children: [
                     _buildGeneralTab(textColor: textColor),
                     _buildQRCodesTab(textColor: textColor, isDark: isDark),
-                    _buildGoalsTab(textColor: textColor),
+                    _buildGoalsTab(textColor: textColor, isDark: isDark),
                     _buildOperacionesTab(textColor: textColor, isDark: isDark),
                   ],
                 ),
@@ -467,11 +468,243 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
     );
   }
 
-  Widget _buildGoalsTab({Color textColor = Colors.white}) {
-    return Center(
-      child: Text(
-        "Viajes",
-        style: TextStyle(color: textColor),
+  Widget _buildGoalsTab({Color textColor = Colors.white, bool isDark = true}) {
+    final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Último Viaje section
+            _buildUltimoViajeSection(
+              textColor: textColor,
+              isDark: isDark,
+              cardColor: cardColor,
+            ),
+            const SizedBox(height: 24.0),
+
+            // Actividad section
+            Text(
+              "Actividad",
+              style: TextStyle(
+                color: textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16.0),
+
+            // Activity grid 2x2
+            _buildActivityGrid(
+              textColor: textColor,
+              isDark: isDark,
+              cardColor: cardColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUltimoViajeSection({
+    required Color textColor,
+    required bool isDark,
+    required Color cardColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          // Main content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Último Viaje:",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Calle Ignacio Zaragoza 12",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "27 Nov 25 - 12:13 pm",
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Total aligned to the right
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  "Total: \$ 84.14",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Top right - Green car icon
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFA6CE39), // Green
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.directions_car,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityGrid({
+    required Color textColor,
+    required bool isDark,
+    required Color cardColor,
+  }) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return _buildActivityCard(
+          location: "Ignacio Zaragoza 12",
+          dateTime: "27 Nov 25 - 12:13 pm",
+          cost: "\$ 84.14",
+          textColor: textColor,
+          cardColor: cardColor,
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityCard({
+    required String location,
+    required String dateTime,
+    required String cost,
+    required Color textColor,
+    required Color cardColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                location,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dateTime,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                cost,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          // Detalle button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Obtener el Navigator principal antes de cerrar
+                final navigator = Navigator.of(context, rootNavigator: false);
+                // Cerrar el bottomsheet actual
+                navigator.pop();
+                // Abrir el bottomsheet de detalles del viaje usando el Navigator principal
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (newContext) => const DetallesViajeBottomSheet(),
+                  );
+                });
+              },
+              icon: const Icon(
+                Icons.description,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text(
+                "Detalle",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF205AA8), // Blue
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

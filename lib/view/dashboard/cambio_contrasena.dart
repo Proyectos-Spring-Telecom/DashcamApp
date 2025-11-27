@@ -73,7 +73,7 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
             child: Column(
               children: [
                 // Header
-                _buildHeader(context, textColor: textColor),
+                _buildHeader(context, textColor: textColor, isDark: isDark),
                 // Content
                 Expanded(
                   child: SingleChildScrollView(
@@ -380,7 +380,7 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white}) {
+  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
@@ -416,8 +416,12 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
             },
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.grey[800],
-              child: const Icon(Icons.person, color: Colors.white, size: 24),
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              child: Icon(
+                Icons.person,
+                color: isDark ? Colors.white : Colors.black,
+                size: 24,
+              ),
             ),
           ),
         ],
@@ -447,12 +451,12 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Monedero',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Monedero',
+            icon: Icon(Icons.timeline),
+            label: 'Actividad',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
