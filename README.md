@@ -1,6 +1,6 @@
-# Dashboard Pro - Flutter Admin Panel Template
+# Dashcam - Flutter Aplication Pasajero
 
-Dashboard Pro is a premium, responsive, and SEO-friendly Flutter admin panel template built with Flutter, Dart, and Firebase. It includes a variety of customizable widgets, charts, and maps to help you create a professional and feature-rich admin panel for your web application. With the use of top-notch packages, such as GoRouter, Syncfusion Flutter, and Firebase, you can easily manage your web application data, design, and performance.
+Dashcam aplicación pasajero.
 
 ## Features
 
@@ -37,3 +37,4 @@ This project is licensed under the MIT License - see the LICENSE.md file for det
 ## Contact
 
 If you have any questions or suggestions, feel free to contact me at trulykasodiya@gmail.com.
+
