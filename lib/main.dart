@@ -1,19 +1,18 @@
-
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Inicializar Firebase
   try {
     await Firebase.initializeApp();
   } catch (e) {
     // Si no hay configuración de Firebase, la app puede continuar
-    // Para producción, asegúrate de tener google-services.json configurado
+    // Para producción, asegúrate de tener google-services.json configurado.
     debugPrint('Firebase initialization error: $e');
   }
-  
+
   runApp(const MyApp());
 }
 
