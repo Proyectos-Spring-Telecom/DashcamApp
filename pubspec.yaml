@@ -105,6 +105,7 @@ flutter:
     - assets/maps/
     - assets/images/
     - assets/images/logo_dash.png
+    - assets/images/metodos.png
     - assets/logo.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

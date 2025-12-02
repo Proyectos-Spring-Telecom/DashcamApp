@@ -27,23 +27,34 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2C2C2C), // Dark grey background
-      body: SafeArea(
-        child: Responsive(
-          mobile: mobileWidget(context: context),
-          desktop: desktopWidget(context: context),
-          tablet: mobileWidget(context: context),
-        ),
-      ),
+    return StreamBuilder<AppTheme>(
+      stream: themeBloc.themeStream,
+      initialData: themeBloc.currentTheme,
+      builder: (context, snapshot) {
+        final isDark = snapshot.data?.data.brightness == Brightness.dark;
+        final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+        
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: SafeArea(
+            child: Responsive(
+              mobile: mobileWidget(context: context, isDark: isDark),
+              desktop: desktopWidget(context: context, isDark: isDark),
+              tablet: mobileWidget(context: context, isDark: isDark),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget mobileWidget({required BuildContext context}) {
+  Widget mobileWidget({required BuildContext context, bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    
     return Column(
       children: [
         // Header with back button, title, and profile
-        _buildHeader(context),
+        _buildHeader(context, isDark: isDark, textColor: textColor),
 
         // Content
         Expanded(
@@ -58,7 +69,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   Text(
                     "Sigue las indicaciones para realizar el cambio de contraseña.",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: textColor,
                       fontSize: 14,
                     ),
                   ),
@@ -69,6 +80,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     label: "Contraseña Actual",
                     controller: _currentPasswordController,
                     obscureText: _obscureCurrentPassword,
+                    isDark: isDark,
+                    textColor: textColor,
                     onVisibilityToggle: () {
                       setState(() {
                         _obscureCurrentPassword = !_obscureCurrentPassword;
@@ -82,6 +95,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     label: "Contraseña Nueva",
                     controller: _newPasswordController,
                     obscureText: _obscureNewPassword,
+                    isDark: isDark,
+                    textColor: textColor,
                     onVisibilityToggle: () {
                       setState(() {
                         _obscureNewPassword = !_obscureNewPassword;
@@ -95,6 +110,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     label: "Confirmar Contraseña",
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
+                    isDark: isDark,
+                    textColor: textColor,
                     onVisibilityToggle: () {
                       setState(() {
                         _obscureConfirmPassword = !_obscureConfirmPassword;
@@ -104,7 +121,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const SizedBox(height: 24.0),
 
                   // Password security indicator
-                  _buildPasswordSecurityIndicator(),
+                  _buildPasswordSecurityIndicator(textColor: textColor),
                 ],
               ),
             ),
@@ -120,16 +137,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Widget desktopWidget({required BuildContext context}) {
+  Widget desktopWidget({required BuildContext context, bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    final cardColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+    
     return Column(
       children: [
         // Header with back button, title, and profile
-        _buildHeader(context),
+        _buildHeader(context, isDark: isDark, textColor: textColor),
 
         // Content
         Expanded(
           child: Center(
             child: Card(
+              color: cardColor,
               child: Container(
                 width: MediaQuery.of(context).size.width / 1.6,
                 height: MediaQuery.of(context).size.height * 0.8,
@@ -142,7 +163,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       Text(
                         "Sigue las indicaciones para realizar el cambio de contraseña.",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: textColor,
                           fontSize: 14,
                         ),
                       ),
@@ -153,6 +174,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         label: "Contraseña Actual",
                         controller: _currentPasswordController,
                         obscureText: _obscureCurrentPassword,
+                        isDark: isDark,
+                        textColor: textColor,
                         onVisibilityToggle: () {
                           setState(() {
                             _obscureCurrentPassword = !_obscureCurrentPassword;
@@ -166,6 +189,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         label: "Contraseña Nueva",
                         controller: _newPasswordController,
                         obscureText: _obscureNewPassword,
+                        isDark: isDark,
+                        textColor: textColor,
                         onVisibilityToggle: () {
                           setState(() {
                             _obscureNewPassword = !_obscureNewPassword;
@@ -179,6 +204,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         label: "Confirmar Contraseña",
                         controller: _confirmPasswordController,
                         obscureText: _obscureConfirmPassword,
+                        isDark: isDark,
+                        textColor: textColor,
                         onVisibilityToggle: () {
                           setState(() {
                             _obscureConfirmPassword = !_obscureConfirmPassword;
@@ -188,7 +215,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       const SizedBox(height: 24.0),
 
                       // Password security indicator
-                      _buildPasswordSecurityIndicator(),
+                      _buildPasswordSecurityIndicator(textColor: textColor),
                     ],
                   ),
                 ),
@@ -206,14 +233,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, {bool isDark = true, Color? textColor}) {
+    final headerTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
+    final avatarBgColor = isDark ? Colors.grey[800] : Colors.grey[300];
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
           // Back button
           IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: headerTextColor),
             onPressed: () => GoRouter.of(context).go(RoutesName.login),
           ),
 
@@ -223,7 +253,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               "Cambio de contraseña",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white,
+                color: headerTextColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -233,8 +263,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           // Profile avatar
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.grey[800],
-            child: Icon(Icons.person, color: Colors.white, size: 24),
+            backgroundColor: avatarBgColor,
+            child: Icon(Icons.person, color: headerTextColor, size: 24),
           ),
         ],
       ),
@@ -245,15 +275,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     required String label,
     required TextEditingController controller,
     required bool obscureText,
+    required bool isDark,
+    required Color textColor,
     required VoidCallback onVisibilityToggle,
   }) {
+    final labelTextColor = textColor;
+    final fieldTextColor = textColor;
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final iconColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.white,
+            color: labelTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -262,12 +300,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: fieldTextColor),
           decoration: InputDecoration(
             hintText: "••••••••••••",
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: hintTextColor),
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: fieldBgColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 1.0),
@@ -280,6 +318,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 2.0),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
@@ -287,7 +333,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             suffixIcon: IconButton(
               icon: Icon(
                 obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey[400],
+                color: iconColor,
               ),
               onPressed: onVisibilityToggle,
             ),
@@ -297,13 +343,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  Widget _buildPasswordSecurityIndicator() {
+  Widget _buildPasswordSecurityIndicator({Color? textColor}) {
+    final indicatorTextColor = textColor ?? Colors.white;
+    
     return Row(
       children: [
         Text(
           "Seguridad en contraseña",
           style: TextStyle(
-            color: Colors.white,
+            color: indicatorTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),

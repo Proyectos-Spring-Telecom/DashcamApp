@@ -251,8 +251,8 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
             color: inputBgColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: Colors.grey.withOpacity(0.3),
-              width: 1,
+              color: Colors.white,
+              width: 1.0,
             ),
           ),
           child: TextField(
@@ -487,8 +487,8 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
             color: inputBgColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: Colors.grey.withOpacity(0.3),
-              width: 1,
+              color: Colors.white,
+              width: 1.0,
             ),
           ),
           child: DropdownButtonFormField<String>(

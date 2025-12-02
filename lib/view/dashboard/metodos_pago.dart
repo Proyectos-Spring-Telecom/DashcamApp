@@ -2,8 +2,100 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'dashboard.dart';
 
-class MetodosPagoPage extends StatelessWidget {
+class MetodosPagoPage extends StatefulWidget {
   const MetodosPagoPage({super.key});
+
+  @override
+  State<MetodosPagoPage> createState() => _MetodosPagoPageState();
+}
+
+class _MetodosPagoPageState extends State<MetodosPagoPage> {
+  late List<TarjetaPago> _tarjetas;
+
+  @override
+  void initState() {
+    super.initState();
+    _tarjetas = List.from(TarjetasPagoData.tarjetas);
+  }
+
+  void _eliminarTarjetaPorCardNumber(String cardNumber) {
+    setState(() {
+      final index = _tarjetas.indexWhere((t) => t.cardNumber == cardNumber);
+      if (index != -1) {
+        _tarjetas.removeAt(index);
+        // También eliminar de la lista estática usando el mismo índice
+        final staticIndex = TarjetasPagoData.tarjetas.indexWhere((t) => t.cardNumber == cardNumber);
+        if (staticIndex != -1) {
+          TarjetasPagoData.eliminarTarjeta(staticIndex);
+        }
+      }
+    });
+  }
+
+  Future<bool?> _mostrarDialogoConfirmacion(BuildContext context, String cardNumber) async {
+    final isDark = themeBloc.isDarkMode;
+    final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Confirmar eliminación',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '¿Estás seguro de eliminar esta tarjeta?',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'No, cancelar',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF205AA8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Si, confirmar',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,8 +132,8 @@ class MetodosPagoPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          // Lista dinámica de tarjetas
-                          ...TarjetasPagoData.tarjetas
+                          // Lista dinámica de tarjetas con swipe para eliminar
+                          ..._tarjetas
                               .asMap()
                               .entries
                               .map((entry) {
@@ -49,18 +141,39 @@ class MetodosPagoPage extends StatelessWidget {
                             final tarjeta = entry.value;
                             return Padding(
                               padding: EdgeInsets.only(
-                                bottom:
-                                    index < TarjetasPagoData.tarjetas.length - 1
-                                        ? 16
-                                        : 0,
+                                bottom: index < _tarjetas.length - 1 ? 16 : 0,
                               ),
-                              child: _buildCard(
-                                cardNumber: tarjeta.cardNumber,
-                                cvv: tarjeta.cvv,
-                                cardholderName: tarjeta.cardholderName,
-                                gradientColors: tarjeta.gradientColors,
-                                textColor: tarjeta.textColor,
-                                cardType: tarjeta.cardType,
+                              child: Dismissible(
+                                key: Key('tarjeta_${tarjeta.cardNumber}'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                                confirmDismiss: (direction) async {
+                                  final result = await _mostrarDialogoConfirmacion(context, tarjeta.cardNumber);
+                                  return result ?? false;
+                                },
+                                onDismissed: (direction) {
+                                  _eliminarTarjetaPorCardNumber(tarjeta.cardNumber);
+                                },
+                                child: _buildCard(
+                                  cardNumber: tarjeta.cardNumber,
+                                  cvv: tarjeta.cvv,
+                                  cardholderName: tarjeta.cardholderName,
+                                  gradientColors: tarjeta.gradientColors,
+                                  textColor: tarjeta.textColor,
+                                  cardType: tarjeta.cardType,
+                                ),
                               ),
                             );
                           }).toList(),

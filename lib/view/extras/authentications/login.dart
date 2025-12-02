@@ -22,20 +22,31 @@ class _LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2C2C2C), // Dark grey background
-      body: SafeArea(
-        child: Responsive(
-          mobile: mobileWidget(context: context),
-          desktop: desktopWidget(context: context),
-          tablet: mobileWidget(context: context),
-        ),
-      ),
+    return StreamBuilder<AppTheme>(
+      stream: themeBloc.themeStream,
+      initialData: themeBloc.currentTheme,
+      builder: (context, snapshot) {
+        final isDark = snapshot.data?.data.brightness == Brightness.dark;
+        final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: SafeArea(
+            child: Responsive(
+              mobile: mobileWidget(context: context, isDark: isDark),
+              desktop: desktopWidget(context: context, isDark: isDark),
+              tablet: mobileWidget(context: context, isDark: isDark),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget mobileWidget({required BuildContext context}) {
+  Widget mobileWidget({required BuildContext context, bool isDark = true}) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return SingleChildScrollView(
       child: Container(
         height: screenHeight,
@@ -44,7 +55,7 @@ class _LoginState extends State<Login> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Logo section - Top left
-            _buildLogo(),
+            _buildLogo(isDark: isDark),
             const Spacer(),
 
             // Title - Left aligned
@@ -53,17 +64,17 @@ class _LoginState extends State<Login> {
               style: TextStyle(
                 fontSize: 32.0,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 50.0),
 
             // Email field
-            _buildEmailField(),
+            _buildEmailField(isDark: isDark, textColor: textColor),
             const SizedBox(height: 30.0),
 
             // Password field
-            _buildPasswordField(),
+            _buildPasswordField(isDark: isDark, textColor: textColor),
             const SizedBox(height: 40.0),
 
             // Login button
@@ -71,7 +82,7 @@ class _LoginState extends State<Login> {
             const SizedBox(height: 30.0),
 
             // Links at the bottom
-            _buildBottomLinks(context),
+            _buildBottomLinks(context, textColor: textColor),
             const SizedBox(height: 40.0),
           ],
         ),
@@ -79,10 +90,14 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget desktopWidget({required BuildContext context}) {
+  Widget desktopWidget({required BuildContext context, bool isDark = true}) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final cardColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+
     return Center(
       child: Card(
+        color: cardColor,
         child: SizedBox(
           width: MediaQuery.of(context).size.width / 1.6,
           height: screenHeight * 0.9,
@@ -91,24 +106,24 @@ class _LoginState extends State<Login> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildLogo(),
+                _buildLogo(isDark: isDark),
                 const Spacer(),
                 Text(
                   "Inicio de Sesión",
                   style: TextStyle(
                     fontSize: 32.0,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 50.0),
-                _buildEmailField(),
+                _buildEmailField(isDark: isDark, textColor: textColor),
                 const SizedBox(height: 30.0),
-                _buildPasswordField(),
+                _buildPasswordField(isDark: isDark, textColor: textColor),
                 const SizedBox(height: 40.0),
                 _buildLoginButton(context),
                 const SizedBox(height: 30.0),
-                _buildBottomLinks(context),
+                _buildBottomLinks(context, textColor: textColor),
                 const SizedBox(height: 40.0),
               ],
             ),
@@ -118,16 +133,20 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget _buildLogo() {
+  Widget _buildLogo({bool isDark = true}) {
+    final logoPath = isDark
+        ? 'assets/images/logo_dash.png'
+        : 'assets/images/logo_dash_blue.png';
+
     return Image.asset(
-      'assets/images/logo_dash.png',
+      logoPath,
       height: 80,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
         // Si hay error, mostrar un placeholder para debug
         return Container(
           height: 60,
-          color: Colors.red.withOpacity(0.3),
+          color: Colors.red.withValues(alpha: 0.3),
           child: Center(
             child: Text(
               'Logo Error',
@@ -139,14 +158,19 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget _buildEmailField() {
+  Widget _buildEmailField({bool isDark = true, Color? textColor}) {
+    final labelTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
+    final fieldTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Correo Electrónico",
           style: TextStyle(
-            color: Colors.white,
+            color: labelTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -154,12 +178,12 @@ class _LoginState extends State<Login> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _emailController,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: fieldTextColor),
           decoration: InputDecoration(
             hintText: "example@gmail.com",
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: hintTextColor),
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: fieldBgColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 1.0),
@@ -171,6 +195,14 @@ class _LoginState extends State<Login> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 2.0),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -182,14 +214,20 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField({bool isDark = true, Color? textColor}) {
+    final labelTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
+    final fieldTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final iconColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Contraseña",
           style: TextStyle(
-            color: Colors.white,
+            color: labelTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -198,12 +236,12 @@ class _LoginState extends State<Login> {
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: fieldTextColor),
           decoration: InputDecoration(
             hintText: "••••••••••••",
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: hintTextColor),
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: fieldBgColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 1.0),
@@ -216,6 +254,14 @@ class _LoginState extends State<Login> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 2.0),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
@@ -223,7 +269,7 @@ class _LoginState extends State<Login> {
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey[400],
+                color: iconColor,
               ),
               onPressed: () {
                 setState(() {
@@ -261,7 +307,9 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget _buildBottomLinks(BuildContext context) {
+  Widget _buildBottomLinks(BuildContext context, {Color? textColor}) {
+    final linkColor = textColor ?? Colors.white;
+
     return Column(
       children: [
         Center(
@@ -270,7 +318,7 @@ class _LoginState extends State<Login> {
             child: Text(
               "¿Olvidaste tu Contraseña?",
               style: TextStyle(
-                color: Colors.white,
+                color: linkColor,
                 fontSize: 14,
               ),
             ),
@@ -283,7 +331,7 @@ class _LoginState extends State<Login> {
             child: Text(
               "¿Necesitas una cuenta? Regístrate",
               style: TextStyle(
-                color: Colors.white,
+                color: linkColor,
                 fontSize: 14,
               ),
             ),

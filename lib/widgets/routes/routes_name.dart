@@ -59,4 +59,7 @@ class RoutesName {
   static String nuevoPerfilFiscal = "/nuevo-perfil-fiscal";
   static String cargarConstanciaFiscal = "/cargar-constancia-fiscal";
   static String escaneoQRConstancia = "/escaneo-qr-constancia";
+  static String recargar = "/recargar";
+  static String seleccionarMetodoPago = "/seleccionar-metodo-pago";
+  static String resumen = "/resumen";
 }
