@@ -112,15 +112,23 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                             fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey[400]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 2.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             hintText: "************",
                             hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -166,15 +174,23 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                             fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey[400]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 2.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             hintText: "************",
                             hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -222,15 +238,23 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                             fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey[400]!),
+                              borderSide: const BorderSide(color: Colors.white, width: 2.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white, width: 1.0),
                             ),
                             hintText: "************",
                             hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),

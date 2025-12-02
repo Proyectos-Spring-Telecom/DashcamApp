@@ -312,6 +312,41 @@ class AppRoutes {
           },
         ),
         GoRoute(
+          path: RoutesName.recargar,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.recargarScaffoldKey,
+              child: const RecargarPage(),
+            );
+          },
+        ),
+        GoRoute(
+          path: RoutesName.seleccionarMetodoPago,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            String? amount;
+            if (state.extra is Map) {
+              amount = (state.extra as Map)['amount']?.toString();
+            }
+            return FadeTransitionPage(
+              key: ScaffoldKey.seleccionarMetodoPagoScaffoldKey,
+              child: SeleccionarMetodoPagoPage(amount: amount),
+            );
+          },
+        ),
+        GoRoute(
+          path: RoutesName.resumen,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            String? amount;
+            if (state.extra is Map) {
+              amount = (state.extra as Map)['amount']?.toString();
+            }
+            return FadeTransitionPage(
+              key: ScaffoldKey.resumenScaffoldKey,
+              child: ResumenPage(amount: amount),
+            );
+          },
+        ),
+        GoRoute(
           path: RoutesName.serverError,
           pageBuilder: (BuildContext context, GoRouterState state) {
             return FadeTransitionPage(

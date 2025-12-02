@@ -466,7 +466,7 @@ class Dashboard extends StatelessWidget {
   Widget _buildRecargarButton(BuildContext context) {
     return FilledButton(
       onPressed: () {
-        // Action for Recargar
+        GoRouter.of(context).go(RoutesName.recargar);
       },
       style: FilledButton.styleFrom(
         backgroundColor: const Color(0xFFA6CE39), // Green
@@ -808,29 +808,30 @@ class Dashboard extends StatelessWidget {
                       );
                     },
                   ),
-                  const Divider(
-                    color: Colors.grey,
-                    thickness: 0.5,
-                    indent: 16,
-                    endIndent: 16,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: Text(
-                      "Cierre de Sesión",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Lógica para cerrar sesión
-                      // GoRouter.of(context).go(RoutesName.login);
-                    },
-                  ),
                 ],
               ),
+            ),
+            // Cierre de Sesión at the bottom
+            const Divider(
+              color: Colors.grey,
+              thickness: 0.3,
+              indent: 16,
+              endIndent: 16,
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF205AA8)),
+              title: Text(
+                "Cierre de Sesión",
+                style: TextStyle(
+                  color: const Color(0xFF205AA8), // Blue
+                  fontSize: 16,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to login page
+                GoRouter.of(context).go(RoutesName.login);
+              },
             ),
           ],
         ),

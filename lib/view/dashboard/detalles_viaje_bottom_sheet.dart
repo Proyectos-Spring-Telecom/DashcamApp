@@ -187,6 +187,10 @@ class DetallesViajeBottomSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.white,
+              width: 1.0,
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,6 +233,10 @@ class DetallesViajeBottomSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.white,
+              width: 1.0,
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

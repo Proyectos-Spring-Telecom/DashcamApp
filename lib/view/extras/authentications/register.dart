@@ -34,19 +34,30 @@ class _RegisterState extends State<Register> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2C2C2C), // Dark grey background
-      body: SafeArea(
-        child: Responsive(
-          mobile: mobileWidget(context: context),
-          desktop: desktopWidget(context: context),
-          tablet: mobileWidget(context: context),
-        ),
-      ),
+    return StreamBuilder<AppTheme>(
+      stream: themeBloc.themeStream,
+      initialData: themeBloc.currentTheme,
+      builder: (context, snapshot) {
+        final isDark = snapshot.data?.data.brightness == Brightness.dark;
+        final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+        
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: SafeArea(
+            child: Responsive(
+              mobile: mobileWidget(context: context, isDark: isDark),
+              desktop: desktopWidget(context: context, isDark: isDark),
+              tablet: mobileWidget(context: context, isDark: isDark),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget mobileWidget({required BuildContext context}) {
+  Widget mobileWidget({required BuildContext context, bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -54,7 +65,7 @@ class _RegisterState extends State<Register> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Logo section - Top
-            _buildLogo(),
+            _buildLogo(isDark: isDark),
             const SizedBox(height: 32.0),
 
             // Title
@@ -63,7 +74,7 @@ class _RegisterState extends State<Register> {
               style: TextStyle(
                 fontSize: 32.0,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 40.0),
@@ -79,16 +90,22 @@ class _RegisterState extends State<Register> {
                       _buildTextField(
                         label: "Nombre",
                         controller: _nombreController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 20.0),
                       _buildTextField(
                         label: "Apellido Paterno",
                         controller: _apellidoPaternoController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 20.0),
                       _buildTextField(
                         label: "Apellido Materno",
                         controller: _apellidoMaternoController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                     ],
                   ),
@@ -101,16 +118,22 @@ class _RegisterState extends State<Register> {
                       _buildTextField(
                         label: "Fecha Nacimiento",
                         controller: _fechaNacimientoController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 20.0),
                       _buildTextField(
                         label: "Teléfono",
                         controller: _telefonoController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 20.0),
                       _buildTextField(
                         label: "Correo Electrónico",
                         controller: _emailController,
+                        isDark: isDark,
+                        textColor: textColor,
                       ),
                     ],
                   ),
@@ -121,12 +144,14 @@ class _RegisterState extends State<Register> {
             const SizedBox(height: 20.0),
 
             // Password in its own row
-            _buildPasswordField(),
+            _buildPasswordField(isDark: isDark, textColor: textColor),
             const SizedBox(height: 20.0),
             // Monedero in its own row
             _buildTextField(
               label: "Monedero (número de serie)",
               controller: _monederoController,
+              isDark: isDark,
+              textColor: textColor,
             ),
 
             const SizedBox(height: 32.0),
@@ -136,7 +161,7 @@ class _RegisterState extends State<Register> {
             const SizedBox(height: 24.0),
 
             // Bottom links
-            _buildBottomLinks(context),
+            _buildBottomLinks(context, textColor: textColor),
             const SizedBox(height: 10.0),
           ],
         ),
@@ -144,10 +169,14 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget desktopWidget({required BuildContext context}) {
+  Widget desktopWidget({required BuildContext context, bool isDark = true}) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final cardColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+    
     return Center(
       child: Card(
+        color: cardColor,
         child: Container(
           width: MediaQuery.of(context).size.width / 1.6,
           height: screenHeight * 0.9,
@@ -156,14 +185,14 @@ class _RegisterState extends State<Register> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildLogo(),
+                _buildLogo(isDark: isDark),
                 const SizedBox(height: 32.0),
                 Text(
                   "Registro",
                   style: TextStyle(
                     fontSize: 32.0,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 40.0),
@@ -179,16 +208,22 @@ class _RegisterState extends State<Register> {
                           _buildTextField(
                             label: "Nombre",
                             controller: _nombreController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                           const SizedBox(height: 20.0),
                           _buildTextField(
                             label: "Apellido Paterno",
                             controller: _apellidoPaternoController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                           const SizedBox(height: 20.0),
                           _buildTextField(
                             label: "Apellido Materno",
                             controller: _apellidoMaternoController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                         ],
                       ),
@@ -201,16 +236,22 @@ class _RegisterState extends State<Register> {
                           _buildTextField(
                             label: "Fecha Nacimiento",
                             controller: _fechaNacimientoController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                           const SizedBox(height: 20.0),
                           _buildTextField(
                             label: "Teléfono",
                             controller: _telefonoController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                           const SizedBox(height: 20.0),
                           _buildTextField(
                             label: "Correo Electrónico",
                             controller: _emailController,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                         ],
                       ),
@@ -221,12 +262,14 @@ class _RegisterState extends State<Register> {
                 const SizedBox(height: 20.0),
 
                 // Password in its own row
-                _buildPasswordField(),
+                _buildPasswordField(isDark: isDark, textColor: textColor),
                 const SizedBox(height: 20.0),
                 // Monedero in its own row
                 _buildTextField(
                   label: "Monedero (número de serie)",
                   controller: _monederoController,
+                  isDark: isDark,
+                  textColor: textColor,
                 ),
 
                 const SizedBox(height: 32.0),
@@ -236,7 +279,7 @@ class _RegisterState extends State<Register> {
                 const SizedBox(height: 24.0),
 
                 // Bottom links
-                _buildBottomLinks(context),
+                _buildBottomLinks(context, textColor: textColor),
               ],
             ),
           ),
@@ -245,15 +288,19 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget _buildLogo() {
+  Widget _buildLogo({bool isDark = true}) {
+    final logoPath = isDark 
+        ? 'assets/images/logo_dash.png'
+        : 'assets/images/logo_dash_blue.png';
+    
     return Image.asset(
-      'assets/images/logo_dash.png',
+      logoPath,
       height: 80,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
         return Container(
           height: 60,
-          color: Colors.red.withOpacity(0.3),
+          color: Colors.red.withValues(alpha: 0.3),
           child: Center(
             child: Text(
               'Logo Error',
@@ -268,14 +315,21 @@ class _RegisterState extends State<Register> {
   Widget _buildTextField({
     required String label,
     required TextEditingController controller,
+    required bool isDark,
+    required Color textColor,
   }) {
+    final labelTextColor = textColor;
+    final fieldTextColor = textColor;
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.white,
+            color: labelTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -283,12 +337,12 @@ class _RegisterState extends State<Register> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: fieldTextColor),
           decoration: InputDecoration(
             hintText: "",
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: hintTextColor),
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: fieldBgColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 1.0),
@@ -300,6 +354,14 @@ class _RegisterState extends State<Register> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 2.0),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -311,14 +373,20 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField({required bool isDark, required Color textColor}) {
+    final labelTextColor = textColor;
+    final fieldTextColor = textColor;
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final iconColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Password",
           style: TextStyle(
-            color: Colors.white,
+            color: labelTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -327,12 +395,12 @@ class _RegisterState extends State<Register> {
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: fieldTextColor),
           decoration: InputDecoration(
             hintText: "••••••••••••",
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: hintTextColor),
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: fieldBgColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 1.0),
@@ -345,6 +413,14 @@ class _RegisterState extends State<Register> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.white, width: 2.0),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
@@ -352,7 +428,7 @@ class _RegisterState extends State<Register> {
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey[400],
+                color: iconColor,
               ),
               onPressed: () {
                 setState(() {
@@ -390,7 +466,9 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget _buildBottomLinks(BuildContext context) {
+  Widget _buildBottomLinks(BuildContext context, {Color? textColor}) {
+    final linkColor = textColor ?? Colors.white;
+    
     return Column(
       children: [
         Center(
@@ -399,20 +477,20 @@ class _RegisterState extends State<Register> {
             child: Text(
               "¿Olvidaste tu Contraseña?",
               style: TextStyle(
-                color: Colors.white,
+                color: linkColor,
                 fontSize: 14,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         Center(
           child: TextButton(
             onPressed: () => GoRouter.of(context).go(RoutesName.login),
             child: Text(
               "Iniciar sesión",
               style: TextStyle(
-                color: Colors.white,
+                color: linkColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),

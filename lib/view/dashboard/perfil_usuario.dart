@@ -101,6 +101,15 @@ class PerfilUsuarioPage extends StatelessWidget {
                               GoRouter.of(context).go(RoutesName.contacto);
                             },
                           ),
+                          Divider(color: Colors.grey, height: 1),
+                          // Cerrar sesión button
+                          _buildLogoutButton(
+                            textColor: textColor,
+                            onTap: () {
+                              // Navigate to login page
+                              GoRouter.of(context).go(RoutesName.login);
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -303,8 +312,8 @@ class PerfilUsuarioPage extends StatelessWidget {
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      // Lógica para cerrar sesión
-                      // GoRouter.of(context).go(RoutesName.login);
+                      // Navigate to login page
+                      GoRouter.of(context).go(RoutesName.login);
                     },
                   ),
                 ],
@@ -407,6 +416,53 @@ class PerfilUsuarioPage extends StatelessWidget {
               title,
               style: TextStyle(
                 color: textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Spacer(),
+            // Arrow icon
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[600],
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton({
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        child: Row(
+          children: [
+            // Icon circle
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.logout,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Title
+            const Text(
+              "Cerrar sesión",
+              style: TextStyle(
+                color: Colors.red,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),

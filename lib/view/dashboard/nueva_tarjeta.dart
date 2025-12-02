@@ -40,7 +40,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
             child: Column(
               children: [
                 // Header
-                _buildHeader(context, textColor: textColor),
+                _buildHeader(context, textColor: textColor, isDark: isDark),
                 // Content
                 Expanded(
                   child: SingleChildScrollView(
@@ -50,7 +50,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Card preview
-                          _buildCardPreview(textColor: textColor),
+                          _buildCardPreview(textColor: textColor, isDark: isDark),
                           const SizedBox(height: 24),
                           // Form fields
                           _buildFormFields(textColor: textColor, isDark: isDark),
@@ -73,14 +73,14 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white}) {
+  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
         children: [
           // Back button
           IconButton(
-            icon: Icon(Icons.arrow_back, color: textColor),
+            icon: Icon(Icons.arrow_back, color: textColor, size: 24),
             onPressed: () {
               if (GoRouter.of(context).canPop()) {
                 GoRouter.of(context).pop();
@@ -108,8 +108,12 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
             },
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.grey[800],
-              child: const Icon(Icons.person, color: Colors.white, size: 24),
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              child: Icon(
+                Icons.person,
+                color: textColor,
+                size: 24,
+              ),
             ),
           ),
         ],
@@ -117,7 +121,11 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
     );
   }
 
-  Widget _buildCardPreview({Color textColor = Colors.white}) {
+  Widget _buildCardPreview({Color textColor = Colors.white, bool isDark = true}) {
+    final cardColor = isDark ? const Color(0xFF3A3A3A) : Colors.grey[700];
+    final stripeColor = isDark ? Colors.grey[400] : Colors.grey[400];
+    final cardTextColor = isDark ? Colors.white : Colors.white;
+    
     return Stack(
       children: [
         // Card container
@@ -126,7 +134,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
           height: 200,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: const Color(0xFF3A3A3A), // Dark grey card
+            color: cardColor,
           ),
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -137,7 +145,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
               Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.grey[400],
+                  color: stripeColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -146,7 +154,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
               Text(
                 _numeroController.text.isEmpty ? "1234 5678 9999 0000" : _numeroController.text,
                 style: TextStyle(
-                  color: textColor,
+                  color: cardTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
@@ -163,7 +171,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                       Text(
                         "CVV ${_cvvController.text.isEmpty ? "123" : _cvvController.text}",
                         style: TextStyle(
-                          color: textColor,
+                          color: cardTextColor,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -172,7 +180,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                       Text(
                         _nombreController.text.isEmpty ? "Andrea Barajas Cruz" : _nombreController.text,
                         style: TextStyle(
-                          color: textColor,
+                          color: cardTextColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -203,8 +211,8 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
   Widget _buildFormFields({Color textColor = Colors.white, bool isDark = true}) {
     final labelColor = isDark ? Colors.grey[400] : Colors.grey[600];
     final fillColor = isDark ? Colors.grey[900] : Colors.grey[100];
-    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
-    final focusedBorderColor = isDark ? Colors.white : Colors.black;
+    final borderColor = Colors.white;
+    final focusedBorderColor = Colors.white;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,15 +235,23 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
             fillColor: fillColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: focusedBorderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 2.0),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
@@ -263,15 +279,23 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
             fillColor: fillColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: focusedBorderColor),
+              borderSide: const BorderSide(color: Colors.white, width: 2.0),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.white, width: 1.0),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
