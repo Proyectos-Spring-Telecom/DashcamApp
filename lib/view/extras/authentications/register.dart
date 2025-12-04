@@ -43,11 +43,17 @@ class _RegisterState extends State<Register> {
         
         return Scaffold(
           backgroundColor: backgroundColor,
-          body: SafeArea(
-            child: Responsive(
-              mobile: mobileWidget(context: context, isDark: isDark),
-              desktop: desktopWidget(context: context, isDark: isDark),
-              tablet: mobileWidget(context: context, isDark: isDark),
+          extendBodyBehindAppBar: true,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: backgroundColor,
+            child: SafeArea(
+              child: Responsive(
+                mobile: mobileWidget(context: context, isDark: isDark),
+                desktop: desktopWidget(context: context, isDark: isDark),
+                tablet: mobileWidget(context: context, isDark: isDark),
+              ),
             ),
           ),
         );

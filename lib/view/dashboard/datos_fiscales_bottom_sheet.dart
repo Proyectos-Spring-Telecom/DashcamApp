@@ -254,38 +254,44 @@ class DatosFiscalesBottomSheet extends StatelessWidget {
 
   Widget _buildBottomNavigationBar(BuildContext context, {bool isDark = true}) {
     final navBarColor = isDark ? Colors.grey[900]! : Colors.grey[100]!;
-    return Container(
-      decoration: BoxDecoration(
-        color: navBarColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: navBarColor,
-        selectedItemColor: const Color(0xFF205AA8), // Blue
-        unselectedItemColor: Colors.grey[600],
-        currentIndex: 2, // Settings is selected
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Monedero',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Actividad',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: const Color(0xFF205AA8), // Blue
+          unselectedItemColor: Colors.grey[600],
+          currentIndex: 2, // Settings is selected
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          iconSize: 24,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Configuración',
+            ),
+          ],
         onTap: (index) {
           Navigator.of(context).pop(); // Close bottomsheet first
           if (index == 0) {
@@ -300,6 +306,7 @@ class DatosFiscalesBottomSheet extends StatelessWidget {
             );
           }
         },
+      ),
       ),
     );
   }

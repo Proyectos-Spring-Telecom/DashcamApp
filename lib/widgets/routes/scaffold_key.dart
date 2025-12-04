@@ -19,6 +19,7 @@ class ScaffoldKey {
 
 
   // Authentication
+  static ValueKey<String> bienvenidaScaffoldKey = const ValueKey<String>('bienvenida scaffold');
   static ValueKey<String> loginScaffoldKey = const ValueKey<String>('login scaffold');
   static ValueKey<String> registerScaffoldKey = const ValueKey<String>('register scaffold');
   static ValueKey<String> internalServerScaffoldKey = const ValueKey<String>('Internal Server scaffold');
@@ -68,4 +69,5 @@ class ScaffoldKey {
   static ValueKey<String> recargarScaffoldKey = const ValueKey<String>('recargar scaffold');
   static ValueKey<String> seleccionarMetodoPagoScaffoldKey = const ValueKey<String>('seleccionar metodo pago scaffold');
   static ValueKey<String> resumenScaffoldKey = const ValueKey<String>('resumen scaffold');
+  static ValueKey<String> transporteScaffoldKey = const ValueKey<String>('transporte scaffold');
 }

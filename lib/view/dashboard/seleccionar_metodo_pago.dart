@@ -26,8 +26,9 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
 
         return Scaffold(
           backgroundColor: backgroundColor,
+          extendBodyBehindAppBar: true,
           appBar: AppBar(
-            backgroundColor: backgroundColor,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
               icon: Icon(Icons.arrow_back, color: textColor, size: 24),
@@ -61,7 +62,11 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
               ),
             ],
           ),
-          body: SafeArea(
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: backgroundColor,
+            child: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -184,6 +189,7 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                   ),
                 );
               },
+            ),
             ),
           ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
@@ -402,38 +408,44 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
 
   Widget _buildBottomNavigationBar(BuildContext context, bool isDark) {
     final navBarColor = isDark ? Colors.grey[900] : Colors.grey[100];
-    return Container(
-      decoration: BoxDecoration(
-        color: navBarColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: navBarColor,
-        selectedItemColor: const Color(0xFF205AA8), // Blue
-        unselectedItemColor: Colors.grey[600],
-        currentIndex: 0, // Home is selected
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Monedero',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Actividad',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: const Color(0xFF205AA8), // Blue
+          unselectedItemColor: Colors.grey[600],
+          currentIndex: 0, // Home is selected
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          iconSize: 24,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Configuración',
+            ),
+          ],
         onTap: (index) {
           if (index == 0) {
             // Navegar al dashboard
@@ -451,6 +463,7 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
             GoRouter.of(context).go(RoutesName.perfil);
           }
         },
+      ),
       ),
     );
   }

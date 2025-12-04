@@ -14,142 +14,153 @@ class ContactoPage extends StatelessWidget {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
-        
+
         return Scaffold(
           backgroundColor: backgroundColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Header
-                _buildHeader(context, textColor: textColor, isDark: isDark),
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Section 1: "Comunícate con nosotros:"
-                          Text(
-                            "Comunícate con nosotros:",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+          extendBodyBehindAppBar: false,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: backgroundColor,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header
+                  _buildHeader(context, textColor: textColor, isDark: isDark),
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Section 1: "Comunícate con nosotros:"
+                            Text(
+                              "Comunícate con nosotros:",
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                      const SizedBox(height: 16),
-                      // Call Center Card
-                      _buildContactCard(
-                        icon: Icons.phone,
-                        iconColor: const Color(0xFF205AA8), // Blue
-                        title: "Centro de Atención",
-                        subtitle: "55 5889 1234",
-                        buttonText: "Llamar",
-                        textColor: textColor,
-                        isDark: isDark,
-                        onButtonTap: () async {
-                          final Uri phoneUri = Uri(scheme: 'tel', path: '5558891234');
-                          if (await canLaunchUrl(phoneUri)) {
-                            await launchUrl(phoneUri);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      // Comments and Suggestions Card
-                      _buildContactCard(
-                        icon: Icons.email,
-                        iconColor: const Color(0xFFA6CE39), // Green
-                        title: "Comentarios y sugerencias",
-                        subtitle: "hola@dascam.com.mx",
-                        buttonText: "Enviar correo",
-                        textColor: textColor,
-                        isDark: isDark,
-                        onButtonTap: () async {
-                          final Uri emailUri = Uri(
-                            scheme: 'mailto',
-                            path: 'hola@dascam.com.mx',
-                          );
-                          if (await canLaunchUrl(emailUri)) {
-                            await launchUrl(emailUri);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      // Website Card
-                      _buildContactCard(
-                        icon: Icons.language,
-                        iconColor: const Color(0xFF205AA8), // Blue
-                        title: "Sitio web",
-                        subtitle: "www.dashcam.com.mx",
-                        buttonText: "Visitar sitio",
-                        textColor: textColor,
-                        isDark: isDark,
-                        onButtonTap: () async {
-                          final Uri url = Uri.parse('https://www.dashcam.com.mx');
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      // Share Opinion Card
-                      _buildContactCard(
-                        icon: Icons.star,
-                        iconColor: const Color(0xFFA6CE39), // Green
-                        title: "Comparte tu opinión",
-                        subtitle: "Evaluar: Dashcam App",
-                        buttonText: "Evaluar",
-                        textColor: textColor,
-                        isDark: isDark,
-                        onButtonTap: () {
-                          // Navigate to app store rating
-                          // You can implement this based on platform
-                        },
-                      ),
-                      const SizedBox(height: 32),
-                      // Section 2: "¿Buscas otro tipo de información?"
-                      Text(
-                        "¿Buscas otro tipo de información?",
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                            const SizedBox(height: 16),
+                            // Call Center Card
+                            _buildContactCard(
+                              icon: Icons.phone,
+                              iconColor: const Color(0xFF205AA8), // Blue
+                              title: "Centro de Atención",
+                              subtitle: "55 5889 1234",
+                              buttonText: "Llamar",
+                              textColor: textColor,
+                              isDark: isDark,
+                              onButtonTap: () async {
+                                final Uri phoneUri =
+                                    Uri(scheme: 'tel', path: '5558891234');
+                                if (await canLaunchUrl(phoneUri)) {
+                                  await launchUrl(phoneUri);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            // Comments and Suggestions Card
+                            _buildContactCard(
+                              icon: Icons.email,
+                              iconColor: const Color(0xFFA6CE39), // Green
+                              title: "Comentarios y sugerencias",
+                              subtitle: "hola@dascam.com.mx",
+                              buttonText: "Enviar correo",
+                              textColor: textColor,
+                              isDark: isDark,
+                              onButtonTap: () async {
+                                final Uri emailUri = Uri(
+                                  scheme: 'mailto',
+                                  path: 'hola@dascam.com.mx',
+                                );
+                                if (await canLaunchUrl(emailUri)) {
+                                  await launchUrl(emailUri);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            // Website Card
+                            _buildContactCard(
+                              icon: Icons.language,
+                              iconColor: const Color(0xFF205AA8), // Blue
+                              title: "Sitio web",
+                              subtitle: "www.dashcam.com.mx",
+                              buttonText: "Visitar sitio",
+                              textColor: textColor,
+                              isDark: isDark,
+                              onButtonTap: () async {
+                                final Uri url =
+                                    Uri.parse('https://www.dashcam.com.mx');
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url,
+                                      mode: LaunchMode.externalApplication);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            // Share Opinion Card
+                            _buildContactCard(
+                              icon: Icons.star,
+                              iconColor: const Color(0xFFA6CE39), // Green
+                              title: "Comparte tu opinión",
+                              subtitle: "Evaluar: Dashcam App",
+                              buttonText: "Evaluar",
+                              textColor: textColor,
+                              isDark: isDark,
+                              onButtonTap: () {
+                                // Navigate to app store rating
+                                // You can implement this based on platform
+                              },
+                            ),
+                            const SizedBox(height: 32),
+                            // Section 2: "¿Buscas otro tipo de información?"
+                            Text(
+                              "¿Buscas otro tipo de información?",
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Help Center Card
+                            _buildContactCard(
+                              icon: Icons.settings,
+                              iconColor: const Color(0xFF205AA8), // Blue
+                              title: "Centro de Ayuda",
+                              subtitle: "55 5889 1234",
+                              buttonText: "Llamar",
+                              textColor: textColor,
+                              isDark: isDark,
+                              onButtonTap: () async {
+                                final Uri phoneUri =
+                                    Uri(scheme: 'tel', path: '5558891234');
+                                if (await canLaunchUrl(phoneUri)) {
+                                  await launchUrl(phoneUri);
+                                }
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Help Center Card
-                      _buildContactCard(
-                        icon: Icons.settings,
-                        iconColor: const Color(0xFF205AA8), // Blue
-                        title: "Centro de Ayuda",
-                        subtitle: "55 5889 1234",
-                        buttonText: "Llamar",
-                        textColor: textColor,
-                        isDark: isDark,
-                        onButtonTap: () async {
-                          final Uri phoneUri = Uri(scheme: 'tel', path: '5558891234');
-                          if (await canLaunchUrl(phoneUri)) {
-                            await launchUrl(phoneUri);
-                          }
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
         );
       },
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+  Widget _buildHeader(BuildContext context,
+      {Color textColor = Colors.white, bool isDark = true}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
@@ -212,7 +223,7 @@ class ContactoPage extends StatelessWidget {
   }) {
     final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
     final subtitleColor = isDark ? Colors.grey[400] : Colors.grey[600];
-    
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -283,55 +294,61 @@ class ContactoPage extends StatelessWidget {
 
   Widget _buildBottomNavigationBar(BuildContext context, bool isDark) {
     final navBarColor = isDark ? Colors.grey[900] : Colors.grey[100];
-    return Container(
-      decoration: BoxDecoration(
-        color: navBarColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: navBarColor,
-        selectedItemColor: const Color(0xFF205AA8), // Blue
-        unselectedItemColor: Colors.grey[600],
-        currentIndex: 2, // Settings is selected
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Monedero',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Actividad',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            GoRouter.of(context).go(RoutesName.dashboard);
-          } else if (index == 1) {
-            // Abrir bottomsheet de Monedero
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const MonederoBottomSheet(),
-            );
-          } else if (index == 2) {
-            GoRouter.of(context).go(RoutesName.perfil);
-          }
-        },
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: const Color(0xFF205AA8), // Blue
+          unselectedItemColor: Colors.grey[600],
+          currentIndex: 2, // Settings is selected
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          iconSize: 24,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Configuración',
+            ),
+          ],
+          onTap: (index) {
+            if (index == 0) {
+              GoRouter.of(context).go(RoutesName.dashboard);
+            } else if (index == 1) {
+              // Abrir bottomsheet de Monedero
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
+            } else if (index == 2) {
+              GoRouter.of(context).go(RoutesName.perfil);
+            }
+          },
+        ),
       ),
     );
   }
 }
-

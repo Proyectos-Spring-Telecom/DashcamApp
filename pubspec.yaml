@@ -60,6 +60,8 @@ dependencies:
   carousel_slider: ^5.1.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.2.3
+  image_picker: ^1.0.7
+  google_maps_flutter: ^2.6.0
 
   # syncfusion_flutter
   syncfusion_flutter_charts: ^31.2.12
@@ -85,6 +87,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -106,6 +109,7 @@ flutter:
     - assets/images/
     - assets/images/logo_dash.png
     - assets/images/metodos.png
+    - assets/images/bienvenida_background.png
     - assets/logo.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -132,3 +136,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# Configuración para generar iconos de la aplicación
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"  # Ruta a tu imagen de icono
+  remove_alpha_ios: true  # Elimina transparencia en iOS para cumplir con requisitos de App Store
