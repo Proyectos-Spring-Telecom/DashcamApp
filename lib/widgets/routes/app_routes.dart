@@ -15,7 +15,18 @@ class AppRoutes {
         // Init Routes
         GoRoute(
           path: RoutesName.init,
-          redirect: (_, __) => RoutesName.dashboard,
+          redirect: (_, __) => RoutesName.bienvenida,
+        ),
+        
+        // Bienvenida Route
+        GoRoute(
+          path: RoutesName.bienvenida,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.bienvenidaScaffoldKey,
+              child: const BienvenidaPage(),
+            );
+          },
         ),
 
         // Dashboard Routes
@@ -343,6 +354,15 @@ class AppRoutes {
             return FadeTransitionPage(
               key: ScaffoldKey.resumenScaffoldKey,
               child: ResumenPage(amount: amount),
+            );
+          },
+        ),
+        GoRoute(
+          path: RoutesName.transporte,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.transporteScaffoldKey,
+              child: const TransportePage(),
             );
           },
         ),

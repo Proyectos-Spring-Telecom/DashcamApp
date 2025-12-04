@@ -17,12 +17,20 @@ class Dashboard extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: backgroundColor,
+          extendBodyBehindAppBar: false,
           drawer: _buildDrawer(context, isDark),
-          body: SafeArea(
-            child: Responsive(
-              mobile: mobileView(context: context, isDark: isDark),
-              desktop: desktopView(context: context, isDark: isDark),
-              tablet: mobileView(context: context, isDark: isDark),
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color:
+                backgroundColor, // Asegurar que el color se extienda hasta la barra de estado
+            child: SafeArea(
+              bottom: false, // Mantener el padding inferior del SafeArea
+              child: Responsive(
+                mobile: mobileView(context: context, isDark: isDark),
+                desktop: desktopView(context: context, isDark: isDark),
+                tablet: mobileView(context: context, isDark: isDark),
+              ),
             ),
           ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
@@ -150,21 +158,26 @@ class Dashboard extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, {bool isDark = true}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      padding:
+          const EdgeInsets.only(left: 16.0, right: 24.0, top: 8.0, bottom: 8.0),
       child: Row(
         children: [
-          // Hamburger menu
+          // Hamburger menu - sin padding extra para alineación
           Builder(
             builder: (context) => IconButton(
               icon:
                   Icon(Icons.menu, color: isDark ? Colors.white : Colors.black),
+              padding: EdgeInsets.zero, // Eliminar padding interno
+              constraints:
+                  const BoxConstraints(), // Eliminar constraints mínimos
               onPressed: () {
                 Scaffold.of(context).openDrawer();
               },
             ),
           ),
+          const SizedBox(width: 8), // Espacio entre menú y texto
 
-          // Title "¡Hola, Andrea!" - positioned left next to menu
+          // Title "¡Hola, Andrea!" - alineado con Monedero
           Text(
             "¡Hola, Andrea!",
             style: TextStyle(
@@ -752,8 +765,7 @@ class Dashboard extends StatelessWidget {
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      // Navegar a la pantalla de Transporte
-                      // GoRouter.of(context).go(RoutesName.transporte);
+                      GoRouter.of(context).go(RoutesName.transporte);
                     },
                   ),
                   ListTile(
@@ -841,60 +853,67 @@ class Dashboard extends StatelessWidget {
 
   Widget _buildBottomNavigationBar(BuildContext context, bool isDark) {
     final navBarColor = isDark ? Colors.grey[900] : Colors.grey[100];
-    return Container(
-      decoration: BoxDecoration(
-        color: navBarColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: navBarColor,
-        selectedItemColor: const Color(0xFF205AA8), // Blue
-        unselectedItemColor: Colors.grey[600],
-        currentIndex: 0, // Home is selected
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Monedero',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Actividad',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            // Abrir bottomsheet de Monedero
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const MonederoBottomSheet(),
-            );
-          } else if (index == 1) {
-            // Abrir bottomsheet de Monedero (Actividad)
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const MonederoBottomSheet(),
-            );
-          } else if (index == 2) {
-            // Navegar a perfil de usuario
-            GoRouter.of(context).go(RoutesName.perfil);
-          }
-        },
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: const Color(0xFF205AA8), // Blue
+          unselectedItemColor: Colors.grey[600],
+          currentIndex: 0, // Home is selected
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          iconSize: 24,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Configuración',
+            ),
+          ],
+          onTap: (index) {
+            if (index == 0) {
+              // Abrir bottomsheet de Monedero
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
+            } else if (index == 1) {
+              // Abrir bottomsheet de Monedero (Actividad)
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
+            } else if (index == 2) {
+              // Navegar a perfil de usuario
+              GoRouter.of(context).go(RoutesName.perfil);
+            }
+          },
+        ),
       ),
     );
   }

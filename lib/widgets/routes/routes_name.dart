@@ -16,6 +16,7 @@ class RoutesName {
   static String buttons = "/buttons";
 
   // Authentication
+  static String bienvenida = "/bienvenida";
   static String login = "/login";
   static String register = "/register";
   static String serverError = "/server_error";
@@ -62,4 +63,5 @@ class RoutesName {
   static String recargar = "/recargar";
   static String seleccionarMetodoPago = "/seleccionar-metodo-pago";
   static String resumen = "/resumen";
+  static String transporte = "/transporte";
 }

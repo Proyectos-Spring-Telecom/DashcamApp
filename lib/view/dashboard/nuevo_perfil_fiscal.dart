@@ -57,7 +57,12 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
 
         return Scaffold(
           backgroundColor: backgroundColor,
-          body: SafeArea(
+          extendBodyBehindAppBar: false,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: backgroundColor,
+            child: SafeArea(
             child: Column(
               children: [
                 // Header
@@ -105,6 +110,7 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
@@ -555,38 +561,44 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
 
   Widget _buildBottomNavigationBar(BuildContext context, {bool isDark = true}) {
     final navBarColor = isDark ? Colors.grey[900]! : Colors.grey[100]!;
-    return Container(
-      decoration: BoxDecoration(
-        color: navBarColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: navBarColor,
-        selectedItemColor: const Color(0xFF205AA8), // Blue
-        unselectedItemColor: Colors.grey[600],
-        currentIndex: 1, // Search is selected
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Monedero',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Actividad',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: const Color(0xFF205AA8), // Blue
+          unselectedItemColor: Colors.grey[600],
+          currentIndex: 1, // Search is selected
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          iconSize: 24,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Configuración',
+            ),
+          ],
         onTap: (index) {
           if (index == 0) {
             GoRouter.of(context).go(RoutesName.dashboard);
@@ -601,6 +613,7 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
             GoRouter.of(context).go(RoutesName.comingSoon);
           }
         },
+      ),
       ),
     );
   }
