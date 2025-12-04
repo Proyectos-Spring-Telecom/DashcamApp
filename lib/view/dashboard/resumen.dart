@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:flutter/services.dart';
 
 class ResumenPage extends StatelessWidget {
   final String? amount;
@@ -15,12 +16,22 @@ class ResumenPage extends StatelessWidget {
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
             leading: IconButton(
               icon: Icon(
                 Icons.arrow_back,
@@ -184,6 +195,7 @@ class ResumenPage extends StatelessWidget {
             ),
           ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+        ),
         );
       },
     );

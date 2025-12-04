@@ -15,23 +15,36 @@ class PagoQRPage extends StatelessWidget {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
+
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
         
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: false,
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-              child: Responsive(
-                mobile: mobileWidget(context: context, isDark: isDark, textColor: textColor),
-                desktop: desktopWidget(context: context, isDark: isDark, textColor: textColor),
-                tablet: mobileWidget(context: context, isDark: isDark, textColor: textColor),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: backgroundColor,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Responsive(
+                  mobile: mobileWidget(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopWidget(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileWidget(context: context, isDark: isDark, textColor: textColor),
+                ),
               ),
             ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
         );
       },
     );

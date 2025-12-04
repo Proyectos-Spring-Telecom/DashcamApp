@@ -3,6 +3,7 @@ import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/view/dashboard/datos_fiscales_bottom_sheet.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 class PerfilUsuarioPage extends StatefulWidget {
   const PerfilUsuarioPage({super.key});
@@ -25,118 +26,132 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: false,
-          drawer: _buildDrawer(context, isDark),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Header
-                  _buildHeader(context, textColor: textColor),
-                  // Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          children: [
-                            // Profile picture
-                            _buildProfilePicture(context, isDark: isDark),
-                            const SizedBox(height: 16),
-                            // Name
-                            Text(
-                              "Andrea Barajas",
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            drawer: _buildDrawer(context, isDark),
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: backgroundColor,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Column(
+                  children: [
+                    // Header
+                    _buildHeader(context, textColor: textColor),
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            children: [
+                              // Profile picture
+                              _buildProfilePicture(context, isDark: isDark),
+                              const SizedBox(height: 16),
+                              // Name
+                              Text(
+                                "Andrea Barajas",
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Member since
-                            Text(
-                              "Miembro desde 2025",
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 14,
+                              const SizedBox(height: 8),
+                              // Member since
+                              Text(
+                                "Miembro desde 2025",
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 40),
-                            // Menu options
-                            _buildMenuOption(
-                              icon: Icons.credit_card,
-                              title: "Métodos de Pago",
-                              iconColor: const Color(0xFFA6CE39), // Green
-                              textColor: textColor,
-                              onTap: () {
-                                // Navigate to payment methods
-                                GoRouter.of(context).go(RoutesName.metodosPago);
-                              },
-                            ),
-                            Divider(color: Colors.grey, height: 1),
-                            _buildMenuOption(
-                              icon: Icons.description,
-                              title: "Datos fiscales",
-                              iconColor: const Color(0xFFFDB462), // Yellow
-                              textColor: textColor,
-                              onTap: () {
-                                // Open datos fiscales bottomsheet
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (context) =>
-                                      const DatosFiscalesBottomSheet(),
-                                );
-                              },
-                            ),
-                            Divider(color: Colors.grey, height: 1),
-                            _buildMenuOption(
-                              icon: Icons.person,
-                              title: "Configuración de la cuenta",
-                              iconColor: const Color(0xFF205AA8), // Blue
-                              textColor: textColor,
-                              onTap: () {
-                                // Navigate to change password page
-                                GoRouter.of(context)
-                                    .go(RoutesName.cambioContrasena);
-                              },
-                            ),
-                            Divider(color: Colors.grey, height: 1),
-                            _buildMenuOption(
-                              icon: Icons.lock,
-                              title: "Privacidad y Contacto",
-                              iconColor: Colors.grey,
-                              textColor: textColor,
-                              onTap: () {
-                                // Navigate to contact page
-                                GoRouter.of(context).go(RoutesName.contacto);
-                              },
-                            ),
-                            Divider(color: Colors.grey, height: 1),
-                            // Cerrar sesión button
-                            _buildLogoutButton(
-                              textColor: textColor,
-                              onTap: () {
-                                // Navigate to login page
-                                GoRouter.of(context).go(RoutesName.login);
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 40),
+                              // Menu options
+                              _buildMenuOption(
+                                icon: Icons.credit_card,
+                                title: "Métodos de Pago",
+                                iconColor: const Color(0xFFA6CE39), // Green
+                                textColor: textColor,
+                                onTap: () {
+                                  // Navigate to payment methods
+                                  GoRouter.of(context)
+                                      .go(RoutesName.metodosPago);
+                                },
+                              ),
+                              Divider(color: Colors.grey, height: 1),
+                              _buildMenuOption(
+                                icon: Icons.description,
+                                title: "Datos fiscales",
+                                iconColor: const Color(0xFFFDB462), // Yellow
+                                textColor: textColor,
+                                onTap: () {
+                                  // Open datos fiscales bottomsheet
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (context) =>
+                                        const DatosFiscalesBottomSheet(),
+                                  );
+                                },
+                              ),
+                              Divider(color: Colors.grey, height: 1),
+                              _buildMenuOption(
+                                icon: Icons.person,
+                                title: "Configuración de la cuenta",
+                                iconColor: const Color(0xFF205AA8), // Blue
+                                textColor: textColor,
+                                onTap: () {
+                                  // Navigate to change password page
+                                  GoRouter.of(context)
+                                      .go(RoutesName.cambioContrasena);
+                                },
+                              ),
+                              Divider(color: Colors.grey, height: 1),
+                              _buildMenuOption(
+                                icon: Icons.lock,
+                                title: "Privacidad y Contacto",
+                                iconColor: Colors.grey,
+                                textColor: textColor,
+                                onTap: () {
+                                  // Navigate to contact page
+                                  GoRouter.of(context).go(RoutesName.contacto);
+                                },
+                              ),
+                              Divider(color: Colors.grey, height: 1),
+                              // Cerrar sesión button
+                              _buildLogoutButton(
+                                textColor: textColor,
+                                onTap: () {
+                                  // Navigate to login page
+                                  GoRouter.of(context).go(RoutesName.login);
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
         );
       },
     );
@@ -313,29 +328,24 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                       );
                     },
                   ),
-                  const Divider(
-                    color: Colors.grey,
-                    thickness: 0.5,
-                    indent: 16,
-                    endIndent: 16,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: Text(
-                      "Cierre de Sesión",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Navigate to login page
-                      GoRouter.of(context).go(RoutesName.login);
-                    },
-                  ),
                 ],
               ),
+            ),
+            // Cierre de Sesión at the bottom
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF205AA8)),
+              title: Text(
+                "Cierre de Sesión",
+                style: TextStyle(
+                  color: const Color(0xFF205AA8),
+                  fontSize: 16,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to login page
+                GoRouter.of(context).go(RoutesName.login);
+              },
             ),
           ],
         ),
