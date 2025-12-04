@@ -82,14 +82,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       builder: (context, snapshot) {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         
-        // Configurar el estilo de la barra de estado según el tema
-        // Usar el mismo color de fondo que el Scaffold para que coincida
-        final statusBarColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+        // Configurar modo edge-to-edge con status bar transparente
         final systemUiOverlayStyle = SystemUiOverlayStyle(
-          statusBarColor: statusBarColor, // Mismo color que el fondo del Scaffold
+          statusBarColor: Colors.transparent, // Status bar transparente para edge-to-edge
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark, // iOS
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // Android
-          systemNavigationBarColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+          systemNavigationBarColor: Colors.transparent, // Navigation bar transparente
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         );
         

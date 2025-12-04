@@ -1,6 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 
 class CargarConstanciaFiscalPage extends StatefulWidget {
   const CargarConstanciaFiscalPage({super.key});
@@ -43,15 +44,27 @@ class _CargarConstanciaFiscalPageState extends State<CargarConstanciaFiscalPage>
         final textColor = isDark ? Colors.white : Colors.black;
         final inputBgColor = isDark ? Colors.grey[900]! : Colors.grey[50]!;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: false,
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-            child: Column(
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: backgroundColor,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Column(
               children: [
                 // Header
                 _buildHeader(context, textColor: textColor, isDark: isDark),
@@ -128,6 +141,7 @@ class _CargarConstanciaFiscalPageState extends State<CargarConstanciaFiscalPage>
             ),
           ),
           bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
+        ),
         );
       },
     );

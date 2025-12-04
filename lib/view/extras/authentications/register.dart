@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:flutter/services.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -40,19 +41,32 @@ class _RegisterState extends State<Register> {
       builder: (context, snapshot) {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
+
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
         
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: true,
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-              child: Responsive(
-                mobile: mobileWidget(context: context, isDark: isDark),
-                desktop: desktopWidget(context: context, isDark: isDark),
-                tablet: mobileWidget(context: context, isDark: isDark),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: backgroundColor,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Responsive(
+                  mobile: mobileWidget(context: context, isDark: isDark),
+                  desktop: desktopWidget(context: context, isDark: isDark),
+                  tablet: mobileWidget(context: context, isDark: isDark),
+                ),
               ),
             ),
           ),

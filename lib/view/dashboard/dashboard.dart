@@ -2,6 +2,7 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'dart:ui';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
+import 'package:flutter/services.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({super.key});
@@ -15,25 +16,36 @@ class Dashboard extends StatelessWidget {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          extendBodyBehindAppBar: false,
-          drawer: _buildDrawer(context, isDark),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color:
-                backgroundColor, // Asegurar que el color se extienda hasta la barra de estado
-            child: SafeArea(
-              bottom: false, // Mantener el padding inferior del SafeArea
-              child: Responsive(
-                mobile: mobileView(context: context, isDark: isDark),
-                desktop: desktopView(context: context, isDark: isDark),
-                tablet: mobileView(context: context, isDark: isDark),
+        const systemUiOverlayStyle = SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        );
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            extendBodyBehindAppBar: true,
+            drawer: _buildDrawer(context, isDark),
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: backgroundColor,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark),
+                  desktop: desktopView(context: context, isDark: isDark),
+                  tablet: mobileView(context: context, isDark: isDark),
+                ),
               ),
             ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
         );
       },
     );
@@ -157,9 +169,14 @@ class Dashboard extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, {bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding:
-          const EdgeInsets.only(left: 16.0, right: 24.0, top: 8.0, bottom: 8.0),
+      padding: EdgeInsets.only(
+        left: 16.0,
+        right: 24.0,
+        top: paddingTop + 8.0,
+        bottom: 8.0,
+      ),
       child: Row(
         children: [
           // Hamburger menu - sin padding extra para alineación
@@ -824,12 +841,6 @@ class Dashboard extends StatelessWidget {
               ),
             ),
             // Cierre de Sesión at the bottom
-            const Divider(
-              color: Colors.grey,
-              thickness: 0.3,
-              indent: 16,
-              endIndent: 16,
-            ),
             ListTile(
               leading: const Icon(Icons.logout, color: Color(0xFF205AA8)),
               title: Text(
