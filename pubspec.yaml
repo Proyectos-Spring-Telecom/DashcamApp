@@ -141,5 +141,18 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  web:
+    generate: true
+  windows:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+  macos:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+  linux:
+    generate: true
+    image_path: "assets/images/app_icon.png"
   image_path: "assets/images/app_icon.png"  # Ruta a tu imagen de icono
   remove_alpha_ios: true  # Elimina transparencia en iOS para cumplir con requisitos de App Store
+
+  
