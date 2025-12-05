@@ -268,60 +268,67 @@ class _TransportePageState extends State<TransportePage> {
         child: Column(
           children: [
             // Profile section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                color: cardColor,
-              ),
-              child: Column(
-                children: [
-                  // Profile image
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      color: textColor,
-                      size: 50,
-                    ),
+            StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: cardColor,
                   ),
-                  const SizedBox(height: 16),
-                  // Full name
-                  Text(
-                    "Andrea Barajas Cruz",
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Status
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFA6CE39), // Green for active
-                          shape: BoxShape.circle,
+                      // Profile image
+                      UserAvatar(
+                        imageUrl: user?.fotoPerfil,
+                        radius: 50,
+                        backgroundColor:
+                            isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        iconColor: textColor,
+                        iconSize: 50,
+                      ),
+                      const SizedBox(height: 16),
+                      // Full name
+                      Text(
+                        user != null
+                            ? '${user.nombre} ${user.apellidoPaterno}'
+                            : 'Usuario',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Activo",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 8),
+                      // Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFA6CE39), // Green for active
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Activo",
+                            style: TextStyle(
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             // Menu options
             Expanded(
@@ -421,10 +428,14 @@ class _TransportePageState extends State<TransportePage> {
                   fontSize: 16,
                 ),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
+                // Cerrar sesión usando AuthBloc
+                await authBloc.logout();
                 // Navigate to login page
-                GoRouter.of(context).go(RoutesName.login);
+                if (context.mounted) {
+                  GoRouter.of(context).go(RoutesName.login);
+                }
               },
             ),
           ],

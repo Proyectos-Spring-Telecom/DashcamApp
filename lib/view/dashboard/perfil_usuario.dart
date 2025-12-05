@@ -4,6 +4,9 @@ import 'package:dashboardpro/view/dashboard/datos_fiscales_bottom_sheet.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/model/auth/user.dart';
+import 'package:dashboardpro/utils/date_formatter.dart';
 
 class PerfilUsuarioPage extends StatefulWidget {
   const PerfilUsuarioPage({super.key});
@@ -59,25 +62,51 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                           child: Column(
                             children: [
                               // Profile picture
-                              _buildProfilePicture(context, isDark: isDark),
+                              StreamBuilder<User?>(
+                                stream: authBloc.userStream,
+                                builder: (context, userSnapshot) {
+                                  final user =
+                                      userSnapshot.data ?? authBloc.currentUser;
+                                  return _buildProfilePicture(context,
+                                      isDark: isDark, user: user);
+                                },
+                              ),
                               const SizedBox(height: 16),
                               // Name
-                              Text(
-                                "Andrea Barajas",
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              StreamBuilder<User?>(
+                                stream: authBloc.userStream,
+                                builder: (context, userSnapshot) {
+                                  final user =
+                                      userSnapshot.data ?? authBloc.currentUser;
+                                  return Text(
+                                    user != null
+                                        ? '${user.nombre} ${user.apellidoPaterno}'
+                                        : 'Usuario',
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 8),
                               // Member since
-                              Text(
-                                "Miembro desde 2025",
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 14,
-                                ),
+                              StreamBuilder<User?>(
+                                stream: authBloc.userStream,
+                                builder: (context, userSnapshot) {
+                                  final user =
+                                      userSnapshot.data ?? authBloc.currentUser;
+                                  return Text(
+                                    user != null && user.fechaCreacion != null
+                                        ? 'Miembro desde: ${DateFormatter.formatMemberSinceDate(user.fechaCreacion, includePrefix: false)}'
+                                        : 'Miembro desde: N/A',
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 14,
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 40),
                               // Menu options
@@ -136,9 +165,13 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                               // Cerrar sesión button
                               _buildLogoutButton(
                                 textColor: textColor,
-                                onTap: () {
+                                onTap: () async {
+                                  // Cerrar sesión usando AuthBloc
+                                  await authBloc.logout();
                                   // Navigate to login page
-                                  GoRouter.of(context).go(RoutesName.login);
+                                  if (context.mounted) {
+                                    GoRouter.of(context).go(RoutesName.login);
+                                  }
                                 },
                               ),
                             ],
@@ -187,60 +220,69 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
         child: Column(
           children: [
             // Profile section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                color: cardColor,
-              ),
-              child: Column(
-                children: [
-                  // Profile image
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      color: textColor,
-                      size: 50,
-                    ),
+            StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: cardColor,
                   ),
-                  const SizedBox(height: 16),
-                  // Full name
-                  Text(
-                    "Andrea Barajas Cruz",
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Status
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFA6CE39), // Green for active
-                          shape: BoxShape.circle,
+                      // Profile image
+                      UserAvatar(
+                        imageUrl: user?.fotoPerfil,
+                        radius: 50,
+                        backgroundColor:
+                            isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        iconColor: textColor,
+                        iconSize: 50,
+                      ),
+                      const SizedBox(height: 16),
+                      // Full name
+                      Text(
+                        user != null
+                            ? '${user.nombre} ${user.apellidoPaterno}'
+                            : 'Usuario',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Activo",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 8),
+                      // Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color:
+                                  const Color(0xFFA6CE39), // Green for active
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Activo",
+                            style: TextStyle(
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             // Menu options
             Expanded(
@@ -341,10 +383,14 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                   fontSize: 16,
                 ),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
+                // Cerrar sesión usando AuthBloc
+                await authBloc.logout();
                 // Navigate to login page
-                GoRouter.of(context).go(RoutesName.login);
+                if (context.mounted) {
+                  GoRouter.of(context).go(RoutesName.login);
+                }
               },
             ),
           ],
@@ -353,7 +399,8 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
     );
   }
 
-  Widget _buildProfilePicture(BuildContext context, {bool isDark = true}) {
+  Widget _buildProfilePicture(BuildContext context,
+      {bool isDark = true, User? user}) {
     final borderColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
     return Stack(
       alignment: Alignment.center,
@@ -373,17 +420,57 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                     width: 120,
                     height: 120,
                   )
-                : Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFB6C1), // Soft pink
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.person,
-                      size: 80,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
+                : user?.fotoPerfil != null && user!.fotoPerfil!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: user.fotoPerfil!,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'Accept': 'image/*'},
+                        fadeInDuration: const Duration(milliseconds: 200),
+                        fadeOutDuration: const Duration(milliseconds: 100),
+                        placeholder: (context, url) => Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFB6C1), // Soft pink
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.person,
+                            size: 80,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) {
+                          debugPrint('Error loading profile image: $error');
+                          debugPrint('Image URL: $url');
+                          return Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFB6C1), // Soft pink
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFB6C1), // Soft pink
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 80,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
           ),
         ),
         // Edit button

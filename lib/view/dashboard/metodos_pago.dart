@@ -129,112 +129,113 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> {
                 top: false,
                 bottom: false,
                 child: Column(
-              children: [
-                // Header
-                _buildHeader(context, textColor: textColor, isDark: isDark),
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Section title
-                          Text(
-                            "Mis tarjetas",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Lista dinámica de tarjetas con swipe para eliminar
-                          ..._tarjetas
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                            final index = entry.key;
-                            final tarjeta = entry.value;
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: index < _tarjetas.length - 1 ? 16 : 0,
-                              ),
-                              child: Dismissible(
-                                key: Key('tarjeta_${tarjeta.cardNumber}'),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 20.0),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Icon(
-                                    Icons.delete,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                ),
-                                confirmDismiss: (direction) async {
-                                  final result = await _mostrarDialogoConfirmacion(context, tarjeta.cardNumber);
-                                  return result ?? false;
-                                },
-                                onDismissed: (direction) {
-                                  _eliminarTarjetaPorCardNumber(tarjeta.cardNumber);
-                                },
-                                child: _buildCard(
-                                  cardNumber: tarjeta.cardNumber,
-                                  cvv: tarjeta.cvv,
-                                  cardholderName: tarjeta.cardholderName,
-                                  gradientColors: tarjeta.gradientColors,
-                                  textColor: tarjeta.textColor,
-                                  cardType: tarjeta.cardType,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          const SizedBox(height: 32),
-                          // Add card button
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                // Navigate to Nueva Tarjeta screen
-                                GoRouter.of(context)
-                                    .go(RoutesName.nuevaTarjeta);
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xFFA6CE39), // Lime green
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                "Agregar tarjeta",
+                  children: [
+                    // Header
+                    _buildHeader(context, textColor: textColor, isDark: isDark),
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Section title
+                              Text(
+                                "Mis tarjetas",
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                                  color: textColor,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              // Lista dinámica de tarjetas con swipe para eliminar
+                              ..._tarjetas
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                final index = entry.key;
+                                final tarjeta = entry.value;
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index < _tarjetas.length - 1 ? 16 : 0,
+                                  ),
+                                  child: Dismissible(
+                                    key: Key('tarjeta_${tarjeta.cardNumber}'),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 20.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: const Icon(
+                                        Icons.delete,
+                                        color: Colors.white,
+                                        size: 32,
+                                      ),
+                                    ),
+                                    confirmDismiss: (direction) async {
+                                      final result = await _mostrarDialogoConfirmacion(context, tarjeta.cardNumber);
+                                      return result ?? false;
+                                    },
+                                    onDismissed: (direction) {
+                                      _eliminarTarjetaPorCardNumber(tarjeta.cardNumber);
+                                    },
+                                    child: _buildCard(
+                                      cardNumber: tarjeta.cardNumber,
+                                      cvv: tarjeta.cvv,
+                                      cardholderName: tarjeta.cardholderName,
+                                      gradientColors: tarjeta.gradientColors,
+                                      textColor: tarjeta.textColor,
+                                      cardType: tarjeta.cardType,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              const SizedBox(height: 32),
+                              // Add card button
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    // Navigate to Nueva Tarjeta screen
+                                    GoRouter.of(context)
+                                        .go(RoutesName.nuevaTarjeta);
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor:
+                                        const Color(0xFFA6CE39), // Lime green
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Agregar tarjeta",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
+        );
       },
     );
   }

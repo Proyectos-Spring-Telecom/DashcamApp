@@ -75,15 +75,16 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 top: false,
                 bottom: false,
                 child: Responsive(
-                mobile: mobileWidget(context: context, isDark: isDark),
-                desktop: desktopWidget(context: context, isDark: isDark),
-                tablet: mobileWidget(context: context, isDark: isDark),
+                  mobile: mobileWidget(context: context, isDark: isDark),
+                  desktop: desktopWidget(context: context, isDark: isDark),
+                  tablet: mobileWidget(context: context, isDark: isDark),
+                ),
               ),
             ),
+            bottomNavigationBar:
+                _buildBottomNavigationBar(context, isDark: isDark),
           ),
-          bottomNavigationBar:
-              _buildBottomNavigationBar(context, isDark: isDark),
-        ),
+        );
       },
     );
   }
