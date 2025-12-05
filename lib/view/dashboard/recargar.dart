@@ -42,168 +42,275 @@ class _RecargarPageState extends State<RecargarPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back,
-                color: textColor,
-                size: 24,
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                ),
               ),
-              onPressed: () {
-                GoRouter.of(context).go(RoutesName.dashboard);
-              },
             ),
-            title: Text(
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Monedero card
+                _buildMonederoCard(
+                    isDark: isDark, textColor: textColor),
+                const SizedBox(height: 32.0),
+
+                // Selecciona el monto a recargar
+                Text(
+                  "Selecciona el monto a recargar",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+
+                // Monto label
+                Text(
+                  "Monto",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8.0),
+
+                // Amount input field
+                _buildAmountField(
+                    isDark: isDark, controller: _amountController),
+                const SizedBox(height: 32.0),
+
+                // Commission text - centered
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      "Esta operación no genera ningún tipo de comisión.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+
+                // Continuar button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final amount = _amountController.text.isEmpty
+                          ? '0'
+                          : _amountController.text;
+                      GoRouter.of(context).go(
+                        RoutesName.seleccionarMetodoPago,
+                        extra: {'amount': amount},
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          const Color(0xFF205AA8), // Blue
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Continuar",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Monedero card
+                  _buildMonederoCard(
+                      isDark: isDark, textColor: textColor),
+                  const SizedBox(height: 32.0),
+
+                  // Selecciona el monto a recargar
+                  Text(
+                    "Selecciona el monto a recargar",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Monto label
+                  Text(
+                    "Monto",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+
+                  // Amount input field
+                  _buildAmountField(
+                      isDark: isDark, controller: _amountController),
+                  const SizedBox(height: 32.0),
+                  // Commission text - centered
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        "Esta operación no genera ningún tipo de comisión.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16.0),
+                  // Continuar button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        final amount = _amountController.text.isEmpty
+                            ? '0'
+                            : _amountController.text;
+                        GoRouter.of(context).go(
+                          RoutesName.seleccionarMetodoPago,
+                          extra: {'amount': amount},
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF205AA8), // Blue
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Continuar",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor),
+            onPressed: () {
+              GoRouter.of(context).go(RoutesName.dashboard);
+            },
+          ),
+          // Title
+          Expanded(
+            child: Text(
               "Recargar Monedero",
               style: TextStyle(
                 color: textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
+              textAlign: TextAlign.center,
             ),
-            centerTitle: true,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: GestureDetector(
-                  onTap: () {
-                    GoRouter.of(context).go(RoutesName.perfil);
-                  },
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      color: textColor,
-                      size: 24,
-                    ),
-                  ),
-                ),
+          ),
+          // Profile avatar
+          GestureDetector(
+            onTap: () {
+              GoRouter.of(context).go(RoutesName.perfil);
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              child: Icon(
+                Icons.person,
+                color: textColor,
+                size: 24,
               ),
-            ],
-          ),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Monedero card
-                          _buildMonederoCard(
-                              isDark: isDark, textColor: textColor),
-                          const SizedBox(height: 32.0),
-
-                          // Selecciona el monto a recargar
-                          Text(
-                            "Selecciona el monto a recargar",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16.0),
-
-                          // Monto label
-                          Text(
-                            "Monto",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8.0),
-
-                          // Amount input field
-                          _buildAmountField(
-                              isDark: isDark, controller: _amountController),
-
-                          // Spacer to push content to bottom
-                          SizedBox(
-                            height: constraints.maxHeight > 600
-                                ? constraints.maxHeight - 420
-                                : 50,
-                          ),
-
-                          // Commission text - centered at bottom
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: Text(
-                                "Esta operación no genera ningún tipo de comisión.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Continuar button - at bottom
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                final amount = _amountController.text.isEmpty
-                                    ? '0'
-                                    : _amountController.text;
-                                GoRouter.of(context).go(
-                                  RoutesName.seleccionarMetodoPago,
-                                  extra: {'amount': amount},
-                                );
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xFF205AA8), // Blue
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                "Continuar",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
-        );
-      },
+        ],
+      ),
     );
   }
 

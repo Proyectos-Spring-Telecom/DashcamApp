@@ -62,22 +62,25 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           systemNavigationBarIconBrightness: Brightness.light,
         );
 
+        // Obtener el padding del sistema antes de aplicar MediaQuery.removePadding
+        final systemPaddingTop = MediaQuery.of(context).viewPadding.top;
+        
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: systemUiOverlayStyle,
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
                 child: Responsive(
-                  mobile: mobileWidget(context: context, isDark: isDark),
-                  desktop: desktopWidget(context: context, isDark: isDark),
-                  tablet: mobileWidget(context: context, isDark: isDark),
+                  mobile: mobileWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
+                  desktop: desktopWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
+                  tablet: mobileWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
                 ),
               ),
             ),
@@ -89,11 +92,11 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget mobileWidget({required BuildContext context, required bool isDark}) {
+  Widget mobileWidget({required BuildContext context, required bool isDark, required double systemPaddingTop}) {
     return Column(
       children: [
         // Header
-        _buildHeader(context, isDark: isDark),
+        _buildHeader(context, isDark: isDark, systemPaddingTop: systemPaddingTop),
 
         // Tabs
         _buildTabs(isDark: isDark),
@@ -129,11 +132,11 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget desktopWidget({required BuildContext context, required bool isDark}) {
+  Widget desktopWidget({required BuildContext context, required bool isDark, required double systemPaddingTop}) {
     return Column(
       children: [
         // Header
-        _buildHeader(context, isDark: isDark),
+        _buildHeader(context, isDark: isDark, systemPaddingTop: systemPaddingTop),
 
         // Tabs
         _buildTabs(isDark: isDark),
@@ -174,51 +177,54 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildHeader(BuildContext context, {bool isDark = true}) {
+  Widget _buildHeader(BuildContext context, {bool isDark = true, required double systemPaddingTop}) {
     final textColor = isDark ? Colors.white : Colors.black;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: systemPaddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
-          // Hamburger menu
+          // Back button
           IconButton(
-            icon: Icon(Icons.menu, color: textColor),
+            icon: Icon(Icons.arrow_back, color: textColor),
             onPressed: () {
-              // Abrir drawer o menú
+              if (GoRouter.of(context).canPop()) {
+                GoRouter.of(context).pop();
+              } else {
+                GoRouter.of(context).go(RoutesName.dashboard);
+              }
             },
           ),
-
-          // Monedero title with green dot
-          Row(
-            children: [
-              Text(
-                "Monedero",
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+          // Title
+          Expanded(
+            child: Text(
+              "Monedero",
+              style: TextStyle(
+                color: textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA6CE39), // Green
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
+              textAlign: TextAlign.center,
+            ),
           ),
-
-          // Spacer to push avatar to the right
-          Spacer(),
-
           // Profile avatar
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-            child: Icon(Icons.person, color: textColor, size: 24),
+          GestureDetector(
+            onTap: () {
+              GoRouter.of(context).go(RoutesName.perfil);
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              child: Icon(
+                Icons.person,
+                color: textColor,
+                size: 24,
+              ),
+            ),
           ),
         ],
       ),

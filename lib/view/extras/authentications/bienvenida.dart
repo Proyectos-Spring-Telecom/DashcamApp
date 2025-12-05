@@ -46,9 +46,9 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBodyBehindAppBar: true,
-            body: SafeArea(
-              top: false,
-              bottom: false,
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
               child: _isLoading
                   ? _buildLoadingScreen()
                   : Responsive(

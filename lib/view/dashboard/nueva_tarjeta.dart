@@ -48,54 +48,95 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-              children: [
-                // Header
-                _buildHeader(context, textColor: textColor, isDark: isDark),
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Card preview
-                          _buildCardPreview(textColor: textColor, isDark: isDark),
-                          const SizedBox(height: 24),
-                          // Form fields
-                          _buildFormFields(textColor: textColor, isDark: isDark),
-                        ],
-                      ),
-                    ),
-                  ),
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
                 ),
-                // Save button fixed at bottom
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: _buildSaveButton(),
-                ),
-              ],
+              ),
             ),
-            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
         );
       },
     );
   }
 
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Card preview
+                _buildCardPreview(textColor: textColor, isDark: isDark),
+                const SizedBox(height: 24),
+                // Form fields
+                _buildFormFields(textColor: textColor, isDark: isDark),
+                const SizedBox(height: 24),
+                // Save button
+                _buildSaveButton(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Card preview
+                  _buildCardPreview(textColor: textColor, isDark: isDark),
+                  const SizedBox(height: 24),
+                  // Form fields
+                  _buildFormFields(textColor: textColor, isDark: isDark),
+                  const SizedBox(height: 24),
+                  // Save button
+                  _buildSaveButton(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button
