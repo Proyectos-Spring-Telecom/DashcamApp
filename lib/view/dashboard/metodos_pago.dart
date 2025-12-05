@@ -121,25 +121,39 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(context, textColor: textColor, isDark: isDark),
-                    // Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                ),
+              ),
+            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                               // Section title
                               Text(
                                 "Mis tarjetas",
@@ -224,25 +238,130 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> {
                                   ),
                                 ),
                               ),
-                            ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section title
+                  Text(
+                    "Mis tarjetas",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Lista dinámica de tarjetas con swipe para eliminar
+                  ..._tarjetas
+                      .asMap()
+                      .entries
+                      .map((entry) {
+                    final index = entry.key;
+                    final tarjeta = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index < _tarjetas.length - 1 ? 16 : 0,
+                      ),
+                      child: Dismissible(
+                        key: Key('tarjeta_${tarjeta.cardNumber}'),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20.0),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          final result = await _mostrarDialogoConfirmacion(context, tarjeta.cardNumber);
+                          return result ?? false;
+                        },
+                        onDismissed: (direction) {
+                          _eliminarTarjetaPorCardNumber(tarjeta.cardNumber);
+                        },
+                        child: _buildCard(
+                          cardNumber: tarjeta.cardNumber,
+                          cvv: tarjeta.cvv,
+                          cardholderName: tarjeta.cardholderName,
+                          gradientColors: tarjeta.gradientColors,
+                          textColor: tarjeta.textColor,
+                          cardType: tarjeta.cardType,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 32),
+                  // Add card button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        // Navigate to Nueva Tarjeta screen
+                        GoRouter.of(context)
+                            .go(RoutesName.nuevaTarjeta);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFFA6CE39), // Lime green
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "Agregar tarjeta",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
   Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button

@@ -81,27 +81,41 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                ),
+              ),
+            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
-                  _buildHeader(context, textColor: textColor, isDark: isDark),
-                  // Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
                               // Instructions
                               Text(
                                 "Sigue las indicaciones para realizar el cambio de contraseña.",
@@ -389,32 +403,360 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
+                              const SizedBox(height: 32),
+                              // Change Password Button
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text('Contraseña cambiada exitosamente'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                      Future.delayed(Duration(seconds: 1), () {
+                                        final router = GoRouter.of(context);
+                                        if (router.canPop()) {
+                                          router.pop();
+                                        } else {
+                                          router.go(RoutesName.perfil);
+                                        }
+                                      });
+                                    }
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF205AA8), // Blue
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Cambiar Contraseña",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Instructions
+                    Text(
+                      "Sigue las indicaciones para realizar el cambio de contraseña.",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
                       ),
                     ),
-                  ),
-                  // Change Password Button - Fixed at bottom
-                  Container(
-                    padding: const EdgeInsets.all(24.0),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, -2),
+                    const SizedBox(height: 32),
+                    // Current Password
+                    Text(
+                      "Contraseña Actual",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _currentPasswordController,
+                      obscureText: _obscureCurrentPassword,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 2.0),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        hintText: "************",
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureCurrentPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: isDark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureCurrentPassword = !_obscureCurrentPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor ingresa tu contraseña actual';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // New Password
+                    Text(
+                      "Nueva Contraseña",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _newPasswordController,
+                      obscureText: _obscureNewPassword,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 2.0),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        hintText: "************",
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureNewPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: isDark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureNewPassword = !_obscureNewPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor ingresa una nueva contraseña';
+                        }
+                        if (value.length < 6) {
+                          return 'La contraseña debe tener al menos 6 caracteres';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Confirm Password
+                    Text(
+                      "Confirmar Nueva Contraseña",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 2.0),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white, width: 1.0),
+                        ),
+                        hintText: "************",
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: isDark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor confirma tu nueva contraseña';
+                        }
+                        if (value != _newPasswordController.text) {
+                          return 'Las contraseñas no coinciden';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Password Strength Indicator
+                    Row(
+                      children: [
+                        Text(
+                          "Fortaleza de la contraseña:",
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Spacer(),
+                        Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _passwordStrength >= 0
+                                    ? (_passwordStrength == 0
+                                        ? Colors.red
+                                        : _passwordStrength == 1
+                                            ? Colors.orange
+                                            : Colors.green)
+                                    : Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _passwordStrength >= 1
+                                    ? (_passwordStrength == 1
+                                        ? Colors.orange
+                                        : Colors.green)
+                                    : Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _passwordStrength >= 2
+                                    ? Colors.green
+                                    : Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    child: SizedBox(
+                    const SizedBox(height: 32),
+                    // Change Password Button
+                    SizedBox(
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
-                            // Aquí puedes agregar la lógica para cambiar la contraseña
-                            // Por ejemplo: _changePassword();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content:
@@ -422,7 +764,6 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                 backgroundColor: Colors.green,
                               ),
                             );
-                            // Regresar a la página anterior después de un momento
                             Future.delayed(Duration(seconds: 1), () {
                               final router = GoRouter.of(context);
                               if (router.canPop()) {
@@ -450,22 +791,26 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
-        );
-      },
+        ],
+      ),
     );
   }
 
   Widget _buildHeader(BuildContext context,
       {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button

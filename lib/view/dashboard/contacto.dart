@@ -29,25 +29,39 @@ class ContactoPage extends StatelessWidget {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-                children: [
-                  // Header
-                  _buildHeader(context, textColor: textColor, isDark: isDark),
-                  // Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                ),
+              ),
+            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                             // Section 1: "Comunícate con nosotros:"
                             Text(
                               "Comunícate con nosotros:",
@@ -157,26 +171,156 @@ class ContactoPage extends StatelessWidget {
                                 }
                               },
                             ),
-                          ],
-                        ),
-                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section 1: "Comunícate con nosotros:"
+                  Text(
+                    "Comunícate con nosotros:",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Call Center Card
+                  _buildContactCard(
+                    icon: Icons.phone,
+                    iconColor: const Color(0xFF205AA8), // Blue
+                    title: "Centro de Atención",
+                    subtitle: "55 5889 1234",
+                    buttonText: "Llamar",
+                    textColor: textColor,
+                    isDark: isDark,
+                    onButtonTap: () async {
+                      final Uri phoneUri =
+                          Uri(scheme: 'tel', path: '5558891234');
+                      if (await canLaunchUrl(phoneUri)) {
+                        await launchUrl(phoneUri);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Comments and Suggestions Card
+                  _buildContactCard(
+                    icon: Icons.email,
+                    iconColor: const Color(0xFFA6CE39), // Green
+                    title: "Comentarios y sugerencias",
+                    subtitle: "hola@dascam.com.mx",
+                    buttonText: "Enviar correo",
+                    textColor: textColor,
+                    isDark: isDark,
+                    onButtonTap: () async {
+                      final Uri emailUri = Uri(
+                        scheme: 'mailto',
+                        path: 'hola@dascam.com.mx',
+                      );
+                      if (await canLaunchUrl(emailUri)) {
+                        await launchUrl(emailUri);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Website Card
+                  _buildContactCard(
+                    icon: Icons.language,
+                    iconColor: const Color(0xFF205AA8), // Blue
+                    title: "Sitio web",
+                    subtitle: "www.dashcam.com.mx",
+                    buttonText: "Visitar sitio",
+                    textColor: textColor,
+                    isDark: isDark,
+                    onButtonTap: () async {
+                      final Uri url =
+                          Uri.parse('https://www.dashcam.com.mx');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url,
+                            mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Share Opinion Card
+                  _buildContactCard(
+                    icon: Icons.star,
+                    iconColor: const Color(0xFFA6CE39), // Green
+                    title: "Comparte tu opinión",
+                    subtitle: "Evaluar: Dashcam App",
+                    buttonText: "Evaluar",
+                    textColor: textColor,
+                    isDark: isDark,
+                    onButtonTap: () {
+                      // Navigate to app store rating
+                      // You can implement this based on platform
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  // Section 2: "¿Buscas otro tipo de información?"
+                  Text(
+                    "¿Buscas otro tipo de información?",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Help Center Card
+                  _buildContactCard(
+                    icon: Icons.settings,
+                    iconColor: const Color(0xFF205AA8), // Blue
+                    title: "Centro de Ayuda",
+                    subtitle: "55 5889 1234",
+                    buttonText: "Llamar",
+                    textColor: textColor,
+                    isDark: isDark,
+                    onButtonTap: () async {
+                      final Uri phoneUri =
+                          Uri(scheme: 'tel', path: '5558891234');
+                      if (await canLaunchUrl(phoneUri)) {
+                        await launchUrl(phoneUri);
+                      }
+                    },
                   ),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
-        );
-      },
+        ],
+      ),
     );
   }
 
   Widget _buildHeader(BuildContext context,
       {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button

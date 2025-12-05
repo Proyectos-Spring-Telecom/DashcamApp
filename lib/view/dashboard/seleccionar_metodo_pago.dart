@@ -38,64 +38,39 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: textColor, size: 24),
-              onPressed: () {
-                GoRouter.of(context).go(RoutesName.recargar);
-              },
-            ),
-            title: Text(
-              "Recargar Monedero",
-              style: TextStyle(
-                color: textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            centerTitle: true,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: GestureDetector(
-                  onTap: () {
-                    GoRouter.of(context).go(RoutesName.perfil);
-                  },
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(Icons.person, color: textColor, size: 24),
-                  ),
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
                 ),
               ),
-            ],
+            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 16.0,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+        );
+      },
+    );
+  }
+
+  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                           // Title
                           Text(
                             "Selecciona la forma de pago",
@@ -141,15 +116,8 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                               // Action for SPEI
                             },
                           ),
-
-                          // Spacer to push content to bottom
-                          SizedBox(
-                            height: constraints.maxHeight > 600
-                                ? constraints.maxHeight - 580
-                                : 50,
-                          ),
-
-                          // Commission text - centered at bottom
+                          const SizedBox(height: 32.0),
+                          // Commission text - centered
                           Center(
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 16.0),
@@ -163,8 +131,8 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                               ),
                             ),
                           ),
-
-                          // Continuar button - at bottom
+                          const SizedBox(height: 16.0),
+                          // Continuar button
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton(
@@ -196,19 +164,173 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                               ),
                             ),
                           ),
-                        ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    "Selecciona la forma de pago",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Payment cards section
+                  _buildPaymentCardsSection(
+                    isDark: isDark,
+                    textColor: textColor,
+                  ),
+                  const SizedBox(height: 24.0),
+
+                  // Other payment methods
+                  _buildPaymentMethodButton(
+                    title: "mercado pago",
+                    isDark: isDark,
+                    textColor: textColor,
+                    onTap: () {
+                      // Action for Mercado Pago
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  _buildPaymentMethodButton(
+                    title: "PayPal",
+                    isDark: isDark,
+                    textColor: textColor,
+                    onTap: () {
+                      // Action for PayPal
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  _buildPaymentMethodButton(
+                    title: "SPEI",
+                    isDark: isDark,
+                    textColor: textColor,
+                    onTap: () {
+                      // Action for SPEI
+                    },
+                  ),
+                  const SizedBox(height: 32.0),
+                  // Commission text - centered
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        "Esta operación no genera ningún tipo de comisión.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                  const SizedBox(height: 16.0),
+                  // Continuar button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        final amount = widget.amount ?? '50';
+                        GoRouter.of(context).go(
+                          RoutesName.resumen,
+                          extra: {'amount': amount},
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(
+                          0xFF205AA8,
+                        ), // Blue
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Continuar",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor, size: 24),
+            onPressed: () {
+              GoRouter.of(context).go(RoutesName.recargar);
+            },
+          ),
+          // Title
+          Expanded(
+            child: Text(
+              "Recargar Monedero",
+              style: TextStyle(
+                color: textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          // Profile avatar
+          GestureDetector(
+            onTap: () {
+              GoRouter.of(context).go(RoutesName.perfil);
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              child: Icon(Icons.person, color: textColor, size: 24),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -43,143 +43,20 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
             drawer: _buildDrawer(context, isDark),
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(context, textColor: textColor),
-                    // Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            children: [
-                              // Profile picture
-                              StreamBuilder<User?>(
-                                stream: authBloc.userStream,
-                                builder: (context, userSnapshot) {
-                                  final user =
-                                      userSnapshot.data ?? authBloc.currentUser;
-                                  return _buildProfilePicture(context,
-                                      isDark: isDark, user: user);
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              // Name
-                              StreamBuilder<User?>(
-                                stream: authBloc.userStream,
-                                builder: (context, userSnapshot) {
-                                  final user =
-                                      userSnapshot.data ?? authBloc.currentUser;
-                                  return Text(
-                                    user != null
-                                        ? '${user.nombre} ${user.apellidoPaterno}'
-                                        : 'Usuario',
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                              // Member since
-                              StreamBuilder<User?>(
-                                stream: authBloc.userStream,
-                                builder: (context, userSnapshot) {
-                                  final user =
-                                      userSnapshot.data ?? authBloc.currentUser;
-                                  return Text(
-                                    user != null && user.fechaCreacion != null
-                                        ? 'Miembro desde: ${DateFormatter.formatMemberSinceDate(user.fechaCreacion, includePrefix: false)}'
-                                        : 'Miembro desde: N/A',
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 14,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 40),
-                              // Menu options
-                              _buildMenuOption(
-                                icon: Icons.credit_card,
-                                title: "Métodos de Pago",
-                                iconColor: const Color(0xFFA6CE39), // Green
-                                textColor: textColor,
-                                onTap: () {
-                                  // Navigate to payment methods
-                                  GoRouter.of(context)
-                                      .go(RoutesName.metodosPago);
-                                },
-                              ),
-                              Divider(color: Colors.grey, height: 1),
-                              _buildMenuOption(
-                                icon: Icons.description,
-                                title: "Datos fiscales",
-                                iconColor: const Color(0xFFFDB462), // Yellow
-                                textColor: textColor,
-                                onTap: () {
-                                  // Open datos fiscales bottomsheet
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (context) =>
-                                        const DatosFiscalesBottomSheet(),
-                                  );
-                                },
-                              ),
-                              Divider(color: Colors.grey, height: 1),
-                              _buildMenuOption(
-                                icon: Icons.person,
-                                title: "Configuración de la cuenta",
-                                iconColor: const Color(0xFF205AA8), // Blue
-                                textColor: textColor,
-                                onTap: () {
-                                  // Navigate to change password page
-                                  GoRouter.of(context)
-                                      .go(RoutesName.cambioContrasena);
-                                },
-                              ),
-                              Divider(color: Colors.grey, height: 1),
-                              _buildMenuOption(
-                                icon: Icons.lock,
-                                title: "Privacidad y Contacto",
-                                iconColor: Colors.grey,
-                                textColor: textColor,
-                                onTap: () {
-                                  // Navigate to contact page
-                                  GoRouter.of(context).go(RoutesName.contacto);
-                                },
-                              ),
-                              Divider(color: Colors.grey, height: 1),
-                              // Cerrar sesión button
-                              _buildLogoutButton(
-                                textColor: textColor,
-                                onTap: () async {
-                                  // Cerrar sesión usando AuthBloc
-                                  await authBloc.logout();
-                                  // Navigate to login page
-                                  if (context.mounted) {
-                                    GoRouter.of(context).go(RoutesName.login);
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(
+                      context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(
+                      context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(
+                      context: context, isDark: isDark, textColor: textColor),
                 ),
               ),
             ),
@@ -190,9 +67,281 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
     );
   }
 
+  Widget mobileView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                // Profile picture
+                StreamBuilder<User?>(
+                  stream: authBloc.userStream,
+                  builder: (context, userSnapshot) {
+                    final user = userSnapshot.data ?? authBloc.currentUser;
+                    return _buildProfilePicture(context,
+                        isDark: isDark, user: user);
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Name
+                StreamBuilder<User?>(
+                  stream: authBloc.userStream,
+                  builder: (context, userSnapshot) {
+                    final user = userSnapshot.data ?? authBloc.currentUser;
+                    return Text(
+                      user != null
+                          ? '${user.nombre} ${user.apellidoPaterno}'
+                          : 'Usuario',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                // Member since
+                StreamBuilder<User?>(
+                  stream: authBloc.userStream,
+                  builder: (context, userSnapshot) {
+                    final user = userSnapshot.data ?? authBloc.currentUser;
+                    return Text(
+                      user != null && user.fechaCreacion != null
+                          ? DateFormatter.formatMemberSinceDate(
+                              user.fechaCreacion,
+                              includePrefix: false)
+                          : 'N/A',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 40),
+                // Menu options
+                _buildMenuOption(
+                  icon: Icons.credit_card,
+                  title: "Métodos de Pago",
+                  iconColor: const Color(0xFFA6CE39), // Green
+                  textColor: textColor,
+                  onTap: () {
+                    // Navigate to payment methods
+                    GoRouter.of(context).go(RoutesName.metodosPago);
+                  },
+                ),
+                Divider(color: Colors.grey, height: 1),
+                _buildMenuOption(
+                  icon: Icons.description,
+                  title: "Datos fiscales",
+                  iconColor: const Color(0xFFFDB462), // Yellow
+                  textColor: textColor,
+                  onTap: () {
+                    // Open datos fiscales bottomsheet
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const DatosFiscalesBottomSheet(),
+                    );
+                  },
+                ),
+                Divider(color: Colors.grey, height: 1),
+                _buildMenuOption(
+                  icon: Icons.person,
+                  title: "Configuración de la cuenta",
+                  iconColor: const Color(0xFF205AA8), // Blue
+                  textColor: textColor,
+                  onTap: () {
+                    // Navigate to change password page
+                    GoRouter.of(context).go(RoutesName.cambioContrasena);
+                  },
+                ),
+                Divider(color: Colors.grey, height: 1),
+                _buildMenuOption(
+                  icon: Icons.lock,
+                  title: "Privacidad y Contacto",
+                  iconColor: Colors.grey,
+                  textColor: textColor,
+                  onTap: () {
+                    // Navigate to contact page
+                    GoRouter.of(context).go(RoutesName.contacto);
+                  },
+                ),
+                Divider(color: Colors.grey, height: 1),
+                // Cerrar sesión button
+                _buildLogoutButton(
+                  textColor: textColor,
+                  onTap: () async {
+                    // Cerrar sesión usando AuthBloc
+                    await authBloc.logout();
+                    // Navigate to login page
+                    if (context.mounted) {
+                      GoRouter.of(context).go(RoutesName.login);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor}) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor),
+          // Content
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                children: [
+                  // Profile picture
+                  StreamBuilder<User?>(
+                    stream: authBloc.userStream,
+                    builder: (context, userSnapshot) {
+                      final user = userSnapshot.data ?? authBloc.currentUser;
+                      return _buildProfilePicture(context,
+                          isDark: isDark, user: user);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Name
+                  StreamBuilder<User?>(
+                    stream: authBloc.userStream,
+                    builder: (context, userSnapshot) {
+                      final user = userSnapshot.data ?? authBloc.currentUser;
+                      return Text(
+                        user != null
+                            ? '${user.nombre} ${user.apellidoPaterno}'
+                            : 'Usuario',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Member since
+                  StreamBuilder<User?>(
+                    stream: authBloc.userStream,
+                    builder: (context, userSnapshot) {
+                      final user = userSnapshot.data ?? authBloc.currentUser;
+                      return Text(
+                        user != null && user.fechaCreacion != null
+                            ? DateFormatter.formatMemberSinceDate(
+                                user.fechaCreacion,
+                                includePrefix: false)
+                            : 'N/A',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 14,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 40),
+                  // Menu options
+                  _buildMenuOption(
+                    icon: Icons.credit_card,
+                    title: "Métodos de Pago",
+                    iconColor: const Color(0xFFA6CE39), // Green
+                    textColor: textColor,
+                    onTap: () {
+                      // Navigate to payment methods
+                      GoRouter.of(context).go(RoutesName.metodosPago);
+                    },
+                  ),
+                  Divider(color: Colors.grey, height: 1),
+                  _buildMenuOption(
+                    icon: Icons.description,
+                    title: "Datos fiscales",
+                    iconColor: const Color(0xFFFDB462), // Yellow
+                    textColor: textColor,
+                    onTap: () {
+                      // Open datos fiscales bottomsheet
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const DatosFiscalesBottomSheet(),
+                      );
+                    },
+                  ),
+                  Divider(color: Colors.grey, height: 1),
+                  _buildMenuOption(
+                    icon: Icons.person,
+                    title: "Configuración de la cuenta",
+                    iconColor: const Color(0xFF205AA8), // Blue
+                    textColor: textColor,
+                    onTap: () {
+                      // Navigate to change password page
+                      GoRouter.of(context).go(RoutesName.cambioContrasena);
+                    },
+                  ),
+                  Divider(color: Colors.grey, height: 1),
+                  _buildMenuOption(
+                    icon: Icons.lock,
+                    title: "Privacidad y Contacto",
+                    iconColor: Colors.grey,
+                    textColor: textColor,
+                    onTap: () {
+                      // Navigate to contact page
+                      GoRouter.of(context).go(RoutesName.contacto);
+                    },
+                  ),
+                  Divider(color: Colors.grey, height: 1),
+                  // Cerrar sesión button
+                  _buildLogoutButton(
+                    textColor: textColor,
+                    onTap: () async {
+                      // Cerrar sesión usando AuthBloc
+                      await authBloc.logout();
+                      // Navigate to login page
+                      if (context.mounted) {
+                        GoRouter.of(context).go(RoutesName.login);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, {Color textColor = Colors.white}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 20.0,
+        right: 20.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Hamburger menu
