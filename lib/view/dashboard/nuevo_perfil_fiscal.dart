@@ -77,57 +77,58 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
                 top: false,
                 bottom: false,
                 child: Column(
-              children: [
-                // Header
-                _buildHeader(context, textColor: textColor, isDark: isDark),
-                
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Toggle Física/Moral
-                          _buildToggleSelector(
-                            isMoral: _isMoral,
-                            onChanged: (value) {
-                              setState(() {
-                                _isMoral = value;
-                              });
-                            },
-                            textColor: textColor,
-                            isDark: isDark,
+                  children: [
+                    // Header
+                    _buildHeader(context, textColor: textColor, isDark: isDark),
+                    
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Toggle Física/Moral
+                              _buildToggleSelector(
+                                isMoral: _isMoral,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isMoral = value;
+                                  });
+                                },
+                                textColor: textColor,
+                                isDark: isDark,
+                              ),
+                              const SizedBox(height: 24.0),
+
+                              // Show different fields based on _isMoral
+                              if (_isMoral) ..._buildMoralFields(
+                                textColor: textColor,
+                                inputBgColor: inputBgColor,
+                                isDark: isDark,
+                              ) else ..._buildFisicaFields(
+                                textColor: textColor,
+                                inputBgColor: inputBgColor,
+                                isDark: isDark,
+                              ),
+
+                              const SizedBox(height: 32.0),
+
+                              // Guardar Button
+                              _buildSaveButton(context, textColor: textColor),
+                            ],
                           ),
-                          const SizedBox(height: 24.0),
-
-                          // Show different fields based on _isMoral
-                          if (_isMoral) ..._buildMoralFields(
-                            textColor: textColor,
-                            inputBgColor: inputBgColor,
-                            isDark: isDark,
-                          ) else ..._buildFisicaFields(
-                            textColor: textColor,
-                            inputBgColor: inputBgColor,
-                            isDark: isDark,
-                          ),
-
-                          const SizedBox(height: 32.0),
-
-                          // Guardar Button
-                          _buildSaveButton(context, textColor: textColor),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
-        ),
+        );
       },
     );
   }

@@ -3,6 +3,8 @@ import 'package:dashboardpro/dashboardpro.dart';
 import 'dart:ui';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:flutter/services.dart';
+import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/model/auth/user.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({super.key});
@@ -194,14 +196,22 @@ class Dashboard extends StatelessWidget {
           ),
           const SizedBox(width: 8), // Espacio entre menú y texto
 
-          // Title "¡Hola, Andrea!" - alineado con Monedero
-          Text(
-            "¡Hola, Andrea!",
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+          // Title dinámico - alineado con Monedero
+          StreamBuilder<User?>(
+            stream: authBloc.userStream,
+            builder: (context, userSnapshot) {
+              final user = userSnapshot.data ?? authBloc.currentUser;
+              final nombreUsuario = user?.nombre ?? 'Usuario';
+
+              return Text(
+                "¡Hola, $nombreUsuario!",
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            },
           ),
 
           // Spacer to push avatar to the right
@@ -213,14 +223,19 @@ class Dashboard extends StatelessWidget {
               // Navegar a perfil de usuario
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                color: isDark ? Colors.white : Colors.black,
-                size: 24,
-              ),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor:
+                      isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: isDark ? Colors.white : Colors.black,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],
@@ -696,60 +711,69 @@ class Dashboard extends StatelessWidget {
         child: Column(
           children: [
             // Profile section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                color: cardColor,
-              ),
-              child: Column(
-                children: [
-                  // Profile image
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      color: textColor,
-                      size: 50,
-                    ),
+            StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: cardColor,
                   ),
-                  const SizedBox(height: 16),
-                  // Full name
-                  Text(
-                    "Andrea Barajas Cruz",
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Status
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFA6CE39), // Green for active
-                          shape: BoxShape.circle,
+                      // Profile image
+                      UserAvatar(
+                        imageUrl: user?.fotoPerfil,
+                        radius: 50,
+                        backgroundColor:
+                            isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        iconColor: textColor,
+                        iconSize: 50,
+                      ),
+                      const SizedBox(height: 16),
+                      // Full name
+                      Text(
+                        user != null
+                            ? '${user.nombre} ${user.apellidoPaterno}'
+                            : 'Usuario',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Activo",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 8),
+                      // Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color:
+                                  const Color(0xFFA6CE39), // Green for active
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Activo",
+                            style: TextStyle(
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             // Menu options
             Expanded(
@@ -850,10 +874,14 @@ class Dashboard extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
+                // Cerrar sesión usando AuthBloc
+                await authBloc.logout();
                 // Navigate to login page
-                GoRouter.of(context).go(RoutesName.login);
+                if (context.mounted) {
+                  GoRouter.of(context).go(RoutesName.login);
+                }
               },
             ),
           ],

@@ -2,6 +2,7 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
+import 'package:dashboardpro/controller/auth_bloc.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,9 @@ Future<void> main() async {
   
   // Inicializar el tema con la apariencia del sistema después de que el binding esté listo
   themeBloc.initializeWithSystemBrightness();
+  
+  // Inicializar el AuthBloc (carga el token y usuario si existen)
+  await authBloc.initialize();
   
   runApp(const MyApp());
 }

@@ -2,6 +2,7 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/view/components/notifications/badge/badge.dart'
     as badge_screen;
+import 'package:dashboardpro/controller/auth_bloc.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -11,11 +12,36 @@ class AppRoutes {
       debugLogDiagnostics: true,
       navigatorKey: _rootNavigatorKey,
       initialLocation: RoutesName.init,
+      redirect: (BuildContext context, GoRouterState state) async {
+        final isLoggedIn = await authBloc.isLoggedIn();
+        final isAuthRoute = state.matchedLocation == RoutesName.login ||
+            state.matchedLocation == RoutesName.register ||
+            state.matchedLocation == RoutesName.bienvenida ||
+            state.matchedLocation == RoutesName.forgotPassword ||
+            state.matchedLocation == RoutesName.init;
+
+        // Si el usuario no está logueado y trata de acceder a una ruta protegida
+        if (!isLoggedIn && !isAuthRoute) {
+          return RoutesName.login;
+        }
+
+        // Si el usuario está logueado y trata de acceder a login/register
+        if (isLoggedIn && (state.matchedLocation == RoutesName.login ||
+            state.matchedLocation == RoutesName.register ||
+            state.matchedLocation == RoutesName.bienvenida)) {
+          return RoutesName.dashboard;
+        }
+
+        return null; // No redirigir, continuar normalmente
+      },
       routes: <RouteBase>[
         // Init Routes
         GoRoute(
           path: RoutesName.init,
-          redirect: (_, __) => RoutesName.bienvenida,
+          redirect: (_, __) async {
+            final isLoggedIn = await authBloc.isLoggedIn();
+            return isLoggedIn ? RoutesName.dashboard : RoutesName.bienvenida;
+          },
         ),
         
         // Bienvenida Route
@@ -29,7 +55,7 @@ class AppRoutes {
           },
         ),
 
-        // Dashboard Routes
+        // Dashboard Routes (Ruta protegida)
         GoRoute(
           path: RoutesName.dashboard,
           pageBuilder: (BuildContext context, GoRouterState state) {
