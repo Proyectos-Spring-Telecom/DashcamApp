@@ -347,6 +347,7 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> {
                 ],
               ),
             ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
           ),
         ],
       ),
