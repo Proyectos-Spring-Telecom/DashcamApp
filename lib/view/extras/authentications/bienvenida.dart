@@ -77,21 +77,8 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo app_icon
-            Image.asset(
-              'assets/images/app_icon.png',
-              height: 120,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 120,
-                  color: Colors.red.withOpacity(0.3),
-                  child: const Center(
-                    child: Text('Error cargando logo'),
-                  ),
-                );
-              },
-            ),
+            // Logo
+            _buildLogo(),
 
             const SizedBox(height: 32),
 
@@ -156,87 +143,6 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
   }
 
   Widget desktopWidget({required BuildContext context}) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/bienvenida_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          padding: const EdgeInsets.symmetric(horizontal: 40.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo app_icon - más grande para web
-              Image.asset(
-                'assets/images/app_icon.png',
-                height: 180,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 180,
-                    color: Colors.red.withOpacity(0.3),
-                    child: const Center(
-                      child: Text('Error cargando logo'),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 48),
-
-              // Tagline - más grande para web
-              Text(
-                "Viajes seguros, es lo que más importa.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w400,
-                  height: 1.4,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Botón Comenzar - más grande para web
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    // Navegar al login
-                    GoRouter.of(context).go(RoutesName.login);
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF205AA8), // Azul
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "Comenzar",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget desktopWidget({required BuildContext context}) {
     final screenSize = MediaQuery.of(context).size;
 
     return Container(
@@ -249,6 +155,7 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
         ),
       ),
       child: SafeArea(
+        top: false,
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -256,21 +163,8 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo app_icon - más grande para web
-                Image.asset(
-                  'assets/images/app_icon.png',
-                  height: 180,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      color: Colors.red.withOpacity(0.3),
-                      child: const Center(
-                        child: Text('Error cargando logo'),
-                      ),
-                    );
-                  },
-                ),
+                // Logo - más grande para web
+                _buildLogo(web: true),
 
                 const SizedBox(height: 48),
 
@@ -321,15 +215,15 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
     );
   }
 
-  Widget _buildLogo() {
+  Widget _buildLogo({bool web = false}) {
     return Image.asset(
-      'assets/images/app_icon.png',
-      height: 120,
+      'assets/images/logo_dash.png',
+      height: web ? 180 : 120,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
         // Si hay error, mostrar un placeholder para debug
         return Container(
-          height: 120,
+          height: web ? 180 : 120,
           color: Colors.red.withOpacity(0.3),
           child: const Center(
             child: Text('Error cargando logo'),
