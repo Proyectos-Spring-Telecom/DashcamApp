@@ -292,7 +292,7 @@ class _EmailVerificationWaitingScreenState
           children: [
             // Logo section - Top left
             _buildLogo(isDark: isDark),
-            const SizedBox(height: 40.0),
+            const SizedBox(height: 80.0),
             // Title - Left aligned, positioned lower
             Text(
               "Verificación de Cuenta",
@@ -303,7 +303,7 @@ class _EmailVerificationWaitingScreenState
               ),
             ),
             const SizedBox(
-                height: 20.0), // Increased spacing to position title lower
+                height: 40.0), // Increased spacing to position title lower
 
             // Greeting and instructions - Centered
             Center(
@@ -322,7 +322,7 @@ class _EmailVerificationWaitingScreenState
                   }
 
                   return RichText(
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.justify,
                     text: TextSpan(
                       style: TextStyle(
                         fontSize: 16.0,
@@ -536,17 +536,19 @@ class _EmailVerificationWaitingScreenState
                 ),
                 const SizedBox(height: 16.0),
                 // Resend code link
-                TextButton(
-                  onPressed: () {
-                    // Aquí puedes agregar la lógica para reenviar el código
-                    debugPrint('Reenviar código');
-                  },
-                  child: const Text(
-                    "Reenviar código",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF205AA8),
-                      decoration: TextDecoration.underline,
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      // Aquí puedes agregar la lógica para reenviar el código
+                      debugPrint('Reenviar código');
+                    },
+                    child: const Text(
+                      "Reenviar código",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF205AA8),
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
@@ -593,7 +595,7 @@ class _EmailVerificationWaitingScreenState
               children: [
                 // Logo section - Top left
                 _buildLogo(isDark: isDark),
-                const SizedBox(height: 80.0),
+                const SizedBox(height: 120.0),
                 // Title - Left aligned, positioned lower
                 Text(
                   "Verificación de Cuenta",
@@ -604,7 +606,7 @@ class _EmailVerificationWaitingScreenState
                   ),
                 ),
                 const SizedBox(
-                    height: 80.0), // Increased spacing to position title lower
+                    height: 60.0), // Increased spacing to position title lower
 
                 // Greeting and instructions - Centered
                 Center(
@@ -624,7 +626,7 @@ class _EmailVerificationWaitingScreenState
                       }
 
                       return RichText(
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.justify,
                         text: TextSpan(
                           style: TextStyle(
                             fontSize: 16.0,

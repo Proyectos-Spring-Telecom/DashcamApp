@@ -29,178 +29,314 @@ class ResumenPage extends StatelessWidget {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back,
-                color: textColor,
-                size: 24,
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, amount: amount),
+                  desktop: desktopView(
+                      context: context, isDark: isDark, textColor: textColor, amount: amount),
+                  tablet: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, amount: amount),
+                ),
               ),
-              onPressed: () {
-                GoRouter.of(context).go(RoutesName.seleccionarMetodoPago);
-              },
             ),
-            title: Text(
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget mobileView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor,
+      String? amount}) {
+    return Column(
+      children: [
+        // Header
+        _buildHeader(context, textColor: textColor, isDark: isDark),
+        // Content
+        Expanded(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Resumen de pago card
+                _buildResumenPagoCard(
+                    isDark: isDark, textColor: textColor),
+                const SizedBox(height: 32.0),
+
+                // Recarga section
+                _buildRecargaSection(
+                    isDark: isDark, textColor: textColor, amount: amount),
+                const SizedBox(height: 24.0),
+
+                // Método de pago section
+                _buildMetodoPagoSection(
+                    isDark: isDark, textColor: textColor),
+
+                const Spacer(),
+
+                // Terms and conditions text
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      "Al recargar, aceptas los Términos y Condiciones del servicio de recarga provistos por la empresa Dashcam PAY.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Action buttons
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      // Action for Recargar
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          const Color(0xFF205AA8), // Blue
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Recargar",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12.0),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) =>
+                            _buildCancelarRecargaBottomSheet(
+                                context, isDark, textColor),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.grey[700], // Grey
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Cancelar",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget desktopView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor,
+      String? amount}) {
+    return Column(
+      children: [
+        // Header
+        _buildHeader(context, textColor: textColor, isDark: isDark),
+        // Content
+        Expanded(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Resumen de pago card
+                  _buildResumenPagoCard(
+                      isDark: isDark, textColor: textColor),
+                  const SizedBox(height: 32.0),
+
+                  // Recarga section
+                  _buildRecargaSection(
+                      isDark: isDark, textColor: textColor, amount: amount),
+                  const SizedBox(height: 24.0),
+
+                  // Método de pago section
+                  _buildMetodoPagoSection(
+                      isDark: isDark, textColor: textColor),
+
+                  const Spacer(),
+
+                  // Terms and conditions text
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        "Al recargar, aceptas los Términos y Condiciones del servicio de recarga provistos por la empresa Dashcam PAY.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Action buttons
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        // Action for Recargar
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF205AA8), // Blue
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Recargar",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12.0),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) =>
+                              _buildCancelarRecargaBottomSheet(
+                                  context, isDark, textColor),
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.grey[700], // Grey
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Cancelar",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context,
+      {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24.0,
+        right: 24.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor),
+            onPressed: () {
+              GoRouter.of(context).go(RoutesName.seleccionarMetodoPago);
+            },
+          ),
+          // Title
+          Expanded(
+            child: Text(
               "Resumen",
               style: TextStyle(
                 color: textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
+              textAlign: TextAlign.center,
             ),
-            centerTitle: true,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: GestureDetector(
-                  onTap: () {
-                    GoRouter.of(context).go(RoutesName.perfil);
-                  },
-                  child: StreamBuilder<User?>(
-                    stream: authBloc.userStream,
-                    builder: (context, userSnapshot) {
-                      final user = userSnapshot.data ?? authBloc.currentUser;
-                      return UserAvatar(
-                        imageUrl: user?.fotoPerfil,
-                        radius: 20,
-                        backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-                        iconColor: textColor,
-                        iconSize: 24,
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
           ),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: backgroundColor,
-            child: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Resumen de pago card
-                          _buildResumenPagoCard(
-                              isDark: isDark, textColor: textColor),
-                          const SizedBox(height: 24.0),
-
-                          // Recarga section
-                          _buildRecargaSection(
-                              isDark: isDark, textColor: textColor),
-                          const SizedBox(height: 24.0),
-
-                          // Método de pago section
-                          _buildMetodoPagoSection(
-                              isDark: isDark, textColor: textColor),
-
-                          // Spacer to push content to bottom
-                          SizedBox(
-                            height: constraints.maxHeight > 600
-                                ? constraints.maxHeight - 490
-                                : 50,
-                          ),
-
-                          // Terms and conditions text
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: Text(
-                                "Al recargar, aceptas los Términos y Condiciones del servicio de recarga provistos por la empresa Dashcam PAY.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Action buttons
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                // Action for Recargar
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xFF205AA8), // Blue
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                "Recargar",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12.0),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (context) =>
-                                      _buildCancelarRecargaBottomSheet(
-                                          context, isDark, textColor),
-                                );
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.grey[700], // Grey
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                "Cancelar",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+          // Profile avatar - dinámico
+          GestureDetector(
+            onTap: () {
+              GoRouter.of(context).go(RoutesName.perfil);
+            },
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor:
+                      isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
                 );
               },
             ),
-            ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark),
-        ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -283,7 +419,7 @@ class ResumenPage extends StatelessWidget {
   }
 
   Widget _buildRecargaSection(
-      {required bool isDark, required Color textColor}) {
+      {required bool isDark, required Color textColor, String? amount}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

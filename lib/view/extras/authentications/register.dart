@@ -121,78 +121,56 @@ class _RegisterState extends State<Register> {
             ),
             const SizedBox(height: 40.0),
 
-            // Two column fields layout for first 6 fields
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left column
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildTextField(
-                        label: "Nombre",
-                        controller: _nombreController,
-                        isDark: isDark,
-                        textColor: textColor,
-                        placeholder: "Nombre",
-                      ),
-                      const SizedBox(height: 20.0),
-                      _buildTextField(
-                        label: "Apellido Paterno",
-                        controller: _apellidoPaternoController,
-                        isDark: isDark,
-                        textColor: textColor,
-                        placeholder: "Apellido Paterno",
-                      ),
-                      const SizedBox(height: 20.0),
-                      _buildTextField(
-                        label: "Apellido Materno",
-                        controller: _apellidoMaternoController,
-                        isDark: isDark,
-                        textColor: textColor,
-                        placeholder: "Apellido Materno",
-                        isRequired: false,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16.0),
-                // Right column
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildDateField(
-                        label: "Fecha Nacimiento",
-                        controller: _fechaNacimientoController,
-                        isDark: isDark,
-                        textColor: textColor,
-                      ),
-                      const SizedBox(height: 20.0),
-                      _buildPhoneField(
-                        label: "Teléfono",
-                        controller: _telefonoController,
-                        isDark: isDark,
-                        textColor: textColor,
-                      ),
-                      const SizedBox(height: 20.0),
-                      _buildEmailField(
-                        label: "Correo Electrónico",
-                        controller: _emailController,
-                        isDark: isDark,
-                        textColor: textColor,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            // Nombre
+            _buildTextField(
+              label: "Nombre",
+              controller: _nombreController,
+              isDark: isDark,
+              textColor: textColor,
+              placeholder: "Nombre",
             ),
-
             const SizedBox(height: 20.0),
 
-            // Password in its own row
-            _buildPasswordField(isDark: isDark, textColor: textColor),
+            // Apellido Paterno
+            _buildTextField(
+              label: "Apellido Paterno",
+              controller: _apellidoPaternoController,
+              isDark: isDark,
+              textColor: textColor,
+              placeholder: "Apellido Paterno",
+            ),
             const SizedBox(height: 20.0),
-            // Monedero in its own row
+
+            // Apellido Materno
+            _buildTextField(
+              label: "Apellido Materno",
+              controller: _apellidoMaternoController,
+              isDark: isDark,
+              textColor: textColor,
+              placeholder: "Apellido Materno",
+              isRequired: false,
+            ),
+            const SizedBox(height: 20.0),
+
+            // Fecha Nacimiento
+            _buildDateField(
+              label: "Fecha Nacimiento",
+              controller: _fechaNacimientoController,
+              isDark: isDark,
+              textColor: textColor,
+            ),
+            const SizedBox(height: 20.0),
+
+            // Teléfono
+            _buildPhoneField(
+              label: "Teléfono",
+              controller: _telefonoController,
+              isDark: isDark,
+              textColor: textColor,
+            ),
+            const SizedBox(height: 20.0),
+
+            // Monedero
             _buildTextField(
               label: "Monedero (número de serie)",
               controller: _monederoController,
@@ -200,6 +178,19 @@ class _RegisterState extends State<Register> {
               textColor: textColor,
               placeholder: "MON-0001",
             ),
+            const SizedBox(height: 20.0),
+
+            // Correo Electrónico
+            _buildEmailField(
+              label: "Correo Electrónico",
+              controller: _emailController,
+              isDark: isDark,
+              textColor: textColor,
+            ),
+            const SizedBox(height: 20.0),
+
+            // Password
+            _buildPasswordField(isDark: isDark, textColor: textColor),
 
             const SizedBox(height: 32.0),
 
@@ -264,78 +255,56 @@ class _RegisterState extends State<Register> {
                 ),
                 const SizedBox(height: 40.0),
 
-                // Two column fields layout for first 6 fields
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left column
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildTextField(
-                            label: "Nombre",
-                            controller: _nombreController,
-                            isDark: isDark,
-                            textColor: textColor,
-                            placeholder: "Nombre",
-                          ),
-                          const SizedBox(height: 20.0),
-                          _buildTextField(
-                            label: "Apellido Paterno",
-                            controller: _apellidoPaternoController,
-                            isDark: isDark,
-                            textColor: textColor,
-                            placeholder: "Apellido Paterno",
-                          ),
-                          const SizedBox(height: 20.0),
-                          _buildTextField(
-                            label: "Apellido Materno",
-                            controller: _apellidoMaternoController,
-                            isDark: isDark,
-                            textColor: textColor,
-                            placeholder: "Apellido Materno",
-                            isRequired: false,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24.0),
-                    // Right column
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildDateField(
-                            label: "Fecha Nacimiento",
-                            controller: _fechaNacimientoController,
-                            isDark: isDark,
-                            textColor: textColor,
-                          ),
-                          const SizedBox(height: 20.0),
-                          _buildPhoneField(
-                            label: "Teléfono",
-                            controller: _telefonoController,
-                            isDark: isDark,
-                            textColor: textColor,
-                          ),
-                          const SizedBox(height: 20.0),
-                          _buildEmailField(
-                            label: "Correo Electrónico",
-                            controller: _emailController,
-                            isDark: isDark,
-                            textColor: textColor,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                // Nombre
+                _buildTextField(
+                  label: "Nombre",
+                  controller: _nombreController,
+                  isDark: isDark,
+                  textColor: textColor,
+                  placeholder: "Nombre",
                 ),
-
                 const SizedBox(height: 20.0),
 
-                // Password in its own row
-                _buildPasswordField(isDark: isDark, textColor: textColor),
+                // Apellido Paterno
+                _buildTextField(
+                  label: "Apellido Paterno",
+                  controller: _apellidoPaternoController,
+                  isDark: isDark,
+                  textColor: textColor,
+                  placeholder: "Apellido Paterno",
+                ),
                 const SizedBox(height: 20.0),
-                // Monedero in its own row
+
+                // Apellido Materno
+                _buildTextField(
+                  label: "Apellido Materno",
+                  controller: _apellidoMaternoController,
+                  isDark: isDark,
+                  textColor: textColor,
+                  placeholder: "Apellido Materno",
+                  isRequired: false,
+                ),
+                const SizedBox(height: 20.0),
+
+                // Fecha Nacimiento
+                _buildDateField(
+                  label: "Fecha Nacimiento",
+                  controller: _fechaNacimientoController,
+                  isDark: isDark,
+                  textColor: textColor,
+                ),
+                const SizedBox(height: 20.0),
+
+                // Teléfono
+                _buildPhoneField(
+                  label: "Teléfono",
+                  controller: _telefonoController,
+                  isDark: isDark,
+                  textColor: textColor,
+                ),
+                const SizedBox(height: 20.0),
+
+                // Monedero
                 _buildTextField(
                   label: "Monedero (número de serie)",
                   controller: _monederoController,
@@ -343,6 +312,19 @@ class _RegisterState extends State<Register> {
                   textColor: textColor,
                   placeholder: "MON-0001",
                 ),
+                const SizedBox(height: 20.0),
+
+                // Correo Electrónico
+                _buildEmailField(
+                  label: "Correo Electrónico",
+                  controller: _emailController,
+                  isDark: isDark,
+                  textColor: textColor,
+                ),
+                const SizedBox(height: 20.0),
+
+                // Password
+                _buildPasswordField(isDark: isDark, textColor: textColor),
 
                 const SizedBox(height: 32.0),
 

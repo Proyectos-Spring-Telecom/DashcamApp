@@ -73,18 +73,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return SingleChildScrollView(
-      child: Container(
-        height: screenHeight,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Logo section - Top left
             _buildLogo(isDark: isDark),
-            const Spacer(),
+            const SizedBox(height: 100.0),
 
             // Title - Left aligned
             Text(
@@ -169,7 +167,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 children: [
                   // Logo section - Top left
                   _buildLogo(isDark: isDark),
-                  const Spacer(),
+                  const SizedBox(height: 140.0),
 
                   // Title - Left aligned
                   Text(
@@ -180,7 +178,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 50.0),
+                  const SizedBox(height: 70.0),
 
                   // Instructions text
                   Text(
@@ -276,6 +274,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               style: TextStyle(
                 color: linkColor,
                 fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -285,7 +284,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           child: TextButton(
             onPressed: () => GoRouter.of(context).go(RoutesName.register),
             child: Text(
-              "Registro",
+              "¿Necesitas una cuenta? Regístrate.",
               style: TextStyle(
                 color: linkColor,
                 fontSize: 14,
