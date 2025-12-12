@@ -1,5 +1,9 @@
 import 'dart:async';
 import 'package:dashboardpro/model/auth/user.dart';
+import 'package:dashboardpro/model/auth/registro_request.dart';
+import 'package:dashboardpro/model/auth/registro_response.dart';
+import 'package:dashboardpro/model/auth/verify_request.dart';
+import 'package:dashboardpro/model/auth/verify_response.dart';
 import 'package:dashboardpro/services/auth_service.dart';
 import 'package:dashboardpro/services/secure_storage_service.dart';
 import 'package:flutter/foundation.dart';
@@ -94,6 +98,96 @@ class AuthBloc {
       _errorController.add('Error inesperado: ${e.toString()}');
       _userController.add(null);
       return false;
+    }
+  }
+
+  /// Registra un nuevo pasajero
+  Future<RegistroResponse?> registerPasajero({
+    required String nombre,
+    required String apellidoPaterno,
+    required String apellidoMaterno,
+    required String fechaNacimiento,
+    required String correo,
+    required String passwordHash,
+    required String numeroSerieMonedero,
+    required String telefono,
+  }) async {
+    try {
+      _authStatus = AuthStatus.loading;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      final request = RegistroRequest(
+        nombre: nombre,
+        apellidoPaterno: apellidoPaterno,
+        apellidoMaterno: apellidoMaterno,
+        fechaNacimiento: fechaNacimiento,
+        correo: correo,
+        passwordHash: passwordHash,
+        numeroSerieMonedero: numeroSerieMonedero,
+        telefono: telefono,
+      );
+
+      final registroResponse = await _authService.registerPasajero(request);
+
+      // Limpiar estado de error
+      _authStatus = AuthStatus.unauthenticated;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      return registroResponse;
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en registerPasajero: ${e.message}');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add(e.message);
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error inesperado en registerPasajero: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add('Error inesperado: ${e.toString()}');
+      return null;
+    }
+  }
+
+  /// Verifica el código de verificación de email
+  Future<VerifyResponse?> verifyEmail({
+    required String userName,
+    required String code,
+  }) async {
+    try {
+      _authStatus = AuthStatus.loading;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      // El servicio solo requiere el código, no el userName
+      final request = VerifyRequest(
+        codigo: code,
+      );
+
+      final verifyResponse = await _authService.verifyEmail(request);
+
+      // Limpiar estado de error
+      _authStatus = AuthStatus.unauthenticated;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      return verifyResponse;
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en verifyEmail: ${e.message}');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add(e.message);
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error inesperado en verifyEmail: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add('Error inesperado: ${e.toString()}');
+      return null;
     }
   }
 
