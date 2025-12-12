@@ -69,60 +69,20 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(context, textColor: textColor, isDark: isDark),
-                    
-                    // Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Toggle Física/Moral
-                              _buildToggleSelector(
-                                isMoral: _isMoral,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isMoral = value;
-                                  });
-                                },
-                                textColor: textColor,
-                                isDark: isDark,
-                              ),
-                              const SizedBox(height: 24.0),
-
-                              // Show different fields based on _isMoral
-                              if (_isMoral) ..._buildMoralFields(
-                                textColor: textColor,
-                                inputBgColor: inputBgColor,
-                                isDark: isDark,
-                              ) else ..._buildFisicaFields(
-                                textColor: textColor,
-                                inputBgColor: inputBgColor,
-                                isDark: isDark,
-                              ),
-
-                              const SizedBox(height: 32.0),
-
-                              // Guardar Button
-                              _buildSaveButton(context, textColor: textColor),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
+                  desktop: desktopView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
+                  tablet: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
                 ),
               ),
             ),
@@ -133,10 +93,125 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
     );
   }
 
+  Widget mobileView({
+    required BuildContext context,
+    required bool isDark,
+    required Color textColor,
+    required Color inputBgColor,
+  }) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Toggle Física/Moral
+                _buildToggleSelector(
+                  isMoral: _isMoral,
+                  onChanged: (value) {
+                    setState(() {
+                      _isMoral = value;
+                    });
+                  },
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 24.0),
+
+                // Show different fields based on _isMoral
+                if (_isMoral) ..._buildMoralFields(
+                  textColor: textColor,
+                  inputBgColor: inputBgColor,
+                  isDark: isDark,
+                ) else ..._buildFisicaFields(
+                  textColor: textColor,
+                  inputBgColor: inputBgColor,
+                  isDark: isDark,
+                ),
+
+                const SizedBox(height: 32.0),
+
+                // Guardar Button
+                _buildSaveButton(context, textColor: textColor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({
+    required BuildContext context,
+    required bool isDark,
+    required Color textColor,
+    required Color inputBgColor,
+  }) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Toggle Física/Moral
+                  _buildToggleSelector(
+                    isMoral: _isMoral,
+                    onChanged: (value) {
+                      setState(() {
+                        _isMoral = value;
+                      });
+                    },
+                    textColor: textColor,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 24.0),
+
+                  // Show different fields based on _isMoral
+                  if (_isMoral) ..._buildMoralFields(
+                    textColor: textColor,
+                    inputBgColor: inputBgColor,
+                    isDark: isDark,
+                  ) else ..._buildFisicaFields(
+                    textColor: textColor,
+                    inputBgColor: inputBgColor,
+                    isDark: isDark,
+                  ),
+
+                  const SizedBox(height: 32.0),
+
+                  // Guardar Button
+                  _buildSaveButton(context, textColor: textColor),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context,
       {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: EdgeInsets.only(
+        left: 20.0,
+        right: 20.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button
@@ -163,15 +238,23 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(Icons.person, color: textColor, size: 24),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],
@@ -593,7 +676,7 @@ class _NuevoPerfilFiscalPageState extends State<NuevoPerfilFiscalPage> {
           backgroundColor: Colors.transparent,
           selectedItemColor: const Color(0xFF205AA8), // Blue
           unselectedItemColor: Colors.grey[600],
-          currentIndex: 1, // Search is selected
+          currentIndex: 2, // Configuración is selected
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           iconSize: 24,

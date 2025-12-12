@@ -57,100 +57,197 @@ class _CargarConstanciaFiscalPageState extends State<CargarConstanciaFiscalPage>
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-              children: [
-                // Header
-                _buildHeader(context, textColor: textColor, isDark: isDark),
-                
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Seleccionar archivo button
-                          _buildSelectFileButton(
-                            textColor: textColor,
-                            isDark: isDark,
-                          ),
-                          const SizedBox(height: 16.0),
-
-                          // Information box
-                          _buildInfoBox(
-                            textColor: textColor,
-                            isDark: isDark,
-                          ),
-                          const SizedBox(height: 24.0),
-
-                          // Divider
-                          Divider(color: Colors.grey.withOpacity(0.3), height: 1),
-                          const SizedBox(height: 24.0),
-
-                          // Manual input section
-                          Text(
-                            "O captura lo siguiente:",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 20.0),
-
-                          // RFC Field
-                          _buildTextField(
-                            label: "RFC",
-                            controller: _rfcController,
-                            textColor: textColor,
-                            inputBgColor: inputBgColor,
-                            isDark: isDark,
-                            hintText: "ERF1234123",
-                          ),
-                          const SizedBox(height: 20.0),
-
-                          // idCIF Field
-                          _buildIdCIFField(
-                            controller: _idCIFController,
-                            textColor: textColor,
-                            inputBgColor: inputBgColor,
-                            isDark: isDark,
-                            hintText: "12345667890",
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
+                child: Responsive(
+                  mobile: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
+                  desktop: desktopView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
+                  tablet: mobileView(
+                      context: context, isDark: isDark, textColor: textColor, inputBgColor: inputBgColor),
                 ),
-                
-                // Obtener Datos Button - Fixed at bottom
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: _buildObtenerDatosButton(context, textColor: textColor),
-                ),
-              ],
+              ),
             ),
-            ),
+            bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(context, isDark: isDark),
-        ),
         );
       },
     );
   }
 
+  Widget mobileView({
+    required BuildContext context,
+    required bool isDark,
+    required Color textColor,
+    required Color inputBgColor,
+  }) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Seleccionar archivo button
+                _buildSelectFileButton(
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 16.0),
+
+                // Information box
+                _buildInfoBox(
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 24.0),
+
+                // Divider
+                Divider(color: Colors.grey.withOpacity(0.3), height: 1),
+                const SizedBox(height: 24.0),
+
+                // Manual input section
+                Text(
+                  "O captura lo siguiente:",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20.0),
+
+                // RFC Field
+                _buildTextField(
+                  label: "RFC",
+                  controller: _rfcController,
+                  textColor: textColor,
+                  inputBgColor: inputBgColor,
+                  isDark: isDark,
+                  hintText: "ERF1234123",
+                ),
+                const SizedBox(height: 20.0),
+
+                // idCIF Field
+                _buildIdCIFField(
+                  controller: _idCIFController,
+                  textColor: textColor,
+                  inputBgColor: inputBgColor,
+                  isDark: isDark,
+                  hintText: "12345667890",
+                ),
+                const SizedBox(height: 32.0),
+
+                // Obtener Datos Button
+                _buildObtenerDatosButton(context, textColor: textColor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopView({
+    required BuildContext context,
+    required bool isDark,
+    required Color textColor,
+    required Color inputBgColor,
+  }) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Seleccionar archivo button
+                  _buildSelectFileButton(
+                    textColor: textColor,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 16.0),
+
+                  // Information box
+                  _buildInfoBox(
+                    textColor: textColor,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 24.0),
+
+                  // Divider
+                  Divider(color: Colors.grey.withOpacity(0.3), height: 1),
+                  const SizedBox(height: 24.0),
+
+                  // Manual input section
+                  Text(
+                    "O captura lo siguiente:",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 20.0),
+
+                  // RFC Field
+                  _buildTextField(
+                    label: "RFC",
+                    controller: _rfcController,
+                    textColor: textColor,
+                    inputBgColor: inputBgColor,
+                    isDark: isDark,
+                    hintText: "ERF1234123",
+                  ),
+                  const SizedBox(height: 20.0),
+
+                  // idCIF Field
+                  _buildIdCIFField(
+                    controller: _idCIFController,
+                    textColor: textColor,
+                    inputBgColor: inputBgColor,
+                    isDark: isDark,
+                    hintText: "12345667890",
+                  ),
+                  const SizedBox(height: 32.0),
+
+                  // Obtener Datos Button
+                  _buildObtenerDatosButton(context, textColor: textColor),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context,
       {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: EdgeInsets.only(
+        left: 20.0,
+        right: 20.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button
@@ -177,19 +274,23 @@ class _CargarConstanciaFiscalPageState extends State<CargarConstanciaFiscalPage>
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                color: textColor,
-                size: 24,
-              ),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],

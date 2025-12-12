@@ -25,6 +25,9 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
 
+        // Obtener el padding del sistema antes de que se remueva
+        final systemPaddingTop = MediaQuery.of(context).viewPadding.top;
+
         const systemUiOverlayStyle = SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
@@ -46,9 +49,21 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                 height: double.infinity,
                 color: backgroundColor,
                 child: Responsive(
-                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
-                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
-                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  mobile: mobileView(
+                      context: context,
+                      isDark: isDark,
+                      textColor: textColor,
+                      systemPaddingTop: systemPaddingTop),
+                  desktop: desktopView(
+                      context: context,
+                      isDark: isDark,
+                      textColor: textColor,
+                      systemPaddingTop: systemPaddingTop),
+                  tablet: mobileView(
+                      context: context,
+                      isDark: isDark,
+                      textColor: textColor,
+                      systemPaddingTop: systemPaddingTop),
                 ),
               ),
             ),
@@ -59,111 +74,119 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
     );
   }
 
-  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+  Widget mobileView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor,
+      required double systemPaddingTop}) {
     return SingleChildScrollView(
       child: Column(
         children: [
           // Header
-          _buildHeader(context, textColor: textColor, isDark: isDark),
+          _buildHeader(context,
+              textColor: textColor,
+              isDark: isDark,
+              systemPaddingTop: systemPaddingTop),
           // Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                          // Title
-                          Text(
-                            "Selecciona la forma de pago",
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16.0),
+                // Title
+                Text(
+                  "Selecciona la forma de pago",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16.0),
 
-                          // Payment cards section
-                          _buildPaymentCardsSection(
-                            isDark: isDark,
-                            textColor: textColor,
-                          ),
-                          const SizedBox(height: 24.0),
+                // Payment cards section
+                _buildPaymentCardsSection(
+                  isDark: isDark,
+                  textColor: textColor,
+                ),
+                const SizedBox(height: 24.0),
 
-                          // Other payment methods
-                          _buildPaymentMethodButton(
-                            title: "mercado pago",
-                            isDark: isDark,
-                            textColor: textColor,
-                            onTap: () {
-                              // Action for Mercado Pago
-                            },
-                          ),
-                          const SizedBox(height: 12.0),
-                          _buildPaymentMethodButton(
-                            title: "PayPal",
-                            isDark: isDark,
-                            textColor: textColor,
-                            onTap: () {
-                              // Action for PayPal
-                            },
-                          ),
-                          const SizedBox(height: 12.0),
-                          _buildPaymentMethodButton(
-                            title: "SPEI",
-                            isDark: isDark,
-                            textColor: textColor,
-                            onTap: () {
-                              // Action for SPEI
-                            },
-                          ),
-                          const SizedBox(height: 32.0),
-                          // Commission text - centered
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: Text(
-                                "Esta operación no genera ningún tipo de comisión.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16.0),
-                          // Continuar button
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                final amount = widget.amount ?? '50';
-                                GoRouter.of(context).go(
-                                  RoutesName.resumen,
-                                  extra: {'amount': amount},
-                                );
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(
-                                  0xFF205AA8,
-                                ), // Blue
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                "Continuar",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
+                // Other payment methods
+                _buildPaymentMethodButton(
+                  title: "mercado pago",
+                  isDark: isDark,
+                  textColor: textColor,
+                  onTap: () {
+                    // Action for Mercado Pago
+                  },
+                ),
+                const SizedBox(height: 12.0),
+                _buildPaymentMethodButton(
+                  title: "PayPal",
+                  isDark: isDark,
+                  textColor: textColor,
+                  onTap: () {
+                    // Action for PayPal
+                  },
+                ),
+                const SizedBox(height: 12.0),
+                _buildPaymentMethodButton(
+                  title: "SPEI",
+                  isDark: isDark,
+                  textColor: textColor,
+                  onTap: () {
+                    // Action for SPEI
+                  },
+                ),
+                const SizedBox(height: 40.0),
+                // Commission text - centered
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      "Esta operación no genera ningún tipo de comisión.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8.0),
+                // Continuar button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final amount = widget.amount ?? '50';
+                      GoRouter.of(context).go(
+                        RoutesName.resumen,
+                        extra: {'amount': amount},
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(
+                        0xFF205AA8,
+                      ), // Blue
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Continuar",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -172,15 +195,23 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
     );
   }
 
-  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+  Widget desktopView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor,
+      required double systemPaddingTop}) {
     return SingleChildScrollView(
       child: Column(
         children: [
           // Header
-          _buildHeader(context, textColor: textColor, isDark: isDark),
+          _buildHeader(context,
+              textColor: textColor,
+              isDark: isDark,
+              systemPaddingTop: systemPaddingTop),
           // Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 1200),
               child: Column(
@@ -235,7 +266,7 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                   // Commission text - centered
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Text(
                         "Esta operación no genera ningún tipo de comisión.",
                         textAlign: TextAlign.center,
@@ -246,7 +277,7 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16.0),
+                  const SizedBox(height: 8.0),
                   // Continuar button
                   SizedBox(
                     width: double.infinity,
@@ -288,13 +319,20 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
-    final paddingTop = MediaQuery.of(context).padding.top;
+  Widget _buildHeader(BuildContext context,
+      {Color textColor = Colors.white,
+      bool isDark = true,
+      required double systemPaddingTop}) {
+    // Usar el padding del sistema que se obtuvo antes de MediaQuery.removePadding
+    // Asegurar que haya suficiente espacio para el status bar
+    final safePadding = systemPaddingTop > 0
+        ? systemPaddingTop
+        : 44.0; // Fallback para dispositivos sin notch
     return Container(
       padding: EdgeInsets.only(
         left: 24.0,
         right: 24.0,
-        top: paddingTop + 16.0,
+        top: safePadding + 16.0,
         bottom: 16.0,
       ),
       child: Row(
@@ -318,15 +356,24 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(Icons.person, color: textColor, size: 24),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor:
+                      isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],
@@ -582,24 +629,24 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
               label: 'Configuración',
             ),
           ],
-        onTap: (index) {
-          if (index == 0) {
-            // Navegar al dashboard
-            GoRouter.of(context).go(RoutesName.dashboard);
-          } else if (index == 1) {
-            // Abrir bottomsheet de Monedero (Actividad)
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const MonederoBottomSheet(),
-            );
-          } else if (index == 2) {
-            // Navegar a perfil de usuario
-            GoRouter.of(context).go(RoutesName.perfil);
-          }
-        },
-      ),
+          onTap: (index) {
+            if (index == 0) {
+              // Navegar al dashboard
+              GoRouter.of(context).go(RoutesName.dashboard);
+            } else if (index == 1) {
+              // Abrir bottomsheet de Monedero (Actividad)
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
+            } else if (index == 2) {
+              // Navegar a perfil de usuario
+              GoRouter.of(context).go(RoutesName.perfil);
+            }
+          },
+        ),
       ),
     );
   }

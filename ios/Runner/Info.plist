@@ -53,5 +53,7 @@
 	<string>Necesitamos acceso a tu ubicación para mostrar tu posición en el mapa</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Necesitamos acceso a tu ubicación para mostrar tu posición en el mapa</string>
+	<key>GMSApiKey</key>
+	<string>AIzaSyC3vvrNAZOxtjzm0LmdDzSW9gXT1ZZbEYQ</string>
 </dict>
 </plist>

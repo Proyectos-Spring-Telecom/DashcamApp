@@ -46,16 +46,28 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBodyBehindAppBar: true,
-            body: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: _isLoading
-                  ? _buildLoadingScreen()
-                  : Responsive(
-                      mobile: mobileWidget(context: context),
-                      desktop: desktopWidget(context: context),
-                      tablet: mobileWidget(context: context),
-                    ),
+            resizeToAvoidBottomInset: false,
+            body: Stack(
+              children: [
+                // Imagen de fondo que cubre toda la pantalla
+                SizedBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: Image.asset(
+                    'assets/images/bienvenida_background.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                  ),
+                ),
+                // Contenido sobre la imagen
+                _isLoading
+                    ? _buildLoadingScreen(context: context)
+                    : Responsive(
+                        mobile: mobileWidget(context: context),
+                        desktop: desktopWidget(context: context),
+                        tablet: mobileWidget(context: context),
+                      ),
+              ],
             ),
           ),
         );
@@ -63,16 +75,10 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
     );
   }
 
-  Widget _buildLoadingScreen() {
-    return Container(
+  Widget _buildLoadingScreen({required BuildContext context}) {
+    return SizedBox(
       width: double.infinity,
       height: double.infinity,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/bienvenida_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -94,15 +100,9 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
   }
 
   Widget mobileWidget({required BuildContext context}) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: double.infinity,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/bienvenida_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
       child: Column(
         children: [
           // Spacer para centrar el logo verticalmente (ajustado para notch)
@@ -143,72 +143,61 @@ class _BienvenidaPageState extends State<BienvenidaPage> {
   }
 
   Widget desktopWidget({required BuildContext context}) {
-    final screenSize = MediaQuery.of(context).size;
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600),
+          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo - más grande para web
+              _buildLogo(web: true),
 
-    return Container(
-      width: screenSize.width,
-      height: screenSize.height,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/bienvenida_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo - más grande para web
-                _buildLogo(web: true),
+              const SizedBox(height: 48),
 
-                const SizedBox(height: 48),
-
-                // Tagline - más grande para web
-                Text(
-                  "Viajes seguros, es lo que más importa.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w400,
-                    height: 1.4,
-                  ),
+              // Tagline - más grande para web
+              Text(
+                "Viajes seguros, es lo que más importa.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w400,
+                  height: 1.4,
                 ),
+              ),
 
-                const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-                // Botón Comenzar - más grande para web
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      // Navegar al login
-                      GoRouter.of(context).go(RoutesName.login);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF205AA8), // Azul
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              // Botón Comenzar - más grande para web
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    // Navegar al login
+                    GoRouter.of(context).go(RoutesName.login);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF205AA8), // Azul
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      "Comenzar",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  ),
+                  child: const Text(
+                    "Comenzar",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

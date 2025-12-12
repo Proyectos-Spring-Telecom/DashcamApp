@@ -116,9 +116,7 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                     final user = userSnapshot.data ?? authBloc.currentUser;
                     return Text(
                       user != null && user.fechaCreacion != null
-                          ? DateFormatter.formatMemberSinceDate(
-                              user.fechaCreacion,
-                              includePrefix: false)
+                          ? DateFormatter.formatDateTime(user.fechaCreacion)
                           : 'N/A',
                       style: TextStyle(
                         color: textColor,
@@ -250,9 +248,7 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                       final user = userSnapshot.data ?? authBloc.currentUser;
                       return Text(
                         user != null && user.fechaCreacion != null
-                            ? DateFormatter.formatMemberSinceDate(
-                                user.fechaCreacion,
-                                includePrefix: false)
+                            ? DateFormatter.formatDateTime(user.fechaCreacion)
                             : 'N/A',
                         style: TextStyle(
                           color: textColor,
@@ -339,8 +335,8 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
       padding: EdgeInsets.only(
         left: 20.0,
         right: 20.0,
-        top: paddingTop + 16.0,
-        bottom: 16.0,
+        top: paddingTop + 13.0,
+        bottom: 1.0,
       ),
       child: Row(
         children: [

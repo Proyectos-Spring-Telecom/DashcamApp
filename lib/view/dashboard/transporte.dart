@@ -15,8 +15,7 @@ class _TransportePageState extends State<TransportePage> {
   static const gmaps.LatLng _initialPosition =
       gmaps.LatLng(19.4326, -99.1332); // Ciudad de México
   Set<gmaps.Marker> _markers = {};
-  String _mapType = "Mapa";
-  bool _isMapReady = false;
+  gmaps.MapType _currentMapType = gmaps.MapType.normal;
 
   @override
   void initState() {
@@ -58,8 +57,8 @@ class _TransportePageState extends State<TransportePage> {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: systemUiOverlayStyle,
           child: Scaffold(
-            backgroundColor: Colors.transparent,
-            extendBodyBehindAppBar: true,
+            backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+            extendBodyBehindAppBar: false,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
@@ -79,181 +78,54 @@ class _TransportePageState extends State<TransportePage> {
               ],
             ),
             drawer: _buildDrawer(context, isDark),
-            body: Stack(
-              children: [
-                // Google Maps - debe ocupar toda la pantalla
-                gmaps.GoogleMap(
-                  initialCameraPosition: const gmaps.CameraPosition(
-                    target: _initialPosition,
-                    zoom: 13,
-                  ),
-                  markers: _markers,
-                  mapType: gmaps.MapType.normal,
-                  onMapCreated: (gmaps.GoogleMapController controller) {
-                    if (mounted) {
-                      setState(() {
-                        _mapController = controller;
-                        _isMapReady = true;
-                      });
-                      debugPrint('✅ Google Maps controller creado exitosamente');
-                      debugPrint('📍 Posición inicial: $_initialPosition');
-                    }
-                  },
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  compassEnabled: false,
-                  mapToolbarEnabled: false,
-                ),
-
-                // Floating card at the top-right
-                SafeArea(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 56), // Space for AppBar
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: _buildMapTypeCard(
-                              textColor: textColor, isDark: isDark),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Zoom controls and full-screen button at bottom-right
-                SafeArea(
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Full-screen/Recenter button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.grey[800] : Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.fullscreen,
-                                color: textColor,
-                              ),
-                              onPressed: _isMapReady && _mapController != null
-                                  ? () {
-                                      // Recenter or full-screen action
-                                      _mapController!.animateCamera(
-                                        gmaps.CameraUpdate.newCameraPosition(
-                                          const gmaps.CameraPosition(
-                                            target: _initialPosition,
-                                            zoom: 13,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Zoom controls
-                          Container(
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.grey[800] : Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.add, color: textColor),
-                                  onPressed: _isMapReady && _mapController != null
-                                      ? () {
-                                          _mapController!.animateCamera(
-                                            gmaps.CameraUpdate.zoomIn(),
-                                          );
-                                        }
-                                      : null,
-                                ),
-                                Container(
-                                  height: 1,
-                                  color: isDark
-                                      ? Colors.grey[700]
-                                      : Colors.grey[300],
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.remove, color: textColor),
-                                  onPressed: _isMapReady && _mapController != null
-                                      ? () {
-                                          _mapController!.animateCamera(
-                                            gmaps.CameraUpdate.zoomOut(),
-                                          );
-                                        }
-                                      : null,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: gmaps.GoogleMap(
+                    initialCameraPosition: const gmaps.CameraPosition(
+                      target: _initialPosition,
+                      zoom: 13,
                     ),
+                    markers: _markers,
+                    mapType: _currentMapType,
+                    onMapCreated: (gmaps.GoogleMapController controller) {
+                      if (mounted) {
+                        setState(() {
+                          _mapController = controller;
+                        });
+                        debugPrint('✅ Google Maps controller creado exitosamente');
+                        debugPrint('📍 Posición inicial: $_initialPosition');
+                        debugPrint('🗺️ Tipo de mapa: $_currentMapType');
+                        debugPrint('📐 Tamaño disponible: ${constraints.maxWidth} x ${constraints.maxHeight}');
+                      }
+                    },
+                    onCameraMove: (gmaps.CameraPosition position) {
+                      // Solo para debugging, puede comentarse después
+                    },
+                    onCameraIdle: () {
+                      // Solo para debugging, puede comentarse después
+                    },
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: true,
+                    compassEnabled: true,
+                    mapToolbarEnabled: false,
+                    myLocationEnabled: false,
+                    buildingsEnabled: true,
+                    trafficEnabled: false,
+                    rotateGesturesEnabled: true,
+                    scrollGesturesEnabled: true,
+                    tiltGesturesEnabled: true,
+                    zoomGesturesEnabled: true,
+                    minMaxZoomPreference: const gmaps.MinMaxZoomPreference(3, 20),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMapTypeCard({required Color textColor, required bool isDark}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800] : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.map, color: textColor, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            _mapType,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Icon(Icons.arrow_drop_down, color: textColor, size: 20),
-        ],
-      ),
     );
   }
 

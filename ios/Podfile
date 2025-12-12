@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '14.0'
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -40,7 +40,45 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      
+      # Fix for gRPC-Core template argument error
+      if target.name == 'gRPC-Core' || target.name.include?('gRPC')
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+        config.build_settings['GCC_C_LANGUAGE_STANDARD'] = 'c11'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
+        config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+        # Disable specific warnings that cause issues
+        config.build_settings['WARNING_CFLAGS'] ||= []
+        config.build_settings['WARNING_CFLAGS'] << '-Wno-error'
+      end
+      
+      # Fix for BoringSSL-GRPC unsupported option '-G' error
+      # Remove -G flag from all compiler flags
+      ['OTHER_CFLAGS', 'OTHER_CPLUSPLUSFLAGS', 'OTHER_SWIFT_FLAGS', 'WARNING_CFLAGS'].each do |flag_key|
+        if config.build_settings[flag_key]
+          if config.build_settings[flag_key].is_a?(Array)
+            config.build_settings[flag_key] = config.build_settings[flag_key].reject { |flag| flag.to_s.include?('-G') }
+          elsif config.build_settings[flag_key].is_a?(String)
+            config.build_settings[flag_key] = config.build_settings[flag_key].gsub(/\s*-G\s*/, ' ').strip
+          end
+        end
+      end
+      
+      # Remove -G from individual file compiler flags
+      if target.name == 'BoringSSL-GRPC' || target.name.include?('BoringSSL')
+        target.source_build_phase.files.each do |file|
+          if file.settings
+            if file.settings['COMPILER_FLAGS']
+              flags = file.settings['COMPILER_FLAGS'].to_s.split(/\s+/)
+              flags.reject! { |flag| flag == '-G' || flag.include?('-G') }
+              file.settings['COMPILER_FLAGS'] = flags.join(' ')
+            end
+          end
+        end
+      end
     end
   end
 end

@@ -62,9 +62,6 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           systemNavigationBarIconBrightness: Brightness.light,
         );
 
-        // Obtener el padding del sistema antes de aplicar MediaQuery.removePadding
-        final systemPaddingTop = MediaQuery.of(context).viewPadding.top;
-        
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: systemUiOverlayStyle,
           child: Scaffold(
@@ -78,9 +75,9 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                 height: double.infinity,
                 color: backgroundColor,
                 child: Responsive(
-                  mobile: mobileWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
-                  desktop: desktopWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
-                  tablet: mobileWidget(context: context, isDark: isDark, systemPaddingTop: systemPaddingTop),
+                  mobile: mobileWidget(context: context, isDark: isDark),
+                  desktop: desktopWidget(context: context, isDark: isDark),
+                  tablet: mobileWidget(context: context, isDark: isDark),
                 ),
               ),
             ),
@@ -92,27 +89,68 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget mobileWidget({required BuildContext context, required bool isDark, required double systemPaddingTop}) {
-    return Column(
-      children: [
-        // Header
-        _buildHeader(context, isDark: isDark, systemPaddingTop: systemPaddingTop),
+  Widget mobileWidget({required BuildContext context, required bool isDark}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
 
-        // Tabs
-        _buildTabs(isDark: isDark),
+          // Tabs
+          _buildTabs(isDark: isDark),
 
-        // Content
-        Expanded(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_selectedTabIndex == 1) ...[
+                  // Código QR section
+                  _buildCodigoQRSection(context, isDark: isDark),
+                  const SizedBox(height: 32.0),
+
+                  // Mis códigos section
+                  _buildMisCodigosSection(isDark: isDark),
+                ] else if (_selectedTabIndex == 2) ...[
+                  // Viajes section
+                  _buildViajesSection(isDark: isDark),
+                ] else if (_selectedTabIndex == 3) ...[
+                  // Operaciones section
+                  _buildOperacionesSection(isDark: isDark),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget desktopWidget({required BuildContext context, required bool isDark}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          _buildHeader(context, textColor: textColor, isDark: isDark),
+
+          // Tabs
+          _buildTabs(isDark: isDark),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1200),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_selectedTabIndex == 1) ...[
                     // Código QR section
                     _buildCodigoQRSection(context, isDark: isDark),
-                    const SizedBox(height: 24.0),
+                    const SizedBox(height: 32.0),
 
                     // Mis códigos section
                     _buildMisCodigosSection(isDark: isDark),
@@ -127,70 +165,27 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget desktopWidget({required BuildContext context, required bool isDark, required double systemPaddingTop}) {
-    return Column(
-      children: [
-        // Header
-        _buildHeader(context, isDark: isDark, systemPaddingTop: systemPaddingTop),
-
-        // Tabs
-        _buildTabs(isDark: isDark),
-
-        // Content
-        Expanded(
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(48.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_selectedTabIndex == 1) ...[
-                        // Código QR section
-                        _buildCodigoQRSection(context, isDark: isDark),
-                        const SizedBox(height: 24.0),
-
-                        // Mis códigos section
-                        _buildMisCodigosSection(isDark: isDark),
-                      ] else if (_selectedTabIndex == 2) ...[
-                        // Viajes section
-                        _buildViajesSection(isDark: isDark),
-                      ] else if (_selectedTabIndex == 3) ...[
-                        // Operaciones section
-                        _buildOperacionesSection(isDark: isDark),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, {bool isDark = true, required double systemPaddingTop}) {
-    final textColor = isDark ? Colors.white : Colors.black;
+  Widget _buildHeader(BuildContext context, {Color? textColor, bool isDark = true}) {
+    // Usar viewPadding.top porque estamos dentro de MediaQuery.removePadding(removeTop: true)
+    final paddingTop = MediaQuery.of(context).viewPadding.top;
+    final headerTextColor = textColor ?? (isDark ? Colors.white : Colors.black);
     return Container(
       padding: EdgeInsets.only(
         left: 24.0,
         right: 24.0,
-        top: systemPaddingTop + 16.0,
+        top: paddingTop + 16.0,
         bottom: 16.0,
       ),
       child: Row(
         children: [
           // Back button
           IconButton(
-            icon: Icon(Icons.arrow_back, color: textColor),
+            icon: Icon(Icons.arrow_back, color: headerTextColor),
             onPressed: () {
               if (GoRouter.of(context).canPop()) {
                 GoRouter.of(context).pop();
@@ -202,28 +197,32 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           // Title
           Expanded(
             child: Text(
-              "Monedero",
+              "Pagar con código QR",
               style: TextStyle(
-                color: textColor,
+                color: headerTextColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                color: textColor,
-                size: 24,
-              ),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: headerTextColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],
