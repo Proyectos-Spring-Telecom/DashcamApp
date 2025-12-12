@@ -18,6 +18,7 @@ class AppRoutes {
             state.matchedLocation == RoutesName.register ||
             state.matchedLocation == RoutesName.bienvenida ||
             state.matchedLocation == RoutesName.forgotPassword ||
+            state.matchedLocation == RoutesName.emailVerify ||
             state.matchedLocation == RoutesName.init;
 
         // Si el usuario no está logueado y trata de acceder a una ruta protegida
@@ -243,9 +244,16 @@ class AppRoutes {
         GoRoute(
           path: RoutesName.emailVerify,
           pageBuilder: (BuildContext context, GoRouterState state) {
+            // Obtener el nombre y email del usuario de los query parameters si está disponible
+            final userName = state.uri.queryParameters['nombre'];
+            final userEmail = state.uri.queryParameters['email'];
             return FadeTransitionPage(
               key: ScaffoldKey.emailVerifyScaffoldKey,
-              child: const EmailVerificationWaitingScreen(),
+              child: EmailVerificationWaitingScreen(
+                key: EmailVerificationWaitingScreen.uniqueKey,
+                userName: userName,
+                userEmail: userEmail,
+              ),
             );
           },
         ),

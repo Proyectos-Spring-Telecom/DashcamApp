@@ -58,15 +58,18 @@ class ResumenPage extends StatelessWidget {
                   onTap: () {
                     GoRouter.of(context).go(RoutesName.perfil);
                   },
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor:
-                        isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      color: textColor,
-                      size: 24,
-                    ),
+                  child: StreamBuilder<User?>(
+                    stream: authBloc.userStream,
+                    builder: (context, userSnapshot) {
+                      final user = userSnapshot.data ?? authBloc.currentUser;
+                      return UserAvatar(
+                        imageUrl: user?.fotoPerfil,
+                        radius: 20,
+                        backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        iconColor: textColor,
+                        iconSize: 24,
+                      );
+                    },
                   ),
                 ),
               ),

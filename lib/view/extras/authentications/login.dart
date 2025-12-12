@@ -17,12 +17,29 @@ class _LoginState extends State<Login> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isFormValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_onFormChanged);
+    _passwordController.addListener(_onFormChanged);
+  }
 
   @override
   void dispose() {
+    _emailController.removeListener(_onFormChanged);
+    _passwordController.removeListener(_onFormChanged);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _onFormChanged() {
+    setState(() {
+      _isFormValid = _emailController.text.trim().isNotEmpty &&
+          _passwordController.text.trim().isNotEmpty;
+    });
   }
 
   Future<void> _handleLogin() async {
@@ -446,7 +463,7 @@ class _LoginState extends State<Login> {
     return SizedBox(
       width: double.infinity,
       child: FilledButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: (_isLoading || !_isFormValid) ? null : _handleLogin,
         style: FilledButton.styleFrom(
           backgroundColor: const Color(0xFF205AA8), // Blue color #205AA8
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -483,6 +500,23 @@ class _LoginState extends State<Login> {
       children: [
         Center(
           child: TextButton(
+            onPressed: () {
+              if (context.mounted) {
+                GoRouter.of(context).go(RoutesName.emailVerify);
+              }
+            },
+            child: Text(
+              "Verificar tu cuenta",
+              style: TextStyle(
+                color: linkColor,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Center(
+          child: TextButton(
             onPressed: () => GoRouter.of(context).go(RoutesName.forgotPassword),
             child: Text(
               "¿Olvidaste tu Contraseña?",
@@ -493,7 +527,7 @@ class _LoginState extends State<Login> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 2),
         Center(
           child: TextButton(
             onPressed: () => GoRouter.of(context).go(RoutesName.register),

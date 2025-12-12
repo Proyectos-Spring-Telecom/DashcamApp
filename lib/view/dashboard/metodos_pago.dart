@@ -388,19 +388,24 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                color: isDark ? Colors.white : Colors.black,
-                size: 24,
-              ),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                final textColor = isDark ? Colors.white : Colors.black;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],

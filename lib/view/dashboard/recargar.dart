@@ -10,8 +10,7 @@ class RecargarPage extends StatefulWidget {
 }
 
 class _RecargarPageState extends State<RecargarPage> {
-  final TextEditingController _amountController =
-      TextEditingController(text: '50');
+  final TextEditingController _amountController = TextEditingController();
 
   @override
   void dispose() {
@@ -50,9 +49,12 @@ class _RecargarPageState extends State<RecargarPage> {
                 height: double.infinity,
                 color: backgroundColor,
                 child: Responsive(
-                  mobile: mobileView(context: context, isDark: isDark, textColor: textColor),
-                  desktop: desktopView(context: context, isDark: isDark, textColor: textColor),
-                  tablet: mobileView(context: context, isDark: isDark, textColor: textColor),
+                  mobile: mobileView(
+                      context: context, isDark: isDark, textColor: textColor),
+                  desktop: desktopView(
+                      context: context, isDark: isDark, textColor: textColor),
+                  tablet: mobileView(
+                      context: context, isDark: isDark, textColor: textColor),
                 ),
               ),
             ),
@@ -63,7 +65,10 @@ class _RecargarPageState extends State<RecargarPage> {
     );
   }
 
-  Widget mobileView({required BuildContext context, required bool isDark, required Color textColor}) {
+  Widget mobileView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor}) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -71,13 +76,13 @@ class _RecargarPageState extends State<RecargarPage> {
           _buildHeader(context, textColor: textColor, isDark: isDark),
           // Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Monedero card
-                _buildMonederoCard(
-                    isDark: isDark, textColor: textColor),
+                _buildMonederoCard(isDark: isDark, textColor: textColor),
                 const SizedBox(height: 32.0),
 
                 // Selecciona el monto a recargar
@@ -105,12 +110,12 @@ class _RecargarPageState extends State<RecargarPage> {
                 // Amount input field
                 _buildAmountField(
                     isDark: isDark, controller: _amountController),
-                const SizedBox(height: 32.0),
+                const SizedBox(height: 215.0),
 
                 // Commission text - centered
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
+                    padding: const EdgeInsets.only(bottom: 8.0),
                     child: Text(
                       "Esta operación no genera ningún tipo de comisión.",
                       textAlign: TextAlign.center,
@@ -121,7 +126,7 @@ class _RecargarPageState extends State<RecargarPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16.0),
+                const SizedBox(height: 8.0),
 
                 // Continuar button
                 SizedBox(
@@ -137,10 +142,8 @@ class _RecargarPageState extends State<RecargarPage> {
                       );
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor:
-                          const Color(0xFF205AA8), // Blue
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: const Color(0xFF205AA8), // Blue
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -163,7 +166,10 @@ class _RecargarPageState extends State<RecargarPage> {
     );
   }
 
-  Widget desktopView({required BuildContext context, required bool isDark, required Color textColor}) {
+  Widget desktopView(
+      {required BuildContext context,
+      required bool isDark,
+      required Color textColor}) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -171,15 +177,15 @@ class _RecargarPageState extends State<RecargarPage> {
           _buildHeader(context, textColor: textColor, isDark: isDark),
           // Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 1200),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Monedero card
-                  _buildMonederoCard(
-                      isDark: isDark, textColor: textColor),
+                  _buildMonederoCard(isDark: isDark, textColor: textColor),
                   const SizedBox(height: 32.0),
 
                   // Selecciona el monto a recargar
@@ -211,7 +217,7 @@ class _RecargarPageState extends State<RecargarPage> {
                   // Commission text - centered
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Text(
                         "Esta operación no genera ningún tipo de comisión.",
                         textAlign: TextAlign.center,
@@ -222,7 +228,7 @@ class _RecargarPageState extends State<RecargarPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16.0),
+                  const SizedBox(height: 8.0),
                   // Continuar button
                   SizedBox(
                     width: double.infinity,
@@ -237,10 +243,8 @@ class _RecargarPageState extends State<RecargarPage> {
                         );
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor:
-                            const Color(0xFF205AA8), // Blue
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: const Color(0xFF205AA8), // Blue
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -264,7 +268,8 @@ class _RecargarPageState extends State<RecargarPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+  Widget _buildHeader(BuildContext context,
+      {Color textColor = Colors.white, bool isDark = true}) {
     final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
       padding: EdgeInsets.only(
@@ -294,19 +299,24 @@ class _RecargarPageState extends State<RecargarPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          // Profile avatar
+          // Profile avatar - dinámico
           GestureDetector(
             onTap: () {
               GoRouter.of(context).go(RoutesName.perfil);
             },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                color: textColor,
-                size: 24,
-              ),
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor:
+                      isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
             ),
           ),
         ],
@@ -494,24 +504,24 @@ class _RecargarPageState extends State<RecargarPage> {
               label: 'Configuración',
             ),
           ],
-        onTap: (index) {
-          if (index == 0) {
-            // Navegar al dashboard
-            GoRouter.of(context).go(RoutesName.dashboard);
-          } else if (index == 1) {
-            // Abrir bottomsheet de Monedero (Actividad)
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const MonederoBottomSheet(),
-            );
-          } else if (index == 2) {
-            // Navegar a perfil de usuario
-            GoRouter.of(context).go(RoutesName.perfil);
-          }
-        },
-      ),
+          onTap: (index) {
+            if (index == 0) {
+              // Navegar al dashboard
+              GoRouter.of(context).go(RoutesName.dashboard);
+            } else if (index == 1) {
+              // Abrir bottomsheet de Monedero (Actividad)
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
+            } else if (index == 2) {
+              // Navegar a perfil de usuario
+              GoRouter.of(context).go(RoutesName.perfil);
+            }
+          },
+        ),
       ),
     );
   }

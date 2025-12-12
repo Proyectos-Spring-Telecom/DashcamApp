@@ -2,6 +2,8 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/model/auth/user.dart';
 
 class PagoQRPage extends StatelessWidget {
   const PagoQRPage({super.key});
@@ -29,13 +31,13 @@ class PagoQRPage extends StatelessWidget {
           child: Scaffold(
             backgroundColor: backgroundColor,
             extendBodyBehindAppBar: true,
-            body: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: backgroundColor,
-              child: SafeArea(
-                top: false,
-                bottom: false,
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: backgroundColor,
                 child: Responsive(
                   mobile: mobileWidget(context: context, isDark: isDark, textColor: textColor),
                   desktop: desktopWidget(context: context, isDark: isDark, textColor: textColor),
@@ -54,12 +56,12 @@ class PagoQRPage extends StatelessWidget {
     return Column(
       children: [
         // Header
-        _buildHeader(context, textColor: textColor),
+        _buildHeader(context, textColor: textColor, isDark: isDark),
         
         // Content - centered
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -131,14 +133,14 @@ class PagoQRPage extends StatelessWidget {
     return Column(
       children: [
         // Header
-        _buildHeader(context, textColor: textColor),
+        _buildHeader(context, textColor: textColor, isDark: isDark),
         
         // Content - centered
         Expanded(
           child: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 500),
-              padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 32.0),
+              constraints: const BoxConstraints(maxWidth: 1200),
+              padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -210,9 +212,15 @@ class PagoQRPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white}) {
+  Widget _buildHeader(BuildContext context, {Color textColor = Colors.white, bool isDark = true}) {
+    final paddingTop = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      padding: EdgeInsets.only(
+        left: 20.0,
+        right: 20.0,
+        top: paddingTop + 16.0,
+        bottom: 16.0,
+      ),
       child: Row(
         children: [
           // Back button
@@ -234,11 +242,24 @@ class PagoQRPage extends StatelessWidget {
             ),
           ),
           
-          // Profile avatar
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.grey[800],
-            child: const Icon(Icons.person, color: Colors.white, size: 24),
+          // Profile avatar - dinámico
+          GestureDetector(
+            onTap: () {
+              GoRouter.of(context).go(RoutesName.perfil);
+            },
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                return UserAvatar(
+                  imageUrl: user?.fotoPerfil,
+                  radius: 20,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  iconColor: textColor,
+                  iconSize: 24,
+                );
+              },
+            ),
           ),
         ],
       ),
