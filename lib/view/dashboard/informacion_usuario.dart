@@ -451,7 +451,7 @@ class InformacionUsuarioPage extends StatelessWidget {
           backgroundColor: Colors.transparent,
           selectedItemColor: const Color(0xFF205AA8), // Blue
           unselectedItemColor: Colors.grey[600],
-          currentIndex: 2, // Settings is selected
+          currentIndex: 2, // Configuración is selected
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           iconSize: 24,
@@ -459,23 +459,29 @@ class InformacionUsuarioPage extends StatelessWidget {
           unselectedFontSize: 12,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: '',
+              icon: Icon(Icons.account_balance_wallet),
+              label: 'Monedero',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: '',
+              icon: Icon(Icons.timeline),
+              label: 'Actividad',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings),
-              label: '',
+              label: 'Configuración',
             ),
           ],
           onTap: (index) {
             if (index == 0) {
               GoRouter.of(context).go(RoutesName.dashboard);
             } else if (index == 1) {
-              // Search action (if needed)
+              // Abrir bottomsheet de Monedero
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const MonederoBottomSheet(),
+              );
             } else if (index == 2) {
               GoRouter.of(context).go(RoutesName.perfil);
             }
