@@ -49,6 +49,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Liberar recursos de los blocs antes de destruir el widget
+    authBloc.dispose();
+    themeBloc.dispose();
     super.dispose();
   }
 

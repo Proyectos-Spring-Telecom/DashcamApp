@@ -24,6 +24,17 @@ if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
 
+// Google Maps API Key - leer desde local.properties o variable de entorno
+def googleMapsApiKey = localProperties.getProperty("google.maps.api.key")
+if (googleMapsApiKey == null) {
+    googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY")
+    if (googleMapsApiKey == null) {
+        // Valor por defecto solo para desarrollo - DEBE ser reemplazado en producción
+        googleMapsApiKey = ""
+        throw new GradleException("ERROR: google.maps.api.key no encontrada. Agrega 'google.maps.api.key=TU_CLAVE' en android/local.properties o define la variable de entorno GOOGLE_MAPS_API_KEY")
+    }
+}
+
 android {
     namespace = "com.trueuly.dashboardpro"
     compileSdk = flutter.compileSdkVersion
@@ -47,6 +58,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
+        
+        // Google Maps API Key - se inyecta en AndroidManifest.xml mediante manifestPlaceholders
+        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey]
     }
 
     buildTypes {

@@ -3,10 +3,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 
 class ThemeBloc {
-  late AppTheme _currentTheme;
+  AppTheme _currentTheme;
   final _themeController = StreamController<AppTheme>.broadcast();
   Stream<AppTheme> get themeStream => _themeController.stream;
-  late bool _isDarkMode;
+  bool _isDarkMode;
   ColorSeed _currentColorSeed = ColorSeed.baseColor; // Default color seed
 
   AppTheme get currentTheme => _currentTheme;

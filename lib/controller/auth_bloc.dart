@@ -345,6 +345,8 @@ class AuthBloc {
       _authStatus = AuthStatus.unauthenticated;
       _authController.add(_authStatus);
       _userController.add(null);
+      // Agregar el error al controlador para mantener consistencia con otros métodos
+      _errorController.add('Error al cerrar sesión: ${e.toString()}');
     }
   }
 

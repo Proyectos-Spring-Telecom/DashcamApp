@@ -1,0 +1,13 @@
+// Google Maps API Key Configuration Template
+// 
+// INSTRUCCIONES:
+// 1. Copia este archivo a GoogleMapsApiKey.xcconfig
+// 2. Reemplaza TU_CLAVE_DE_API_AQUI con tu clave de API real
+// 3. El archivo GoogleMapsApiKey.xcconfig está en .gitignore y NO se subirá al repositorio
+//
+// Alternativamente, puedes usar una variable de entorno:
+// export GOOGLE_MAPS_API_KEY=tu_clave_aqui
+// flutter build ios
+
+GOOGLE_MAPS_API_KEY=TU_CLAVE_DE_API_AQUI
+

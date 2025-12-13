@@ -90,6 +90,9 @@ app.*.map.json
 .env.local
 .env.*.local
 
+# Google Maps API Key configuration (si contiene la clave real)
+ios/Flutter/GoogleMapsApiKey.xcconfig
+
 # Coverage
 coverage/
 
