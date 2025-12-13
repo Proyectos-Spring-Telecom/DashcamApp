@@ -21,7 +21,8 @@ import GoogleMaps
     } else {
       // Fallback: intentar leer desde Info.plist (puede estar configurado por el build system)
       apiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String ?? ""
-      if apiKey.isEmpty {
+      // Verificar si está vacío o contiene el placeholder no resuelto
+      if apiKey.isEmpty || apiKey.contains("$(GOOGLE_MAPS_API_KEY)") {
         fatalError("ERROR: GOOGLE_MAPS_API_KEY no encontrada. Define la variable de entorno GOOGLE_MAPS_API_KEY o configura GOOGLE_MAPS_API_KEY en ios/Flutter/GoogleMapsApiKey.xcconfig")
       }
     }
