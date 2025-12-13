@@ -61,6 +61,7 @@ class ScaffoldKey {
   static ValueKey<String> perfilScaffoldKey = const ValueKey<String>('perfil scaffold');
   static ValueKey<String> contactoScaffoldKey = const ValueKey<String>('contacto scaffold');
   static ValueKey<String> cambioContrasenaScaffoldKey = const ValueKey<String>('cambio contrasena scaffold');
+  static ValueKey<String> informacionUsuarioScaffoldKey = const ValueKey<String>('informacion usuario scaffold');
   static ValueKey<String> metodosPagoScaffoldKey = const ValueKey<String>('metodos pago scaffold');
   static ValueKey<String> nuevaTarjetaScaffoldKey = const ValueKey<String>('nueva tarjeta scaffold');
   static ValueKey<String> nuevoPerfilFiscalScaffoldKey = const ValueKey<String>('nuevo perfil fiscal scaffold');

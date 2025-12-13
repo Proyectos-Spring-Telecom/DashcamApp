@@ -55,6 +55,7 @@ class RoutesName {
   static String perfil = "/perfil";
   static String contacto = "/contacto";
   static String cambioContrasena = "/cambio-contrasena";
+  static String informacionUsuario = "/informacion-usuario";
   static String metodosPago = "/metodos-pago";
   static String nuevaTarjeta = "/nueva-tarjeta";
   static String nuevoPerfilFiscal = "/nuevo-perfil-fiscal";

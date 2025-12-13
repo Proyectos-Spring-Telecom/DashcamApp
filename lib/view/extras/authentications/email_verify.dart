@@ -3,6 +3,7 @@ import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/model/auth/user.dart';
+import 'dart:async';
 
 class EmailVerificationWaitingScreen extends StatefulWidget {
   final String? userName;
@@ -37,6 +38,13 @@ class _EmailVerificationWaitingScreenState
   String? _errorMessage;
   String? _successMessage;
   bool _isExpired = false;
+  
+  // Variables para reenvío de código
+  bool _isResendingCode = false;
+  int _resendCountdown = 0;
+  Timer? _resendTimer;
+  String? _resendSuccessMessage;
+  String? _resendErrorMessage;
 
   @override
   void dispose() {
@@ -46,6 +54,7 @@ class _EmailVerificationWaitingScreenState
     for (var focusNode in _focusNodes) {
       focusNode.dispose();
     }
+    _resendTimer?.cancel();
     super.dispose();
   }
 
@@ -107,6 +116,24 @@ class _EmailVerificationWaitingScreenState
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
+  }
+
+  /// Verifica si el userName está disponible (no es "Usuario")
+  bool _hasUserName() {
+    // Verificar si tenemos userName del widget
+    if (widget.userName != null && widget.userName!.isNotEmpty) {
+      return true;
+    }
+    // Verificar si tenemos userEmail del widget (el email también cuenta como userName)
+    if (widget.userEmail != null && widget.userEmail!.isNotEmpty) {
+      return true;
+    }
+    // Verificar si tenemos usuario logueado con nombre
+    final user = authBloc.currentUser;
+    if (user != null && user.nombre.isNotEmpty) {
+      return true;
+    }
+    return false;
   }
 
   /// Maneja la verificación del código
@@ -220,6 +247,109 @@ class _EmailVerificationWaitingScreenState
     }
   }
 
+  /// Maneja el reenvío del código de verificación
+  Future<void> _handleResendCode() async {
+    // Obtener el email del usuario
+    final email = _getUserEmail();
+    if (email == null || email.isEmpty) {
+      setState(() {
+        _resendErrorMessage =
+            'No se pudo obtener el correo electrónico. Por favor, inicia sesión nuevamente.';
+        _resendSuccessMessage = null;
+      });
+      return;
+    }
+
+    // Validar formato del email
+    if (!_isValidEmail(email)) {
+      setState(() {
+        _resendErrorMessage = 'El formato del correo electrónico no es válido';
+        _resendSuccessMessage = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isResendingCode = true;
+      _resendErrorMessage = null;
+      _resendSuccessMessage = null;
+    });
+
+    debugPrint('📤 Reenviando código a: $email');
+
+    try {
+      final resendResponse = await authBloc.resendCode(userName: email);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isResendingCode = false;
+      });
+
+      if (resendResponse != null && resendResponse.success) {
+        // Mostrar mensaje de éxito
+        setState(() {
+          _resendSuccessMessage = 'Hemos reenviado el código de verificación a tu correo electrónico.';
+          _resendErrorMessage = null;
+        });
+
+        // Iniciar countdown de 1 minuto (60 segundos)
+        _startResendCountdown();
+      } else {
+        // El error fue manejado por el bloc
+        String errorMessage = 'Error al reenviar el código';
+        try {
+          await authBloc.errorStream.first.timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () => null,
+          ).then((error) {
+            if (error != null && error.isNotEmpty) {
+              errorMessage = error;
+            }
+          });
+        } catch (e) {
+          debugPrint('Error al obtener mensaje del stream: $e');
+        }
+
+        if (mounted) {
+          setState(() {
+            _resendErrorMessage = errorMessage;
+            _resendSuccessMessage = null;
+          });
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isResendingCode = false;
+        _resendErrorMessage = 'Error inesperado: ${e.toString()}';
+        _resendSuccessMessage = null;
+      });
+    }
+  }
+
+  /// Inicia el countdown de 1 minuto para el reenvío de código
+  void _startResendCountdown() {
+    _resendTimer?.cancel();
+    _resendCountdown = 60; // 1 minuto = 60 segundos
+
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        if (_resendCountdown > 0) {
+          _resendCountdown--;
+        } else {
+          _resendCountdown = 0;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -311,12 +441,19 @@ class _EmailVerificationWaitingScreenState
                 stream: authBloc.userStream,
                 builder: (context, userSnapshot) {
                   final user = userSnapshot.data ?? authBloc.currentUser;
-                  // Priorizar el nombre pasado como parámetro, luego el del usuario logueado, y finalmente "Usuario"
-                  final String displayName;
+                  // Priorizar el nombre pasado como parámetro, luego el del usuario logueado, luego el email, y finalmente "Usuario"
+                  String displayName;
                   if (widget.userName != null && widget.userName!.isNotEmpty) {
                     displayName = widget.userName!;
-                  } else if (user != null) {
+                  } else if (user != null && user.nombre.isNotEmpty) {
                     displayName = '${user.nombre} ${user.apellidoPaterno}';
+                  } else if (widget.userEmail != null && widget.userEmail!.isNotEmpty) {
+                    // Si tenemos email pero no nombre, usar el email como displayName
+                    try {
+                      displayName = Uri.decodeComponent(widget.userEmail!);
+                    } catch (e) {
+                      displayName = widget.userEmail!;
+                    }
                   } else {
                     displayName = 'Usuario';
                   }
@@ -421,11 +558,98 @@ class _EmailVerificationWaitingScreenState
                 ),
               ),
             ],
+            // Mensajes de error/éxito para reenvío de código
+            if (_resendErrorMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12.0),
+                margin: const EdgeInsets.only(bottom: 16.0),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _resendErrorMessage!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_resendSuccessMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12.0),
+                margin: const EdgeInsets.only(bottom: 16.0),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _resendSuccessMessage!,
+                        textAlign: TextAlign.justify,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Mensaje informativo si no hay userName
+            if (!_hasUserName()) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12.0),
+                margin: const EdgeInsets.only(bottom: 16.0),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Por favor, haz clic en "Reenviar código" para reenviar tu código de verificación.',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // Code input fields - Centered
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (index) {
+                final hasUserName = _hasUserName();
                 return Container(
                   width: 60.0,
                   height: 60.0,
@@ -435,13 +659,14 @@ class _EmailVerificationWaitingScreenState
                   child: TextField(
                     controller: _codeControllers[index],
                     focusNode: _focusNodes[index],
+                    enabled: hasUserName && !_isLoading,
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
                     maxLength: 1,
                     style: TextStyle(
                       fontSize: 24.0,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: hasUserName ? textColor : Colors.grey,
                     ),
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
@@ -462,6 +687,13 @@ class _EmailVerificationWaitingScreenState
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
                           color: Colors.grey[300]!,
+                          width: 1.0,
+                        ),
+                      ),
+                      disabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.grey[400]!,
                           width: 1.0,
                         ),
                       ),
@@ -500,7 +732,7 @@ class _EmailVerificationWaitingScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: FilledButton(
-                      onPressed: (_isCodeComplete() && !_isLoading)
+                      onPressed: (_isCodeComplete() && !_isLoading && _hasUserName())
                           ? _handleVerification
                           : null,
                       style: FilledButton.styleFrom(
@@ -539,8 +771,22 @@ class _EmailVerificationWaitingScreenState
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      // Aquí puedes agregar la lógica para reenviar el código
-                      debugPrint('Reenviar código');
+                      // Abrir modal de reenvío de código
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          insetPadding: const EdgeInsets.all(24.0),
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 500),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const ResendCodeModal(),
+                          ),
+                        ),
+                      );
                     },
                     child: const Text(
                       "Reenviar código",
@@ -614,13 +860,20 @@ class _EmailVerificationWaitingScreenState
                     stream: authBloc.userStream,
                     builder: (context, userSnapshot) {
                       final user = userSnapshot.data ?? authBloc.currentUser;
-                      // Priorizar el nombre pasado como parámetro, luego el del usuario logueado, y finalmente "Usuario"
-                      final String displayName;
+                      // Priorizar el nombre pasado como parámetro, luego el del usuario logueado, luego el email, y finalmente "Usuario"
+                      String displayName;
                       if (widget.userName != null &&
                           widget.userName!.isNotEmpty) {
                         displayName = widget.userName!;
-                      } else if (user != null) {
+                      } else if (user != null && user.nombre.isNotEmpty) {
                         displayName = '${user.nombre} ${user.apellidoPaterno}';
+                      } else if (widget.userEmail != null && widget.userEmail!.isNotEmpty) {
+                        // Si tenemos email pero no nombre, usar el email como displayName
+                        try {
+                          displayName = Uri.decodeComponent(widget.userEmail!);
+                        } catch (e) {
+                          displayName = widget.userEmail!;
+                        }
                       } else {
                         displayName = 'Usuario';
                       }
@@ -724,11 +977,98 @@ class _EmailVerificationWaitingScreenState
                     ),
                   ),
                 ],
+                // Mensajes de error/éxito para reenvío de código
+                if (_resendErrorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12.0),
+                    margin: const EdgeInsets.only(bottom: 16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _resendErrorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (_resendSuccessMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12.0),
+                    margin: const EdgeInsets.only(bottom: 16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline,
+                            color: Colors.green, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _resendSuccessMessage!,
+                            textAlign: TextAlign.justify,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Mensaje informativo si no hay userName
+                if (!_hasUserName()) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12.0),
+                    margin: const EdgeInsets.only(bottom: 16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Por favor, haz clic en "Reenviar código" para reenviar tu código de verificación.',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // Code input fields - Centered
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(4, (index) {
+                    final hasUserName = _hasUserName();
                     return Container(
                       width: 70.0,
                       height: 70.0,
@@ -738,13 +1078,14 @@ class _EmailVerificationWaitingScreenState
                       child: TextField(
                         controller: _codeControllers[index],
                         focusNode: _focusNodes[index],
+                        enabled: hasUserName && !_isLoading,
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
                         maxLength: 1,
                         style: TextStyle(
                           fontSize: 28.0,
                           fontWeight: FontWeight.bold,
-                          color: textColor,
+                          color: hasUserName ? textColor : Colors.grey,
                         ),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
@@ -765,6 +1106,13 @@ class _EmailVerificationWaitingScreenState
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
                               color: Colors.grey[300]!,
+                              width: 1.0,
+                            ),
+                          ),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey[400]!,
                               width: 1.0,
                             ),
                           ),
@@ -803,7 +1151,7 @@ class _EmailVerificationWaitingScreenState
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: FilledButton(
-                          onPressed: (_isCodeComplete() && !_isLoading)
+                          onPressed: (_isCodeComplete() && !_isLoading && _hasUserName())
                               ? _handleVerification
                               : null,
                           style: FilledButton.styleFrom(
@@ -841,8 +1189,22 @@ class _EmailVerificationWaitingScreenState
                     // Resend code link
                     TextButton(
                       onPressed: () {
-                        // Aquí puedes agregar la lógica para reenviar el código
-                        debugPrint('Reenviar código');
+                        // Abrir modal de reenvío de código
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: const EdgeInsets.all(24.0),
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 500),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const ResendCodeModal(),
+                            ),
+                          ),
+                        );
                       },
                       child: const Text(
                         "Reenviar código",

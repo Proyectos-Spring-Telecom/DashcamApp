@@ -312,6 +312,15 @@ class AppRoutes {
           },
         ),
         GoRoute(
+          path: RoutesName.informacionUsuario,
+          pageBuilder: (BuildContext context, GoRouterState state) {
+            return FadeTransitionPage(
+              key: ScaffoldKey.informacionUsuarioScaffoldKey,
+              child: const InformacionUsuarioPage(),
+            );
+          },
+        ),
+        GoRoute(
           path: RoutesName.metodosPago,
           pageBuilder: (BuildContext context, GoRouterState state) {
             return FadeTransitionPage(

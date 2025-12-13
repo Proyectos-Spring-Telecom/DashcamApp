@@ -125,6 +125,35 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+                // Información del contacto button
+                FilledButton(
+                  onPressed: () {
+                    GoRouter.of(context).go(RoutesName.informacionUsuario);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF205AA8), // Blue
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.person, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Información del usuario",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 40),
                 // Menu options
                 _buildMenuOption(
@@ -155,8 +184,8 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                 ),
                 Divider(color: Colors.grey, height: 1),
                 _buildMenuOption(
-                  icon: Icons.person,
-                  title: "Configuración de la cuenta",
+                  icon: Icons.lock,
+                  title: "Cambiar contraseña",
                   iconColor: const Color(0xFF205AA8), // Blue
                   textColor: textColor,
                   onTap: () {
@@ -166,7 +195,7 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                 ),
                 Divider(color: Colors.grey, height: 1),
                 _buildMenuOption(
-                  icon: Icons.lock,
+                  icon: Icons.support_agent,
                   title: "Privacidad y Contacto",
                   iconColor: Colors.grey,
                   textColor: textColor,
@@ -257,6 +286,35 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
+                  // Información del contacto button
+                  FilledButton(
+                    onPressed: () {
+                      GoRouter.of(context).go(RoutesName.informacionUsuario);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF205AA8), // Blue
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Información del usuario",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 40),
                   // Menu options
                   _buildMenuOption(
@@ -287,8 +345,8 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                   ),
                   Divider(color: Colors.grey, height: 1),
                   _buildMenuOption(
-                    icon: Icons.person,
-                    title: "Configuración de la cuenta",
+                    icon: Icons.lock,
+                    title: "Cambiar contraseña",
                     iconColor: const Color(0xFF205AA8), // Blue
                     textColor: textColor,
                     onTap: () {
@@ -298,7 +356,7 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                   ),
                   Divider(color: Colors.grey, height: 1),
                   _buildMenuOption(
-                    icon: Icons.lock,
+                    icon: Icons.support_agent,
                     title: "Privacidad y Contacto",
                     iconColor: Colors.grey,
                     textColor: textColor,

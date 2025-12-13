@@ -18,35 +18,22 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  String? _successMessage;
+  String? _errorMessage;
 
-  // Password strength: 0 = weak (red), 1 = medium (yellow), 2 = strong (green)
-  int _passwordStrength = 0;
 
   @override
   void initState() {
     super.initState();
-    _newPasswordController.addListener(_checkPasswordStrength);
+    _newPasswordController.addListener(_onNewPasswordChanged);
+    _confirmPasswordController.addListener(_onNewPasswordChanged);
   }
 
-  void _checkPasswordStrength() {
-    final password = _newPasswordController.text;
-    if (password.isEmpty) {
-      setState(() {
-        _passwordStrength = 0;
-      });
-    } else if (password.length < 6) {
-      setState(() {
-        _passwordStrength = 0; // Weak - red
-      });
-    } else if (password.length < 10) {
-      setState(() {
-        _passwordStrength = 1; // Medium - yellow
-      });
-    } else {
-      setState(() {
-        _passwordStrength = 2; // Strong - green
-      });
-    }
+  void _onNewPasswordChanged() {
+    setState(() {
+      // Actualizar para mostrar validación y reglas de contraseña
+    });
   }
 
   @override
@@ -54,8 +41,214 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
-    _newPasswordController.removeListener(_checkPasswordStrength);
+    _newPasswordController.removeListener(_onNewPasswordChanged);
+    _confirmPasswordController.removeListener(_onNewPasswordChanged);
     super.dispose();
+  }
+
+  /// Verifica si la nueva contraseña cumple con todas las reglas
+  bool _isNewPasswordValid() {
+    final password = _newPasswordController.text;
+    if (password.isEmpty) return false;
+    
+    // Validar todas las reglas
+    if (password.length < 7 || password.length > 15) return false;
+    if (password.contains(' ')) return false;
+    if (!password.contains(RegExp(r'[a-z]'))) return false;
+    if (!password.contains(RegExp(r'[0-9]'))) return false;
+    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return false;
+    
+    return true;
+  }
+
+  /// Verifica si la contraseña de confirmación cumple con todas las reglas
+  bool _isConfirmPasswordValid() {
+    final password = _confirmPasswordController.text;
+    if (password.isEmpty) return false;
+    
+    // Validar todas las reglas
+    if (password.length < 7 || password.length > 15) return false;
+    if (password.contains(' ')) return false;
+    if (!password.contains(RegExp(r'[a-z]'))) return false;
+    if (!password.contains(RegExp(r'[0-9]'))) return false;
+    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return false;
+    
+    return true;
+  }
+
+  /// Verifica si ambas contraseñas coinciden
+  bool _doPasswordsMatch() {
+    return _newPasswordController.text == _confirmPasswordController.text &&
+           _newPasswordController.text.isNotEmpty &&
+           _confirmPasswordController.text.isNotEmpty;
+  }
+
+  /// Construye el widget que muestra las reglas de contraseña
+  Widget _buildPasswordRules({required bool isDark, required Color textColor}) {
+    final password = _newPasswordController.text;
+    final ruleTextColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+    
+    // Verificar cada regla
+    final hasMinLength = password.length >= 7;
+    final hasMaxLength = password.length <= 15;
+    final hasNoSpaces = !password.contains(' ');
+    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasNumber = password.contains(RegExp(r'[0-9]'));
+    final hasSymbol = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "La contraseña debe:",
+          style: TextStyle(
+            color: textColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        _buildRuleItem(
+          "Tener entre 7 y 15 caracteres",
+          hasMinLength && hasMaxLength,
+          ruleTextColor,
+        ),
+        _buildRuleItem(
+          "Tener al menos una minúscula",
+          hasLowercase,
+          ruleTextColor,
+        ),
+        _buildRuleItem(
+          "Tener al menos un número",
+          hasNumber,
+          ruleTextColor,
+        ),
+        _buildRuleItem(
+          "Incluir un símbolo",
+          hasSymbol,
+          ruleTextColor,
+        ),
+        _buildRuleItem(
+          "No contener espacios",
+          hasNoSpaces,
+          ruleTextColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRuleItem(String text, bool isValid, Color defaultColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isValid ? Icons.check_circle : Icons.circle_outlined,
+            size: 16,
+            color: isValid ? Colors.green : defaultColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: isValid ? Colors.green : defaultColor,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Maneja el cambio de contraseña
+  Future<void> _handleChangePassword() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Validar que las contraseñas nuevas coincidan antes de enviar
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      setState(() {
+        _errorMessage = 'Las contraseñas nuevas no coinciden';
+        _successMessage = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    try {
+      final response = await authBloc.changePassword(
+        passwordActual: _currentPasswordController.text,
+        passwordNueva: _newPasswordController.text,
+        passwordNuevaConfirmacion: _confirmPasswordController.text,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response != null && response.success) {
+        // Mostrar mensaje de éxito
+        setState(() {
+          _successMessage = 'Tu contraseña se actualizó correctamente.';
+          _errorMessage = null;
+        });
+
+        // Limpiar los campos
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+
+        // Redirigir al perfil después de un breve delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            final router = GoRouter.of(context);
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              router.go(RoutesName.perfil);
+            }
+          }
+        });
+      } else {
+        // El error fue manejado por el bloc
+        String errorMessage = 'Error al cambiar la contraseña';
+        try {
+          await authBloc.errorStream.first.timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () => null,
+          ).then((error) {
+            if (error != null && error.isNotEmpty) {
+              errorMessage = error;
+            }
+          });
+        } catch (e) {
+          debugPrint('Error al obtener mensaje del stream: $e');
+        }
+
+        if (mounted) {
+          setState(() {
+            _errorMessage = errorMessage;
+            _successMessage = null;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error inesperado: ${e.toString()}';
+          _successMessage = null;
+        });
+      }
+    }
   }
 
   @override
@@ -138,6 +331,7 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                               TextFormField(
                                 controller: _currentPasswordController,
                                 obscureText: _obscureCurrentPassword,
+                                enabled: !_isLoading,
                                 style: TextStyle(color: textColor),
                                 decoration: InputDecoration(
                                   filled: true,
@@ -212,7 +406,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                               TextFormField(
                                 controller: _newPasswordController,
                                 obscureText: _obscureNewPassword,
+                                enabled: !_isLoading,
                                 style: TextStyle(color: textColor),
+                                onChanged: (value) {
+                                  setState(() {}); // Actualizar para mostrar validación y reglas
+                                },
                                 decoration: InputDecoration(
                                   filled: true,
                                   fillColor: isDark
@@ -236,14 +434,14 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                   errorBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(
-                                        color: Colors.white, width: 1.0),
+                                        color: Colors.red, width: 1.0),
                                   ),
                                   disabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(
                                         color: Colors.white, width: 1.0),
                                   ),
-                                  hintText: "************",
+                                  hintText: "••••••••••••",
                                   hintStyle: TextStyle(
                                       color: isDark
                                           ? Colors.grey[500]
@@ -269,12 +467,49 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor ingresa una nueva contraseña';
                                   }
-                                  if (value.length < 6) {
-                                    return 'La contraseña debe tener al menos 6 caracteres';
+                                  
+                                  // Validar longitud
+                                  if (value.length < 7 || value.length > 15) {
+                                    return 'La contraseña debe tener entre 7 y 15 caracteres';
                                   }
+                                  
+                                  // Validar que no contenga espacios
+                                  if (value.contains(' ')) {
+                                    return 'La contraseña no puede contener espacios';
+                                  }
+                                  
+                                  // Validar que tenga al menos una minúscula
+                                  if (!value.contains(RegExp(r'[a-z]'))) {
+                                    return 'La contraseña debe tener al menos una minúscula';
+                                  }
+                                  
+                                  // Validar que tenga al menos un número
+                                  if (!value.contains(RegExp(r'[0-9]'))) {
+                                    return 'La contraseña debe tener al menos un número';
+                                  }
+                                  
+                                  // Validar que tenga al menos un símbolo
+                                  if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                                    return 'La contraseña debe incluir al menos un símbolo';
+                                  }
+                                  
                                   return null;
                                 },
                               ),
+                              const SizedBox(height: 8),
+                              // Reglas de contraseña (solo mostrar las que no se cumplen)
+                              if (!_isNewPasswordValid() && _newPasswordController.text.isNotEmpty)
+                                _buildPasswordRules(isDark: isDark, textColor: textColor),
+                              // Mensaje de contraseña válida (solo cuando todas las reglas se cumplan)
+                              if (_isNewPasswordValid())
+                                Text(
+                                  "Contraseña válida",
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               const SizedBox(height: 24),
                               // Confirm Password
                               Text(
@@ -289,7 +524,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                               TextFormField(
                                 controller: _confirmPasswordController,
                                 obscureText: _obscureConfirmPassword,
+                                enabled: !_isLoading,
                                 style: TextStyle(color: textColor),
+                                onChanged: (value) {
+                                  setState(() {}); // Actualizar para habilitar/deshabilitar botón
+                                },
                                 decoration: InputDecoration(
                                   filled: true,
                                   fillColor: isDark
@@ -313,7 +552,12 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                   errorBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(
-                                        color: Colors.white, width: 1.0),
+                                        color: Colors.red, width: 1.0),
+                                  ),
+                                  focusedErrorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                        color: Colors.red, width: 2.0),
                                   ),
                                   disabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -346,102 +590,153 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor confirma tu contraseña';
                                   }
+                                  
+                                  // Validar longitud
+                                  if (value.length < 7 || value.length > 15) {
+                                    return 'La contraseña debe tener entre 7 y 15 caracteres';
+                                  }
+                                  
+                                  // Validar que no contenga espacios
+                                  if (value.contains(' ')) {
+                                    return 'La contraseña no puede contener espacios';
+                                  }
+                                  
+                                  // Validar que tenga al menos una minúscula
+                                  if (!value.contains(RegExp(r'[a-z]'))) {
+                                    return 'La contraseña debe tener al menos una minúscula';
+                                  }
+                                  
+                                  // Validar que tenga al menos un número
+                                  if (!value.contains(RegExp(r'[0-9]'))) {
+                                    return 'La contraseña debe tener al menos un número';
+                                  }
+                                  
+                                  // Validar que tenga al menos un símbolo
+                                  if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                                    return 'La contraseña debe incluir al menos un símbolo';
+                                  }
+                                  
+                                  // Validar que coincida con la nueva contraseña
                                   if (value != _newPasswordController.text) {
                                     return 'Las contraseñas no coinciden';
                                   }
+                                  
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 24),
-                              // Password Security Indicator
-                              Row(
-                                children: [
-                                  Text(
-                                    "Seguridad en contraseña",
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                              const SizedBox(height: 8),
+                              // Mensaje de confirmación válida
+                              if (_isConfirmPasswordValid() && _doPasswordsMatch())
+                                Text(
+                                  "Las contraseñas coinciden",
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  Spacer(),
-                                  Row(
+                                )
+                              else if (_confirmPasswordController.text.isNotEmpty && !_doPasswordsMatch())
+                                Text(
+                                  "Las contraseñas no coinciden",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              const SizedBox(height: 24),
+                              // Mensajes de error/éxito
+                              if (_errorMessage != null) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12.0),
+                                  margin: const EdgeInsets.only(bottom: 16.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.red, width: 1),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: _passwordStrength >= 0
-                                              ? Colors.red
-                                              : Colors.grey[600],
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
+                                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
                                       const SizedBox(width: 8),
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: _passwordStrength >= 1
-                                              ? Colors.yellow
-                                              : Colors.grey[600],
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: _passwordStrength >= 2
-                                              ? Colors.green
-                                              : Colors.grey[600],
-                                          shape: BoxShape.circle,
+                                      Expanded(
+                                        child: Text(
+                                          _errorMessage!,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 32),
+                                ),
+                              ],
+                              if (_successMessage != null) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12.0),
+                                  margin: const EdgeInsets.only(bottom: 16.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green, width: 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle_outline,
+                                          color: Colors.green, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _successMessage!,
+                                          textAlign: TextAlign.justify,
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
                               // Change Password Button
                               SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content:
-                                              Text('Contraseña cambiada exitosamente'),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                      Future.delayed(Duration(seconds: 1), () {
-                                        final router = GoRouter.of(context);
-                                        if (router.canPop()) {
-                                          router.pop();
-                                        } else {
-                                          router.go(RoutesName.perfil);
-                                        }
-                                      });
-                                    }
-                                  },
+                                  onPressed: (_isNewPasswordValid() && 
+                                             _newPasswordController.text == _confirmPasswordController.text &&
+                                             !_isLoading)
+                                      ? _handleChangePassword
+                                      : null,
                                   style: FilledButton.styleFrom(
                                     backgroundColor: const Color(0xFF205AA8), // Blue
+                                    disabledBackgroundColor: const Color(0xFF205AA8).withOpacity(0.6),
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  child: Text(
-                                    "Cambiar Contraseña",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        )
+                                      : Text(
+                                          "Cambiar Contraseña",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                 ),
                               ),
                 ],
@@ -491,6 +786,7 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                     TextFormField(
                       controller: _currentPasswordController,
                       obscureText: _obscureCurrentPassword,
+                      enabled: !_isLoading,
                       style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         filled: true,
@@ -561,7 +857,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                     TextFormField(
                       controller: _newPasswordController,
                       obscureText: _obscureNewPassword,
+                      enabled: !_isLoading,
                       style: TextStyle(color: textColor),
+                      onChanged: (value) {
+                        setState(() {}); // Actualizar para mostrar validación y reglas
+                      },
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
@@ -583,14 +883,14 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Colors.white, width: 1.0),
+                            color: Colors.red, width: 1.0),
                         ),
                         disabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
                             color: Colors.white, width: 1.0),
                         ),
-                        hintText: "************",
+                        hintText: "••••••••••••",
                         hintStyle: TextStyle(
                           color: isDark ? Colors.grey[500] : Colors.grey[400],
                         ),
@@ -614,12 +914,49 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                         if (value == null || value.isEmpty) {
                           return 'Por favor ingresa una nueva contraseña';
                         }
-                        if (value.length < 6) {
-                          return 'La contraseña debe tener al menos 6 caracteres';
+                        
+                        // Validar longitud
+                        if (value.length < 7 || value.length > 15) {
+                          return 'La contraseña debe tener entre 7 y 15 caracteres';
                         }
+                        
+                        // Validar que no contenga espacios
+                        if (value.contains(' ')) {
+                          return 'La contraseña no puede contener espacios';
+                        }
+                        
+                        // Validar que tenga al menos una minúscula
+                        if (!value.contains(RegExp(r'[a-z]'))) {
+                          return 'La contraseña debe tener al menos una minúscula';
+                        }
+                        
+                        // Validar que tenga al menos un número
+                        if (!value.contains(RegExp(r'[0-9]'))) {
+                          return 'La contraseña debe tener al menos un número';
+                        }
+                        
+                        // Validar que tenga al menos un símbolo
+                        if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                          return 'La contraseña debe incluir al menos un símbolo';
+                        }
+                        
                         return null;
                       },
                     ),
+                    const SizedBox(height: 8),
+                    // Reglas de contraseña (solo mostrar las que no se cumplen)
+                    if (!_isNewPasswordValid() && _newPasswordController.text.isNotEmpty)
+                      _buildPasswordRules(isDark: isDark, textColor: textColor),
+                    // Mensaje de contraseña válida (solo cuando todas las reglas se cumplan)
+                    if (_isNewPasswordValid())
+                      Text(
+                        "Contraseña válida",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     // Confirm Password
                     Text(
@@ -634,7 +971,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
+                      enabled: !_isLoading,
                       style: TextStyle(color: textColor),
+                      onChanged: (value) {
+                        setState(() {}); // Actualizar para habilitar/deshabilitar botón
+                      },
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
@@ -656,7 +997,12 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Colors.white, width: 1.0),
+                            color: Colors.red, width: 1.0),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.red, width: 2.0),
                         ),
                         disabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -687,108 +1033,153 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                         if (value == null || value.isEmpty) {
                           return 'Por favor confirma tu nueva contraseña';
                         }
+                        
+                        // Validar longitud
+                        if (value.length < 7 || value.length > 15) {
+                          return 'La contraseña debe tener entre 7 y 15 caracteres';
+                        }
+                        
+                        // Validar que no contenga espacios
+                        if (value.contains(' ')) {
+                          return 'La contraseña no puede contener espacios';
+                        }
+                        
+                        // Validar que tenga al menos una minúscula
+                        if (!value.contains(RegExp(r'[a-z]'))) {
+                          return 'La contraseña debe tener al menos una minúscula';
+                        }
+                        
+                        // Validar que tenga al menos un número
+                        if (!value.contains(RegExp(r'[0-9]'))) {
+                          return 'La contraseña debe tener al menos un número';
+                        }
+                        
+                        // Validar que tenga al menos un símbolo
+                        if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                          return 'La contraseña debe incluir al menos un símbolo';
+                        }
+                        
+                        // Validar que coincida con la nueva contraseña
                         if (value != _newPasswordController.text) {
                           return 'Las contraseñas no coinciden';
                         }
+                        
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
-                    // Password Strength Indicator
-                    Row(
-                      children: [
-                        Text(
-                          "Fortaleza de la contraseña:",
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    const SizedBox(height: 8),
+                    // Mensaje de confirmación válida
+                    if (_isConfirmPasswordValid() && _doPasswordsMatch())
+                      Text(
+                        "Las contraseñas coinciden",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
-                        Spacer(),
-                        Row(
+                      )
+                    else if (_confirmPasswordController.text.isNotEmpty && !_doPasswordsMatch())
+                      Text(
+                        "Las contraseñas no coinciden",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    // Mensajes de error/éxito
+                    if (_errorMessage != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12.0),
+                        margin: const EdgeInsets.only(bottom: 16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red, width: 1),
+                        ),
+                        child: Row(
                           children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _passwordStrength >= 0
-                                    ? (_passwordStrength == 0
-                                        ? Colors.red
-                                        : _passwordStrength == 1
-                                            ? Colors.orange
-                                            : Colors.green)
-                                    : Colors.grey,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                            const Icon(Icons.error_outline, color: Colors.red, size: 20),
                             const SizedBox(width: 8),
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _passwordStrength >= 1
-                                    ? (_passwordStrength == 1
-                                        ? Colors.orange
-                                        : Colors.green)
-                                    : Colors.grey,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _passwordStrength >= 2
-                                    ? Colors.green
-                                    : Colors.grey,
-                                shape: BoxShape.circle,
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
+                      ),
+                    ],
+                    if (_successMessage != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12.0),
+                        margin: const EdgeInsets.only(bottom: 16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green, width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline,
+                                color: Colors.green, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _successMessage!,
+                                textAlign: TextAlign.justify,
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     // Change Password Button
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('Contraseña cambiada exitosamente'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                            Future.delayed(Duration(seconds: 1), () {
-                              final router = GoRouter.of(context);
-                              if (router.canPop()) {
-                                router.pop();
-                              } else {
-                                router.go(RoutesName.perfil);
-                              }
-                            });
-                          }
-                        },
+                        onPressed: (_isNewPasswordValid() && 
+                                   _newPasswordController.text == _confirmPasswordController.text &&
+                                   !_isLoading)
+                            ? _handleChangePassword
+                            : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF205AA8), // Blue
+                          disabledBackgroundColor: const Color(0xFF205AA8).withOpacity(0.6),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: Text(
-                          "Cambiar Contraseña",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Text(
+                                "Cambiar Contraseña",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],

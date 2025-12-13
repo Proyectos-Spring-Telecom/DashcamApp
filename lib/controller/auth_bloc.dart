@@ -4,6 +4,12 @@ import 'package:dashboardpro/model/auth/registro_request.dart';
 import 'package:dashboardpro/model/auth/registro_response.dart';
 import 'package:dashboardpro/model/auth/verify_request.dart';
 import 'package:dashboardpro/model/auth/verify_response.dart';
+import 'package:dashboardpro/model/auth/forgot_password_request.dart';
+import 'package:dashboardpro/model/auth/forgot_password_response.dart';
+import 'package:dashboardpro/model/auth/resend_code_request.dart';
+import 'package:dashboardpro/model/auth/resend_code_response.dart';
+import 'package:dashboardpro/model/auth/change_password_request.dart';
+import 'package:dashboardpro/model/auth/change_password_response.dart';
 import 'package:dashboardpro/services/auth_service.dart';
 import 'package:dashboardpro/services/secure_storage_service.dart';
 import 'package:flutter/foundation.dart';
@@ -183,6 +189,135 @@ class AuthBloc {
       return null;
     } catch (e, stackTrace) {
       debugPrint('❌ Error inesperado en verifyEmail: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add('Error inesperado: ${e.toString()}');
+      return null;
+    }
+  }
+
+  /// Recupera la contraseña enviando un código al correo electrónico
+  Future<ForgotPasswordResponse?> recoverPassword({
+    required String userName,
+  }) async {
+    try {
+      _authStatus = AuthStatus.loading;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      final request = ForgotPasswordRequest(
+        userName: userName,
+      );
+
+      final recoverResponse = await _authService.recoverPassword(request);
+
+      // Limpiar estado de error
+      _authStatus = AuthStatus.unauthenticated;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      return recoverResponse;
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en recoverPassword: ${e.message}');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add(e.message);
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error inesperado en recoverPassword: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add('Error inesperado: ${e.toString()}');
+      return null;
+    }
+  }
+
+  /// Reenvía el código de verificación al correo electrónico del usuario
+  Future<ResendCodeResponse?> resendCode({
+    required String userName,
+  }) async {
+    try {
+      _authStatus = AuthStatus.loading;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      final request = ResendCodeRequest(
+        userName: userName,
+      );
+
+      final resendResponse = await _authService.resendCode(request);
+
+      // Limpiar estado de error
+      _authStatus = AuthStatus.unauthenticated;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      return resendResponse;
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en resendCode: ${e.message}');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add(e.message);
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error inesperado en resendCode: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add('Error inesperado: ${e.toString()}');
+      return null;
+    }
+  }
+
+  /// Cambia la contraseña del usuario autenticado
+  Future<ChangePasswordResponse?> changePassword({
+    required String passwordActual,
+    required String passwordNueva,
+    required String passwordNuevaConfirmacion,
+  }) async {
+    try {
+      // Validar que el usuario esté autenticado
+      if (_currentUser == null) {
+        throw AuthException('No hay un usuario autenticado. Por favor, inicia sesión nuevamente.');
+      }
+
+      // Validar que las contraseñas nuevas coincidan antes de enviar
+      if (passwordNueva != passwordNuevaConfirmacion) {
+        throw AuthException('Las contraseñas nuevas no coinciden.');
+      }
+
+      _authStatus = AuthStatus.loading;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      final request = ChangePasswordRequest(
+        passwordActual: passwordActual,
+        passwordNueva: passwordNueva,
+        passwordNuevaConfirmacion: passwordNuevaConfirmacion,
+      );
+
+      final changePasswordResponse = await _authService.changePassword(
+        userId: _currentUser!.id,
+        request: request,
+        token: _currentToken,
+      );
+
+      // Limpiar estado de error
+      _authStatus = AuthStatus.authenticated;
+      _authController.add(_authStatus);
+      _errorController.add(null);
+
+      return changePasswordResponse;
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en changePassword: ${e.message}');
+      _authStatus = AuthStatus.error;
+      _authController.add(_authStatus);
+      _errorController.add(e.message);
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error inesperado en changePassword: $e');
       debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
