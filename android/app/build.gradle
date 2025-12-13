@@ -60,7 +60,11 @@ android {
         versionName = flutterVersionName
         
         // Google Maps API Key - se inyecta en AndroidManifest.xml mediante manifestPlaceholders
-        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey]
+        // También incluimos applicationName que es requerido por Flutter
+        manifestPlaceholders = [
+            googleMapsApiKey: googleMapsApiKey,
+            applicationName: "io.flutter.app.FlutterApplication"
+        ]
     }
 
     buildTypes {

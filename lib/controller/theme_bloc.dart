@@ -3,11 +3,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 
 class ThemeBloc {
-  AppTheme _currentTheme;
   final _themeController = StreamController<AppTheme>.broadcast();
   Stream<AppTheme> get themeStream => _themeController.stream;
-  bool _isDarkMode;
   ColorSeed _currentColorSeed = ColorSeed.baseColor; // Default color seed
+  
+  // Inicializar campos no-nullables
+  late AppTheme _currentTheme;
+  late bool _isDarkMode;
 
   AppTheme get currentTheme => _currentTheme;
   bool get isDarkMode => _isDarkMode; // Getter to check current mode
