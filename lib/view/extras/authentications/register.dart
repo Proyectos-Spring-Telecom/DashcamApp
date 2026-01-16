@@ -1,7 +1,11 @@
 // Project imports:
+import 'dart:async';
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/controller/cliente_bloc.dart';
+import 'package:dashboardpro/domain/entities/cliente_entity.dart';
+import 'package:quickalert/quickalert.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -24,6 +28,27 @@ class _RegisterState extends State<Register> {
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+  int? _selectedClienteId;
+  List<ClienteEntity> _clientes = [];
+  bool _isLoadingClientes = false;
+  StreamSubscription<List<ClienteEntity>>? _clientesSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarClientes();
+    // Listener para cambios en el campo monedero
+    _monederoController.addListener(_onMonederoChanged);
+    
+    // Escuchar cambios en los clientes del bloc
+    _clientesSubscription = clienteBloc.clientesStream.listen((clientes) {
+      if (mounted && clientes != _clientes) {
+        setState(() {
+          _clientes = clientes;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -34,8 +59,57 @@ class _RegisterState extends State<Register> {
     _telefonoController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _monederoController.removeListener(_onMonederoChanged);
     _monederoController.dispose();
+    _clientesSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Carga la lista de clientes activos
+  Future<void> _cargarClientes() async {
+    setState(() {
+      _isLoadingClientes = true;
+    });
+
+    final result = await clienteBloc.cargarClientes();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingClientes = false;
+    });
+
+    if (result.isSuccess) {
+      setState(() {
+        _clientes = result.data ?? [];
+      });
+    } else {
+      // Mostrar error solo si no hay clientes cargados previamente
+      if (_clientes.isEmpty && mounted) {
+        // No mostrar diálogo aquí, solo log del error
+        // El usuario puede intentar registrar sin compañía si tiene monedero
+        debugPrint('⚠️ Error al cargar clientes: ${result.errorMessage}');
+      }
+    }
+  }
+
+  /// Maneja los cambios en el campo monedero
+  /// Si hay monedero, deshabilita y limpia el dropdown
+  void _onMonederoChanged() {
+    final tieneMonedero = _monederoController.text.trim().isNotEmpty;
+    final teniaMonedero = _selectedClienteId == null && _monederoController.text.trim().isEmpty;
+    
+    // Solo actualizar si cambió el estado de tener/no tener monedero
+    if (tieneMonedero && _selectedClienteId != null) {
+      // Limpiar selección si hay monedero
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedClienteId = null;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -181,6 +255,14 @@ class _RegisterState extends State<Register> {
             ),
             const SizedBox(height: 20.0),
 
+            // Compañía de transporte
+            _buildClienteDropdown(
+              context: context,
+              isDark: isDark,
+              textColor: textColor,
+            ),
+            const SizedBox(height: 20.0),
+
             // Correo Electrónico
             _buildEmailField(
               label: "Correo Electrónico",
@@ -316,6 +398,14 @@ class _RegisterState extends State<Register> {
                 ),
                 const SizedBox(height: 20.0),
 
+                // Compañía de transporte
+                _buildClienteDropdown(
+                  context: context,
+                  isDark: isDark,
+                  textColor: textColor,
+                ),
+                const SizedBox(height: 20.0),
+
                 // Correo Electrónico
                 _buildEmailField(
                   label: "Correo Electrónico",
@@ -404,7 +494,12 @@ class _RegisterState extends State<Register> {
             if (onChanged != null) {
               onChanged();
             }
-            setState(() {}); // Actualizar para habilitar/deshabilitar botón
+            // Actualizar solo si es necesario (no en cada tecla)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {});
+              }
+            });
           },
           validator: isRequired
               ? (value) {
@@ -619,6 +714,131 @@ class _RegisterState extends State<Register> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildClienteDropdown({
+    required BuildContext context,
+    required bool isDark,
+    required Color textColor,
+  }) {
+    final labelTextColor = textColor;
+    final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
+    final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final tieneMonedero = _monederoController.text.trim().isNotEmpty;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              "Compañía de transporte",
+              style: TextStyle(
+                color: labelTextColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (!tieneMonedero) ...[
+              const SizedBox(width: 4),
+              Text(
+                "*",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_isLoadingClientes)
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: fieldBgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white, width: 1.0),
+            ),
+            child: Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(textColor),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: fieldBgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white,
+                width: 1.0,
+              ),
+            ),
+            child: DropdownButtonFormField<int>(
+              value: _selectedClienteId,
+              decoration: InputDecoration(
+                hintText: tieneMonedero 
+                    ? "Deshabilitado" 
+                    : "Selecciona una compañía",
+                hintStyle: TextStyle(color: hintTextColor),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
+              ),
+              dropdownColor: isDark ? Colors.grey[800] : Colors.white,
+              style: TextStyle(color: textColor),
+              icon: Icon(Icons.arrow_drop_down, color: textColor),
+              isExpanded: true, // Hace que el dropdown use todo el ancho disponible
+              menuMaxHeight: MediaQuery.of(context).size.height * 0.4, // Limita la altura máxima del menú al 40% de la pantalla
+              items: _clientes.map((ClienteEntity cliente) {
+                return DropdownMenuItem<int>(
+                  value: cliente.id,
+                  child: Text(
+                    cliente.nombreCompleto,
+                    overflow: TextOverflow.ellipsis, // Trunca el texto si es muy largo
+                    maxLines: 1,
+                  ),
+                );
+              }).toList(),
+              onChanged: tieneMonedero
+                  ? null // Deshabilitado si hay monedero
+                  : (int? value) {
+                      setState(() {
+                        _selectedClienteId = value;
+                      });
+                    },
+              validator: tieneMonedero
+                  ? null // No validar si hay monedero
+                  : (int? value) {
+                      if (value == null) {
+                        return 'Debes seleccionar una compañía de transporte';
+                      }
+                      return null;
+                    },
+            ),
+          ),
+        if (tieneMonedero) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Solo se puede seleccionar una compañía de transporte si no tienes un monedero.',
+            style: TextStyle(
+              color: hintTextColor,
+              fontSize: 9,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -917,7 +1137,11 @@ class _RegisterState extends State<Register> {
     if (_fechaNacimientoController.text.trim().isEmpty) return false;
     if (_telefonoController.text.trim().isEmpty) return false;
     if (_emailController.text.trim().isEmpty) return false;
-    // Monedero es opcional, no se valida
+    
+    // Validar reglas de negocio:
+    // Si NO hay monedero, DEBE haber idCliente seleccionado
+    final tieneMonedero = _monederoController.text.trim().isNotEmpty;
+    if (!tieneMonedero && _selectedClienteId == null) return false;
     
     // Verificar que la contraseña sea válida
     if (!_isPasswordValid()) return false;
@@ -955,6 +1179,29 @@ class _RegisterState extends State<Register> {
 
     // Obtener el número de serie del monedero si fue proporcionado
     final numeroSerieMonedero = _monederoController.text.trim();
+    final tieneMonedero = numeroSerieMonedero.isNotEmpty;
+    
+    // Validar reglas de negocio antes de enviar
+    if (!tieneMonedero && _selectedClienteId == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Debes seleccionar una compañía de transporte o ingresar un número de serie de monedero';
+      });
+      
+      if (mounted) {
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.warning,
+          title: 'Validación requerida',
+          text: 'Debes seleccionar una compañía de transporte o ingresar un número de serie de monedero',
+        );
+      }
+      return;
+    }
+    
+    // Si hay monedero, no enviar idCliente (se obtendrá del monedero)
+    // Si NO hay monedero, enviar idCliente seleccionado
+    final idClienteParaEnviar = tieneMonedero ? null : _selectedClienteId;
     
     final registroResponse = await authBloc.registerPasajero(
       nombre: _nombreController.text.trim(),
@@ -965,6 +1212,7 @@ class _RegisterState extends State<Register> {
       passwordHash: _passwordController.text,
       numeroSerieMonedero: numeroSerieMonedero.isEmpty ? null : numeroSerieMonedero,
       telefono: _telefonoController.text.trim(),
+      idCliente: idClienteParaEnviar,
     );
 
     if (!mounted) return;
