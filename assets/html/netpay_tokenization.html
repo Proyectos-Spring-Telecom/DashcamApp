@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetPay Tokenization</title>
+    <!-- NetPayJS desde CDN -->
+    <script type="text/javascript" src="https://docs.netpay.mx/cdn/v1.3/netpay.min.js"></script>
+</head>
+<body>
+    <div id="status"></div>
+    <script>
+        // Configurar NetPay
+        let netpayConfigured = false;
+        let currentRequestId = null;
+        let deviceFingerPrint = null;
+
+        // Función para configurar NetPay con la API key y modo sandbox
+        // IMPORTANTE: setSandboxMode debe llamarse ANTES de generar el device fingerprint
+        function configureNetPay(apiKey, useSandbox) {
+            try {
+                if (typeof NetPay !== 'undefined') {
+                    // 1. Primero establecer el modo sandbox
+                    NetPay.setSandboxMode(useSandbox);
+                    
+                    // 2. Generar device fingerprint (debe hacerse cuando se visualiza el formulario)
+                    deviceFingerPrint = NetPay.form.generateDeviceFingerPrint();
+                    
+                    // 3. Luego establecer la API key
+                    NetPay.setApiKey(apiKey);
+                    
+                    netpayConfigured = true;
+                    postMessageToFlutter({
+                        type: 'configured',
+                        success: true,
+                        deviceFingerPrint: deviceFingerPrint
+                    });
+                    return true;
+                } else {
+                    postMessageToFlutter({
+                        type: 'error',
+                        message: 'NetPayJS no está cargado'
+                    });
+                    return false;
+                }
+            } catch (error) {
+                postMessageToFlutter({
+                    type: 'error',
+                    message: 'Error al configurar NetPay: ' + error.message
+                });
+                return false;
+            }
+        }
+
+        // Función para tokenizar una tarjeta usando NetPay.token.create()
+        function tokenizeCard(requestData) {
+            if (!netpayConfigured) {
+                postMessageToFlutter({
+                    type: 'error',
+                    message: 'NetPay no está configurado'
+                });
+                return;
+            }
+
+            // Verificar que el device fingerprint esté disponible
+            if (!deviceFingerPrint) {
+                // Intentar generar el device fingerprint si no está disponible
+                try {
+                    deviceFingerPrint = NetPay.form.generateDeviceFingerPrint();
+                } catch (error) {
+                    postMessageToFlutter({
+                        type: 'error',
+                        message: 'Error al generar device fingerprint: ' + error.message
+                    });
+                    return;
+                }
+            }
+
+            currentRequestId = requestData.requestId || Date.now().toString();
+            
+            try {
+                // Preparar los datos para NetPay.token.create() según documentación oficial
+                // Limpiar número de tarjeta (eliminar espacios y caracteres no numéricos)
+                const cleanCardNumber = String(requestData.cardNumber || '').replace(/\D/g, '');
+                const expMonth = String(requestData.expirationMonth || '').padStart(2, '0');
+                const expYear = String(requestData.expirationYear || '').padStart(2, '0');
+                const cvv2 = String(requestData.cvv || '');
+                
+                // Validar usando las funciones de NetPay (según documentación)
+                const validateNumberLength = NetPay.card.validateNumberLength(cleanCardNumber);
+                const validateNumber = NetPay.card.validateNumber(cleanCardNumber);
+                const validateExpiry = NetPay.card.validateExpiry(expMonth, expYear);
+                const validateCVV = NetPay.card.validateCVV(cvv2, cleanCardNumber);
+                
+                if (!validateNumberLength || !validateNumber || !validateExpiry || !validateCVV) {
+                    postMessageToFlutter({
+                        type: 'error',
+                        requestId: currentRequestId,
+                        message: 'Por favor, verifica los datos de tu tarjeta',
+                        success: false
+                    });
+                    return;
+                }
+                
+                // Formato según documentación oficial de NetPay
+                const cardInformation = {
+                    cardNumber: cleanCardNumber,
+                    expMonth: expMonth,
+                    expYear: expYear,
+                    cvv2: cvv2,
+                    vault: requestData.saveCard || false, // Si se quiere guardar la tarjeta
+                    simpleUse: !(requestData.saveCard || true), // true si no se guarda, false si se guarda
+                    deviceFingerPrint: deviceFingerPrint // REQUERIDO según documentación
+                };
+                
+                // Agregar dirección si está disponible (formato de NetPay)
+                if (requestData.street) {
+                    cardInformation.street = requestData.street;
+                }
+                if (requestData.city) {
+                    cardInformation.city = requestData.city;
+                }
+                if (requestData.state) {
+                    cardInformation.state = requestData.state;
+                }
+                if (requestData.postalCode) {
+                    cardInformation.postalCode = requestData.postalCode;
+                }
+                if (requestData.country) {
+                    cardInformation.country = requestData.country;
+                }
+
+                // Llamar a NetPay.token.create() según documentación oficial
+                NetPay.token.create(
+                    cardInformation,
+                    function(successResponse) {
+                        let token = null;
+                        let cardType = null;
+                        let last4Digits = null;
+                        let brand = null;
+                        
+                        try {
+                            // Según los logs, successResponse.message.data es una CADENA JSON, no un objeto
+                            // Necesitamos parsearla primero
+                            if (successResponse && successResponse.message && successResponse.message.data) {
+                                let dataStr = successResponse.message.data;
+                                
+                                // Si es una cadena, parsearla
+                                let data = null;
+                                if (typeof dataStr === 'string') {
+                                    try {
+                                        data = JSON.parse(dataStr);
+                                    } catch (e) {
+                                        console.error('Error al parsear data string:', e);
+                                    }
+                                } else {
+                                    data = dataStr;
+                                }
+                                
+                                if (data) {
+                                    token = data.token;
+                                    last4Digits = data.lastFourDigits || data.last4Digits || data.last_4_digits || data.last4;
+                                    brand = data.brand;
+                                    cardType = data.type || data.cardType || data.card_type || brand;
+                                }
+                            }
+                            
+                            if (!token) {
+                                postMessageToFlutter({
+                                    type: 'error',
+                                    requestId: currentRequestId,
+                                    message: 'No se pudo extraer el token de la respuesta',
+                                    success: false
+                                });
+                                return;
+                            }
+                            
+                            postMessageToFlutter({
+                                type: 'success',
+                                requestId: currentRequestId,
+                                token: token,
+                                cardType: cardType,
+                                last4Digits: last4Digits,
+                                brand: brand,
+                                success: true
+                            });
+                        } catch (error) {
+                            console.error('Error al procesar respuesta exitosa:', error);
+                            postMessageToFlutter({
+                                type: 'error',
+                                requestId: currentRequestId,
+                                message: 'Error al procesar respuesta: ' + error.message,
+                                success: false
+                            });
+                        }
+                    },
+                    function(errorResponse) {
+                        // Error: según documentación, el error viene en errorResponse
+                        const errorMessage = errorResponse.message || 
+                                           errorResponse.error || 
+                                           errorResponse.errorMessage ||
+                                           'Error al tokenizar la tarjeta';
+                        const errorCode = errorResponse.code || errorResponse.errorCode || errorResponse.error_code;
+                        
+                        postMessageToFlutter({
+                            type: 'error',
+                            requestId: currentRequestId,
+                            message: errorMessage,
+                            errorCode: errorCode,
+                            success: false
+                        });
+                    }
+                );
+            } catch (error) {
+                postMessageToFlutter({
+                    type: 'error',
+                    requestId: currentRequestId,
+                    message: 'Error al procesar la solicitud: ' + error.message,
+                    success: false
+                });
+            }
+        }
+
+        // Función para enviar mensajes a Flutter usando JavaScript Channel
+        function postMessageToFlutter(message) {
+            try {
+                // webview_flutter usa JavaScriptChannel
+                if (window.NetPayChannel && window.NetPayChannel.postMessage) {
+                    window.NetPayChannel.postMessage(JSON.stringify(message));
+                }
+                // Fallback para debugging
+                else {
+                    console.log('Message to Flutter:', JSON.stringify(message));
+                    // Intentar usar el objeto global si existe
+                    if (typeof flutterChannel !== 'undefined') {
+                        flutterChannel.postMessage(JSON.stringify(message));
+                    }
+                }
+            } catch (error) {
+                console.error('Error al enviar mensaje a Flutter:', error);
+            }
+        }
+
+        // Función para recibir mensajes desde Flutter
+        function handleMessageFromFlutter(message) {
+            try {
+                const data = typeof message === 'string' ? JSON.parse(message) : message;
+                
+                switch (data.action) {
+                    case 'configure':
+                        configureNetPay(data.apiKey, data.useSandbox);
+                        break;
+                    case 'tokenize':
+                        tokenizeCard(data);
+                        break;
+                    default:
+                        console.warn('Acción desconocida:', data.action);
+                }
+            } catch (error) {
+                console.error('Error al procesar mensaje de Flutter:', error);
+                postMessageToFlutter({
+                    type: 'error',
+                    message: 'Error al procesar mensaje: ' + error.message
+                });
+            }
+        }
+
+        // Exponer función globalmente para que Flutter pueda llamarla
+        window.handleMessageFromFlutter = handleMessageFromFlutter;
+
+        // Notificar a Flutter que el script está listo
+        window.addEventListener('load', function() {
+            // Esperar a que NetPayJS esté cargado
+            const checkNetPay = setInterval(function() {
+                if (typeof NetPay !== 'undefined') {
+                    clearInterval(checkNetPay);
+                    postMessageToFlutter({
+                        type: 'ready',
+                        message: 'NetPayJS cargado correctamente'
+                    });
+                }
+            }, 100);
+
+            // Timeout después de 5 segundos
+            setTimeout(function() {
+                clearInterval(checkNetPay);
+                if (typeof NetPay === 'undefined') {
+                    postMessageToFlutter({
+                        type: 'error',
+                        message: 'NetPayJS no se pudo cargar después de 5 segundos'
+                    });
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,39 @@
+{
+    "name": "Monedero Digital",
+    "short_name": "Monedero Digital",
+    "start_url": "/dashcampay/",
+    "scope": "/dashcampay/",
+    "display": "standalone",
+    "background_color": "#2C2C2C",
+    "theme_color": "#2C2C2C",
+    "description": "Monedero Digital de DashCamPay.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "permissions": [
+        "nfc"
+    ],
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
