@@ -45,8 +45,6 @@ class _RegisterState extends State<Register> {
       if (mounted && clientes != _clientes) {
         setState(() {
           _clientes = clientes;
-          // Validar y limpiar selección si el cliente ya no existe
-          _validarYLimpiarSeleccion();
         });
       }
     });
@@ -84,8 +82,6 @@ class _RegisterState extends State<Register> {
     if (result.isSuccess) {
       setState(() {
         _clientes = result.data ?? [];
-        // Validar y limpiar selección si el cliente ya no existe
-        _validarYLimpiarSeleccion();
       });
     } else {
       // Mostrar error solo si no hay clientes cargados previamente
@@ -93,18 +89,6 @@ class _RegisterState extends State<Register> {
         // No mostrar diálogo aquí, solo log del error
         // El usuario puede intentar registrar sin compañía si tiene monedero
         debugPrint('⚠️ Error al cargar clientes: ${result.errorMessage}');
-      }
-    }
-  }
-
-  /// Valida que el cliente seleccionado aún existe en la lista
-  /// y lo limpia si ya no está disponible
-  void _validarYLimpiarSeleccion() {
-    if (_selectedClienteId != null) {
-      final existeCliente = _clientes.any((cliente) => cliente.id == _selectedClienteId);
-      if (!existeCliente) {
-        // El cliente seleccionado ya no existe en la lista, limpiar selección
-        _selectedClienteId = null;
       }
     }
   }
