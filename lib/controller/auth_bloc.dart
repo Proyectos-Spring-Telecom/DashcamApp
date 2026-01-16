@@ -121,6 +121,10 @@ class AuthBloc {
     required String passwordHash,
     String? numeroSerieMonedero,
     required String telefono,
+    int? idCliente,
+    String? curp,
+    String? documentacion,
+    int? estadoSolicitud,
   }) async {
     try {
       _authStatus = AuthStatus.loading;
@@ -136,6 +140,10 @@ class AuthBloc {
         passwordHash: passwordHash,
         numeroSerieMonedero: numeroSerieMonedero,
         telefono: telefono,
+        idCliente: idCliente,
+        curp: curp,
+        documentacion: documentacion,
+        estadoSolicitud: estadoSolicitud,
       );
 
       final registroResponse = await _authService.registerPasajero(request);

@@ -153,6 +153,7 @@ export 'package:dashboardpro/widgets/page_transitions.dart';
 export 'package:dashboardpro/controller/theme_bloc.dart';
 export 'package:dashboardpro/controller/auth_bloc.dart';
 export 'package:dashboardpro/controller/monedero_bloc.dart';
+export 'package:dashboardpro/controller/cliente_bloc.dart';
 export 'package:dashboardpro/services/monedero_service.dart';
 export 'package:dashboardpro/model/monedero/monedero_model.dart';
 export 'package:dashboardpro/model/monedero/pasajero_wallet_model.dart';
