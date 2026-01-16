@@ -604,7 +604,7 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
                               if (noTieneCustomerId) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Ingresa tus datos bancarios para poder realizar tus recargas.',
+                                  'Ingresa tus datos bancarios para poder realizar tus recargas',
                                   style: TextStyle(
                                     color: textColor.withOpacity(0.5),
                                     fontSize: 12,
