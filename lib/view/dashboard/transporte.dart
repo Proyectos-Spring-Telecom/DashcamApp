@@ -79,9 +79,13 @@ class _TransportePageState extends State<TransportePage> {
   
   /// * Obtiene la ubicación actual del dispositivo
   Future<void> _obtenerUbicacionActual() async {
+    // * Verificar que el widget esté montado antes de cualquier setState
+    if (!mounted) return;
+    
     if (kIsWeb) {
       // * En web, usar la posición por defecto
       debugPrint('🌐 Web: Usando posición por defecto');
+      if (!mounted) return;
       setState(() {
         _initialPosition = _defaultPosition;
         _currentLocation = _defaultPosition;
@@ -90,6 +94,8 @@ class _TransportePageState extends State<TransportePage> {
       return;
     }
     
+    // * Verificar que el widget siga montado antes de actualizar el estado
+    if (!mounted) return;
     setState(() {
       _isLoadingLocation = true;
     });
@@ -97,6 +103,10 @@ class _TransportePageState extends State<TransportePage> {
     try {
       // * Verificar si los servicios de ubicación están habilitados
       bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      
+      // * Verificar que el widget siga montado después de la operación asíncrona
+      if (!mounted) return;
+      
       if (!serviceEnabled) {
         debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
         _usarPosicionPorDefecto();
@@ -105,6 +115,9 @@ class _TransportePageState extends State<TransportePage> {
 
       // * Verificar permisos de ubicación (ya deberían estar otorgados desde el login)
       geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+      
+      // * Verificar que el widget siga montado después de la operación asíncrona
+      if (!mounted) return;
       
       if (permission != geo.LocationPermission.whileInUse && 
           permission != geo.LocationPermission.always) {
@@ -120,24 +133,28 @@ class _TransportePageState extends State<TransportePage> {
         timeLimit: const Duration(seconds: 10),
       );
 
+      // * Verificar que el widget siga montado después de obtener la ubicación
+      if (!mounted) return;
+
       final location = gmaps.LatLng(position.latitude, position.longitude);
       debugPrint('✅ Ubicación obtenida: lat=${position.latitude}, lng=${position.longitude}');
 
-      if (mounted) {
-        setState(() {
-          _currentLocation = location;
-          _initialPosition = location;
-          _isLoadingLocation = false;
-        });
-        
-        // * Si el mapa ya está creado, actualizar la cámara y los markers
-        if (_mapController != null) {
-          await _actualizarMapaConUbicacion(location);
-        }
+      setState(() {
+        _currentLocation = location;
+        _initialPosition = location;
+        _isLoadingLocation = false;
+      });
+      
+      // * Si el mapa ya está creado, actualizar la cámara y los markers
+      if (_mapController != null && mounted) {
+        await _actualizarMapaConUbicacion(location);
       }
     } catch (e) {
       debugPrint('❌ Error al obtener ubicación: $e');
-      _usarPosicionPorDefecto();
+      // * Verificar que el widget esté montado antes de usar posición por defecto
+      if (mounted) {
+        _usarPosicionPorDefecto();
+      }
     }
   }
   
@@ -229,26 +246,34 @@ class _TransportePageState extends State<TransportePage> {
     final position = _currentLocation ?? _initialPosition;
     debugPrint('📍 Posición actual: $position');
     
-    // * Marcar que el marker fue tocado para prevenir que el onTap del mapa limpie el estado
-    _isMarkerTapped = true;
-    
-    if (mounted) {
-      setState(() {
-        _selectedMarkerId = 'user_location';
-        _selectedMarkerPosition = position;
-        debugPrint('✅ InfoWindow personalizado activado');
-        debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
-        debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
-      });
-      
-      // * Resetear el flag después de un breve delay para permitir que el InfoWindow se muestre
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _isMarkerTapped = false;
-        debugPrint('🔄 Flag _isMarkerTapped reseteado');
-      });
-    } else {
+    if (!mounted) {
       debugPrint('⚠️ Widget no montado, no se puede actualizar el estado');
+      return;
     }
+    
+    // * Marcar que el marker fue tocado y actualizar el estado dentro de setState
+    // * para mantener la consistencia del estado reactivo de Flutter
+    setState(() {
+      _isMarkerTapped = true;
+      _selectedMarkerId = 'user_location';
+      _selectedMarkerPosition = position;
+      debugPrint('✅ InfoWindow personalizado activado');
+      debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
+      debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
+    });
+    
+    // * Resetear el flag después de un breve delay para permitir que el InfoWindow se muestre
+    // * Verificar que el widget esté montado y usar setState para mantener consistencia
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isMarkerTapped = false;
+          debugPrint('🔄 Flag _isMarkerTapped reseteado');
+        });
+      } else {
+        debugPrint('⚠️ Widget desmontado, no se puede resetear _isMarkerTapped');
+      }
+    });
   }
 
   void _showGeocercas() {

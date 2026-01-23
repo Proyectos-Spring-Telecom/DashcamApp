@@ -65,8 +65,13 @@ class SessionManager {
       final navigatorContext = context ?? app_routes.rootNavigatorKey.currentContext;
 
       if (navigatorContext != null && navigatorContext.mounted) {
+        // * Flag para evitar navegaciones duplicadas
+        bool hasNavigated = false;
+        
         try {
           // * Mostrar alerta informativa
+          // * La navegación se manejará en el callback onConfirmBtnTap
+          // * para evitar navegaciones duplicadas
           await QuickAlert.show(
             context: navigatorContext,
             type: QuickAlertType.warning,
@@ -76,20 +81,26 @@ class SessionManager {
             confirmBtnColor: const Color(0xFF205AA8),
             onConfirmBtnTap: () {
               // * Redirigir al login después de cerrar el diálogo
-              if (navigatorContext.mounted) {
+              // * Esta es la navegación principal
+              if (navigatorContext.mounted && !hasNavigated) {
+                hasNavigated = true;
                 GoRouter.of(navigatorContext).go(RoutesName.login);
               }
             },
           );
-
-          // * Redirigir al login después de mostrar la alerta
-          if (navigatorContext.mounted) {
+          
+          // * Fallback: Si el usuario cerró el diálogo sin presionar el botón
+          // * (por ejemplo, tocando fuera del diálogo), navegar aquí
+          // * Solo navegar si el callback no se ejecutó
+          if (navigatorContext.mounted && !hasNavigated) {
+            hasNavigated = true;
             GoRouter.of(navigatorContext).go(RoutesName.login);
           }
         } catch (e) {
           debugPrint('⚠️ Error al mostrar alerta: $e');
           // * Si falla la alerta, redirigir directamente
-          if (navigatorContext.mounted) {
+          if (navigatorContext.mounted && !hasNavigated) {
+            hasNavigated = true;
             GoRouter.of(navigatorContext).go(RoutesName.login);
           }
         }

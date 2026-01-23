@@ -39,17 +39,21 @@ class SessionInterceptor extends Interceptor {
       debugPrint('📋 Request Path: $requestPath');
       debugPrint('📋 Response Data: $responseData');
 
-      // * Manejar expiración de sesión (sin contexto, se usará el navigator key)
-      SessionManager.handleSessionExpired(null).then((_) {
-        // * Rechazar la petición con un error específico
-        handler.reject(
-          DioException(
-            requestOptions: err.requestOptions,
-            response: err.response,
-            type: DioExceptionType.badResponse,
-            error: 'Sesión expirada',
-          ),
-        );
+      // * Rechazar la petición inmediatamente para resolver el handler
+      // * Esto asegura que el handler siempre se resuelva, evitando estados indefinidos
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          response: err.response,
+          type: DioExceptionType.badResponse,
+          error: 'Sesión expirada',
+        ),
+      );
+
+      // * Manejar expiración de sesión en segundo plano (sin bloquear el handler)
+      // * Esto se hace después de resolver el handler para no dejar el request en estado indefinido
+      SessionManager.handleSessionExpired(null).catchError((error) {
+        debugPrint('❌ Error al manejar sesión expirada: $error');
       });
 
       return;
