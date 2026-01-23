@@ -65,42 +65,33 @@ class SessionManager {
       final navigatorContext = context ?? app_routes.rootNavigatorKey.currentContext;
 
       if (navigatorContext != null && navigatorContext.mounted) {
-        // * Flag para evitar navegaciones duplicadas
-        bool hasNavigated = false;
-        
         try {
           // * Mostrar alerta informativa
-          // * La navegación se manejará en el callback onConfirmBtnTap
-          // * para evitar navegaciones duplicadas
-          await QuickAlert.show(
+          // * La navegación se manejará únicamente en el callback onConfirmBtnTap
+          // * QuickAlert.show() retorna un Future que se completa inmediatamente
+          // * después de mostrar el diálogo, no después de cerrarlo, por lo que
+          // * NO debemos ejecutar código de navegación después del await
+          QuickAlert.show(
             context: navigatorContext,
             type: QuickAlertType.warning,
             title: 'Sesión expirada',
             text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
             confirmBtnText: 'Aceptar',
             confirmBtnColor: const Color(0xFF205AA8),
+            barrierDismissible: false, // * Evitar que el usuario cierre el diálogo sin presionar el botón
             onConfirmBtnTap: () {
               // * Redirigir al login después de cerrar el diálogo
-              // * Esta es la navegación principal
-              if (navigatorContext.mounted && !hasNavigated) {
-                hasNavigated = true;
+              // * Esta es la única forma de navegar, ya que el diálogo no se puede cerrar
+              // * sin presionar el botón (barrierDismissible: false)
+              if (navigatorContext.mounted) {
                 GoRouter.of(navigatorContext).go(RoutesName.login);
               }
             },
           );
-          
-          // * Fallback: Si el usuario cerró el diálogo sin presionar el botón
-          // * (por ejemplo, tocando fuera del diálogo), navegar aquí
-          // * Solo navegar si el callback no se ejecutó
-          if (navigatorContext.mounted && !hasNavigated) {
-            hasNavigated = true;
-            GoRouter.of(navigatorContext).go(RoutesName.login);
-          }
         } catch (e) {
           debugPrint('⚠️ Error al mostrar alerta: $e');
           // * Si falla la alerta, redirigir directamente
-          if (navigatorContext.mounted && !hasNavigated) {
-            hasNavigated = true;
+          if (navigatorContext.mounted) {
             GoRouter.of(navigatorContext).go(RoutesName.login);
           }
         }

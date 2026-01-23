@@ -535,12 +535,23 @@ class _DashboardState extends State<Dashboard> {
 
   // * Mostrar modal de tipo de viaje antes de generar QR
   void _mostrarModalTipoViaje(BuildContext context, bool isDark) {
+    // * Guardar el contexto antes de cualquier operación
+    final navigatorContext = context;
     TipoViajeDialog.mostrar(
-      context: context,
+      context: navigatorContext,
       isDark: isDark,
       onContinue: (bool esFamiliar, int? numeroPasajeros) {
-        // * Continuar con el flujo actual (navegar a generar QR)
-        GoRouter.of(context).go(RoutesName.pagoQR);
+        // * Verificar que el contexto esté montado antes de navegar
+        if (navigatorContext.mounted) {
+          GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+        } else {
+          debugPrint('⚠️ Contexto no montado, usando navigator key');
+          // * Fallback: usar el navigator key global
+          final routerContext = app_routes.rootNavigatorKey.currentContext;
+          if (routerContext != null && routerContext.mounted) {
+            GoRouter.of(routerContext).go(RoutesName.pagoQR);
+          }
+        }
         // * Por ahora solo se captura, no se envía al API
         debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
         if (esFamiliar && numeroPasajeros != null) {
