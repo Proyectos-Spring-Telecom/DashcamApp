@@ -12,6 +12,7 @@ import 'package:dashboardpro/model/transaccion/transaccion_request.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_response.dart';
 import 'package:dashboardpro/model/transaccion/transacciones_response.dart';
 import 'package:dashboardpro/model/transaccion/recarga_request.dart';
+import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -32,7 +33,7 @@ class MonederoService {
                   'Accept': 'application/json',
                 },
               ),
-            );
+            )..interceptors.add(SessionInterceptor());
 
   /// Obtiene la lista de monederos activos paginados
   /// Requiere token de autenticación en el header

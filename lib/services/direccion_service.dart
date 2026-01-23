@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/direccion/codigo_postal_model.dart';
+import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
@@ -19,7 +20,7 @@ class DireccionService {
                   'Accept': 'application/json',
                 },
               ),
-            );
+            )..interceptors.add(SessionInterceptor());
 
   /// Consulta la información de dirección por código postal
   /// Endpoint: GET /direcciones/CP/{cp}

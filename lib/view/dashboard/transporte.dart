@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:geolocator/geolocator.dart' as geo;
 
 class TransportePage extends StatefulWidget {
   const TransportePage({super.key});
@@ -14,19 +15,411 @@ class TransportePage extends StatefulWidget {
   State<TransportePage> createState() => _TransportePageState();
 }
 
+// * Modelos de datos para geocercas y rutas (mock)
+class GeocercaModel {
+  final String id;
+  final List<gmaps.LatLng> coordinates;
+  final String name;
+
+  GeocercaModel({
+    required this.id,
+    required this.coordinates,
+    required this.name,
+  });
+}
+
+class RutaModel {
+  final String id;
+  final gmaps.LatLng startPoint;
+  final gmaps.LatLng endPoint;
+  final List<gmaps.LatLng> path;
+  final String name;
+
+  RutaModel({
+    required this.id,
+    required this.startPoint,
+    required this.endPoint,
+    required this.path,
+    required this.name,
+  });
+}
+
 class _TransportePageState extends State<TransportePage> {
   gmaps.GoogleMapController? _mapController;
-  static const gmaps.LatLng _initialPosition =
+  // * Posición inicial por defecto (fallback si no se puede obtener la ubicación)
+  static const gmaps.LatLng _defaultPosition =
       gmaps.LatLng(19.4326, -99.1332); // Ciudad de México
+  gmaps.LatLng _initialPosition = _defaultPosition;
   Set<gmaps.Marker> _markers = {};
+  Set<gmaps.Polygon> _polygons = {};
+  Set<gmaps.Polyline> _polylines = {};
   gmaps.MapType _currentMapType = gmaps.MapType.normal;
   bool _isMapReady = false;
   bool _hasAuthError = false;
   String? _errorMessage;
+  
+  // * Estado para controlar qué se muestra
+  String? _currentView; // 'geocercas' o 'rutas' o null
+  
+  // * Estado para la ubicación actual
+  bool _isLoadingLocation = false;
+  gmaps.LatLng? _currentLocation;
+  
+  // * Estado para el InfoWindow personalizado
+  String? _selectedMarkerId;
+  gmaps.LatLng? _selectedMarkerPosition;
+  bool _isMarkerTapped = false; // * Flag para prevenir que el onTap del mapa limpie el estado
 
   @override
   void initState() {
     super.initState();
+    // * Obtener la ubicación actual al inicializar
+    _obtenerUbicacionActual();
+  }
+  
+  /// * Obtiene la ubicación actual del dispositivo
+  Future<void> _obtenerUbicacionActual() async {
+    if (kIsWeb) {
+      // * En web, usar la posición por defecto
+      debugPrint('🌐 Web: Usando posición por defecto');
+      setState(() {
+        _initialPosition = _defaultPosition;
+        _currentLocation = _defaultPosition;
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+    
+    setState(() {
+      _isLoadingLocation = true;
+    });
+    
+    try {
+      // * Verificar si los servicios de ubicación están habilitados
+      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
+        _usarPosicionPorDefecto();
+        return;
+      }
+
+      // * Verificar permisos de ubicación (ya deberían estar otorgados desde el login)
+      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+      
+      if (permission != geo.LocationPermission.whileInUse && 
+          permission != geo.LocationPermission.always) {
+        debugPrint('⚠️ Permisos de ubicación no otorgados');
+        _usarPosicionPorDefecto();
+        return;
+      }
+
+      // * Obtener la ubicación actual
+      debugPrint('📍 Obteniendo ubicación actual...');
+      geo.Position position = await geo.Geolocator.getCurrentPosition(
+        desiredAccuracy: geo.LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      final location = gmaps.LatLng(position.latitude, position.longitude);
+      debugPrint('✅ Ubicación obtenida: lat=${position.latitude}, lng=${position.longitude}');
+
+      if (mounted) {
+        setState(() {
+          _currentLocation = location;
+          _initialPosition = location;
+          _isLoadingLocation = false;
+        });
+        
+        // * Si el mapa ya está creado, actualizar la cámara y los markers
+        if (_mapController != null) {
+          await _actualizarMapaConUbicacion(location);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error al obtener ubicación: $e');
+      _usarPosicionPorDefecto();
+    }
+  }
+  
+  /// * Usa la posición por defecto como fallback
+  void _usarPosicionPorDefecto() {
+    if (mounted) {
+      setState(() {
+        _currentLocation = _defaultPosition;
+        _initialPosition = _defaultPosition;
+        _isLoadingLocation = false;
+      });
+      debugPrint('📍 Usando posición por defecto: $_defaultPosition');
+    }
+  }
+  
+  /// * Actualiza el mapa con la ubicación actual
+  Future<void> _actualizarMapaConUbicacion(gmaps.LatLng location) async {
+    if (_mapController == null || !mounted) return;
+    
+    try {
+      // * Centrar el mapa en la ubicación actual
+      await _mapController!.animateCamera(
+        gmaps.CameraUpdate.newCameraPosition(
+          gmaps.CameraPosition(
+            target: location,
+            zoom: 15.0,
+          ),
+        ),
+      );
+      
+      // * Actualizar los markers con la nueva ubicación
+      final context = this.context;
+      if (context.mounted) {
+        await _addMarkers(context);
+      }
+    } catch (e) {
+      debugPrint('❌ Error al actualizar mapa con ubicación: $e');
+    }
+  }
+
+  // * Obtener geocercas mock
+  List<GeocercaModel> _getMockGeocercas() {
+    return [
+      GeocercaModel(
+        id: 'geocerca_1',
+        name: 'Zona Centro',
+        coordinates: [
+          const gmaps.LatLng(19.4326, -99.1332),
+          const gmaps.LatLng(19.4400, -99.1332),
+          const gmaps.LatLng(19.4400, -99.1200),
+          const gmaps.LatLng(19.4326, -99.1200),
+        ],
+      ),
+      GeocercaModel(
+        id: 'geocerca_2',
+        name: 'Zona Norte',
+        coordinates: [
+          const gmaps.LatLng(19.4500, -99.1500),
+          const gmaps.LatLng(19.4600, -99.1500),
+          const gmaps.LatLng(19.4600, -99.1400),
+          const gmaps.LatLng(19.4500, -99.1400),
+        ],
+      ),
+    ];
+  }
+
+  // * Obtener rutas mock
+  List<RutaModel> _getMockRutas() {
+    return [
+      RutaModel(
+        id: 'ruta_1',
+        name: 'Ruta Principal',
+        startPoint: const gmaps.LatLng(19.4326, -99.1332),
+        endPoint: const gmaps.LatLng(19.4500, -99.1500),
+        path: [
+          const gmaps.LatLng(19.4326, -99.1332),
+          const gmaps.LatLng(19.4380, -99.1400),
+          const gmaps.LatLng(19.4450, -99.1450),
+          const gmaps.LatLng(19.4500, -99.1500),
+        ],
+      ),
+    ];
+  }
+
+  // * Mostrar geocercas en el mapa
+  /// * Maneja el tap en el marker de ubicación del usuario
+  void _onMarkerTapped() {
+    debugPrint('📍 Marker tocado - user_location');
+    final position = _currentLocation ?? _initialPosition;
+    debugPrint('📍 Posición actual: $position');
+    
+    // * Marcar que el marker fue tocado para prevenir que el onTap del mapa limpie el estado
+    _isMarkerTapped = true;
+    
+    if (mounted) {
+      setState(() {
+        _selectedMarkerId = 'user_location';
+        _selectedMarkerPosition = position;
+        debugPrint('✅ InfoWindow personalizado activado');
+        debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
+        debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
+      });
+      
+      // * Resetear el flag después de un breve delay para permitir que el InfoWindow se muestre
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _isMarkerTapped = false;
+        debugPrint('🔄 Flag _isMarkerTapped reseteado');
+      });
+    } else {
+      debugPrint('⚠️ Widget no montado, no se puede actualizar el estado');
+    }
+  }
+
+  void _showGeocercas() {
+    final geocercas = _getMockGeocercas();
+    final polygons = <gmaps.Polygon>{};
+    
+    for (var geocerca in geocercas) {
+      polygons.add(
+        gmaps.Polygon(
+          polygonId: gmaps.PolygonId(geocerca.id),
+          points: geocerca.coordinates,
+          fillColor: Colors.blue.withOpacity(0.3),
+          strokeColor: Colors.blue,
+          strokeWidth: 2,
+          geodesic: false,
+        ),
+      );
+    }
+
+    setState(() {
+      _polygons = polygons;
+      _polylines = {};
+      _markers = {}; // Limpiar marcadores de rutas
+      _currentView = 'geocercas';
+    });
+
+    _adjustCameraToFit(geocercas: geocercas);
+  }
+
+  // * Mostrar rutas en el mapa
+  void _showRutas() {
+    final rutas = _getMockRutas();
+    final polylines = <gmaps.Polyline>{};
+    final markers = <gmaps.Marker>{};
+
+    for (var ruta in rutas) {
+      // * Agregar polyline
+      polylines.add(
+        gmaps.Polyline(
+          polylineId: gmaps.PolylineId(ruta.id),
+          points: ruta.path,
+          color: Colors.blue,
+          width: 4,
+          geodesic: false,
+        ),
+      );
+
+      // * Agregar marcador de inicio
+      markers.add(
+        gmaps.Marker(
+          markerId: gmaps.MarkerId('${ruta.id}_start'),
+          position: ruta.startPoint,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: gmaps.InfoWindow(
+            title: 'Inicio: ${ruta.name}',
+          ),
+        ),
+      );
+
+      // * Agregar marcador de fin
+      markers.add(
+        gmaps.Marker(
+          markerId: gmaps.MarkerId('${ruta.id}_end'),
+          position: ruta.endPoint,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueRed,
+          ),
+          infoWindow: gmaps.InfoWindow(
+            title: 'Fin: ${ruta.name}',
+          ),
+        ),
+      );
+    }
+
+    setState(() {
+      _polylines = polylines;
+      _polygons = {};
+      _markers = markers;
+      _currentView = 'rutas';
+    });
+
+    _adjustCameraToFit(rutas: rutas);
+  }
+
+  // * Ocultar todo
+  void _hideAll() {
+    setState(() {
+      _polygons = {};
+      _polylines = {};
+      _markers = {};
+      _currentView = null;
+    });
+    
+    // * Restaurar marcadores originales del vehículo
+    if (_mapController != null) {
+      final context = this.context;
+      if (context.mounted) {
+        _addMarkers(context);
+      }
+    }
+  }
+
+  // * Ajustar cámara para mostrar geocercas o rutas
+  Future<void> _adjustCameraToFit({
+    List<GeocercaModel>? geocercas,
+    List<RutaModel>? rutas,
+  }) async {
+    if (_mapController == null) return;
+
+    final allPoints = <gmaps.LatLng>[];
+
+    if (geocercas != null) {
+      for (var geocerca in geocercas) {
+        allPoints.addAll(geocerca.coordinates);
+      }
+    }
+
+    if (rutas != null) {
+      for (var ruta in rutas) {
+        allPoints.add(ruta.startPoint);
+        allPoints.add(ruta.endPoint);
+        allPoints.addAll(ruta.path);
+      }
+    }
+
+    if (allPoints.isEmpty) return;
+
+    // * Calcular bounds
+    double minLat = allPoints.first.latitude;
+    double maxLat = allPoints.first.latitude;
+    double minLng = allPoints.first.longitude;
+    double maxLng = allPoints.first.longitude;
+
+    for (var point in allPoints) {
+      minLat = minLat < point.latitude ? minLat : point.latitude;
+      maxLat = maxLat > point.latitude ? maxLat : point.latitude;
+      minLng = minLng < point.longitude ? minLng : point.longitude;
+      maxLng = maxLng > point.longitude ? maxLng : point.longitude;
+    }
+
+    final center = gmaps.LatLng(
+      (minLat + maxLat) / 2,
+      (minLng + maxLng) / 2,
+    );
+
+    // * Calcular zoom aproximado basado en la distancia
+    final latDiff = maxLat - minLat;
+    final lngDiff = maxLng - minLng;
+    final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
+
+    double zoom = 13.0;
+    if (maxDiff > 0.1) {
+      zoom = 10.0;
+    } else if (maxDiff > 0.05) {
+      zoom = 12.0;
+    } else if (maxDiff > 0.01) {
+      zoom = 14.0;
+    } else {
+      zoom = 16.0;
+    }
+
+    await _mapController!.animateCamera(
+      gmaps.CameraUpdate.newCameraPosition(
+        gmaps.CameraPosition(
+          target: center,
+          zoom: zoom,
+        ),
+      ),
+    );
   }
 
   /// Redimensiona la imagen del marcador según la plataforma
@@ -43,6 +436,21 @@ class _TransportePageState extends State<TransportePage> {
 
   Future<void> _addMarkers(BuildContext context) async {
     if (!mounted) return;
+    
+    // * Usar la ubicación actual si está disponible, sino usar la posición inicial
+    final position = _currentLocation ?? _initialPosition;
+    
+    // * Obtener información del usuario logueado
+    final user = authBloc.currentUser;
+    final nombreCompleto = user != null
+        ? '${user.nombre} ${user.apellidoPaterno}${user.apellidoMaterno != null && user.apellidoMaterno!.isNotEmpty ? ' ${user.apellidoMaterno}' : ''}'
+        : 'Usuario';
+    final rolNombre = user?.rol?.nombre ?? 'N/A';
+    
+    // * Construir el snippet con la información del usuario
+    final snippet = '$nombreCompleto\n'
+        'Rol: $rolNombre\n'
+        'Estatus: ✓ Activo';
     
     try {
       // Cargar la imagen original
@@ -64,15 +472,20 @@ class _TransportePageState extends State<TransportePage> {
         setState(() {
           _markers = {
             gmaps.Marker(
-              markerId: const gmaps.MarkerId('vehicle_1'),
-              position: const gmaps.LatLng(19.4326, -99.1332),
+              markerId: const gmaps.MarkerId('user_location'),
+              position: position,
               icon: customIcon,
-              infoWindow: const gmaps.InfoWindow(title: 'Vehículo 1'),
+              // * Deshabilitar InfoWindow nativo para usar solo el personalizado
+              // * Dejar vacío para que no se muestre el InfoWindow nativo
+              infoWindow: const gmaps.InfoWindow(),
               anchor: const Offset(0.5, 1.0), // Ancla el marcador desde el centro inferior
+              onTap: _onMarkerTapped,
             ),
           };
         });
         debugPrint('✅ Marcador personalizado cargado exitosamente');
+        debugPrint('📍 Posición del marcador: $position');
+        debugPrint('👤 Usuario: $nombreCompleto');
         debugPrint('📦 Tamaño del marcador: ${markerSize}px');
         debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
       }
@@ -84,15 +497,19 @@ class _TransportePageState extends State<TransportePage> {
         setState(() {
           _markers = {
             gmaps.Marker(
-              markerId: const gmaps.MarkerId('vehicle_1'),
-              position: const gmaps.LatLng(19.4326, -99.1332),
+              markerId: const gmaps.MarkerId('user_location'),
+              position: position,
               icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
                   gmaps.BitmapDescriptor.hueBlue),
-              infoWindow: const gmaps.InfoWindow(title: 'Vehículo 1'),
+              // * Deshabilitar InfoWindow nativo para usar solo el personalizado
+              // * Dejar vacío para que no se muestre el InfoWindow nativo
+              infoWindow: const gmaps.InfoWindow(),
+              onTap: _onMarkerTapped,
             ),
           };
         });
         debugPrint('⚠️ Usando marcador por defecto como respaldo');
+        debugPrint('📍 Posición del marcador: $position');
       }
     }
   }
@@ -109,6 +526,23 @@ class _TransportePageState extends State<TransportePage> {
       await Future.delayed(delayDuration);
       
       if (mounted) {
+        // * Si aún se está cargando la ubicación, esperar un poco más
+        if (_isLoadingLocation) {
+          debugPrint('⏳ Esperando ubicación actual...');
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+        
+        // * Centrar el mapa en la ubicación actual (o posición inicial)
+        final targetPosition = _currentLocation ?? _initialPosition;
+        await controller.animateCamera(
+          gmaps.CameraUpdate.newCameraPosition(
+            gmaps.CameraPosition(
+              target: targetPosition,
+              zoom: 15.0,
+            ),
+          ),
+        );
+        
         // Cargar los marcadores después de que el mapa esté creado
         final context = this.context;
         if (context.mounted) {
@@ -120,6 +554,7 @@ class _TransportePageState extends State<TransportePage> {
         });
         debugPrint('✅ Google Maps controller creado exitosamente');
         debugPrint('📍 Posición inicial: $_initialPosition');
+        debugPrint('📍 Ubicación actual: ${_currentLocation ?? "No disponible"}');
         debugPrint('🗺️ Tipo de mapa: $_currentMapType');
         debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
         
@@ -295,15 +730,17 @@ class _TransportePageState extends State<TransportePage> {
           // Google Map - Ocupa todo el espacio disponible
           gmaps.GoogleMap(
             initialCameraPosition: const gmaps.CameraPosition(
-              target: _initialPosition,
+              target: _defaultPosition,
               zoom: 13,
               tilt: 0,
             ),
             markers: _markers,
+            polygons: _polygons,
+            polylines: _polylines,
             mapType: _currentMapType,
             onMapCreated: _onMapCreated,
             myLocationButtonEnabled: false,
-            zoomControlsEnabled: true,
+            zoomControlsEnabled: false, // * Deshabilitar controles nativos para usar personalizados
             compassEnabled: true,
             mapToolbarEnabled: false,
             myLocationEnabled: false,
@@ -322,6 +759,30 @@ class _TransportePageState extends State<TransportePage> {
                 setState(() {
                   _isMapReady = true;
                 });
+              }
+              // * Cerrar InfoWindow personalizado si el usuario mueve el mapa
+              // * PERO NO si se acaba de tocar el marker
+              if (_selectedMarkerId != null && !_isMarkerTapped) {
+                debugPrint('🗺️ Cámara movida - cerrando InfoWindow');
+                setState(() {
+                  _selectedMarkerId = null;
+                  _selectedMarkerPosition = null;
+                });
+              } else if (_isMarkerTapped) {
+                debugPrint('🚫 Ignorando movimiento de cámara porque el marker fue tocado');
+              }
+            },
+            onTap: (gmaps.LatLng position) {
+              // * Cerrar InfoWindow personalizado si se toca el mapa
+              // * PERO NO si se acaba de tocar el marker (para evitar que se cierre inmediatamente)
+              if (_selectedMarkerId != null && !_isMarkerTapped) {
+                debugPrint('🗺️ Mapa tocado - cerrando InfoWindow');
+                setState(() {
+                  _selectedMarkerId = null;
+                  _selectedMarkerPosition = null;
+                });
+              } else if (_isMarkerTapped) {
+                debugPrint('🚫 Ignorando tap del mapa porque el marker fue tocado');
               }
             },
           ),
@@ -414,7 +875,417 @@ class _TransportePageState extends State<TransportePage> {
                 ),
               ),
             ),
+          // * Controles de zoom personalizados (esquina inferior derecha)
+          if (_isMapReady && !_hasAuthError)
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: _buildCustomZoomControls(isDark),
+            ),
+          // * FAB para mostrar geocercas o rutas (esquina inferior izquierda)
+          if (_isMapReady && !_hasAuthError)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              child: _buildMapOptionsFAB(isDark),
+            ),
+          // * InfoWindow personalizado
+          if (_selectedMarkerId != null && _selectedMarkerPosition != null) ...[
+            Builder(
+              builder: (context) {
+                debugPrint('🔍 Renderizando InfoWindow en el Stack');
+                debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
+                debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
+                return _buildCustomInfoWindow(isDark);
+              },
+            ),
+          ],
         ],
+      ),
+    );
+  }
+  
+  /// * Construye el InfoWindow personalizado con la información del usuario
+  /// * Diseño basado en la imagen: gradiente azul, layout horizontal con foto de perfil
+  Widget _buildCustomInfoWindow(bool isDark) {
+    debugPrint('🎨 Construyendo InfoWindow personalizado');
+    debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
+    debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
+    
+    final user = authBloc.currentUser;
+    final nombreCompleto = user != null
+        ? '${user.nombre} ${user.apellidoPaterno}${user.apellidoMaterno != null && user.apellidoMaterno!.isNotEmpty ? ' ${user.apellidoMaterno}' : ''}'
+        : 'Usuario';
+    final rolNombre = user?.rol?.nombre ?? 'N/A';
+    
+    // * Posicionar el InfoWindow en la parte superior del mapa
+    // * Se puede ajustar para que aparezca cerca del marker si es necesario
+    return Positioned(
+      top: 80, // * Más abajo para que no se oculte con otros elementos
+      left: 20,
+      right: 20,
+      child: Material(
+        elevation: 8,
+        color: Colors.transparent,
+        child: GestureDetector(
+          onTap: () {
+            // * No cerrar al tocar el InfoWindow
+            debugPrint('👆 InfoWindow tocado - no cerrar');
+          },
+          child: CustomPaint(
+            painter: _InfoWindowTailPainter(),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF205AA8), // * Azul principal de los botones
+                    const Color(0xFF205AA8).withOpacity(0.9), // * Ligeramente más oscuro
+                    const Color(0xFF1A4A8F), // * Azul más oscuro para el degradado
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // * Sección izquierda: Texto (2/3 del ancho)
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // * Nombre completo (arriba, grande, bold, blanco)
+                        Text(
+                          nombreCompleto,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        // * Rol (debajo del nombre, más pequeño, blanco)
+                        Text(
+                          rolNombre,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        // * Divider debajo del Rol
+                        Divider(
+                          color: const Color(0xFFA6CE39),
+                          height: 1,
+                          thickness: 1,
+                        ),
+                        const SizedBox(height: 8),
+                        // * Estatus "Activo" con punto verde
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // * Punto verde
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFA6CE39), // * Verde
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Activo',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // * Sección derecha: Foto de perfil (1/3 del ancho)
+                  Expanded(
+                    flex: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: double.infinity,
+                        height: 80,
+                        color: Colors.white.withOpacity(0.2), // * Fondo semitransparente
+                        child: user?.fotoPerfil != null && user!.fotoPerfil!.isNotEmpty
+                            ? Image.network(
+                                user.fotoPerfil!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildDefaultAvatar();
+                                },
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                              loadingProgress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  );
+                                },
+                              )
+                            : _buildDefaultAvatar(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// * Construye el avatar por defecto si no hay foto de perfil
+  Widget _buildDefaultAvatar() {
+    return Container(
+      color: Colors.white.withOpacity(0.2),
+      child: const Center(
+        child: Icon(
+          Icons.person,
+          color: Colors.white,
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  // * Construir controles de zoom personalizados
+  Widget _buildCustomZoomControls(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // * Botón zoom in
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                if (_mapController != null) {
+                  await _mapController!.animateCamera(
+                    gmaps.CameraUpdate.zoomIn(),
+                  );
+                }
+              },
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF205AA8),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          // * Divisor
+          Container(
+            height: 1,
+            color: Colors.grey[300],
+          ),
+          // * Botón zoom out
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                if (_mapController != null) {
+                  await _mapController!.animateCamera(
+                    gmaps.CameraUpdate.zoomOut(),
+                  );
+                }
+              },
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF205AA8),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+                ),
+                child: const Icon(
+                  Icons.remove,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // * Construir FAB con opciones para geocercas y rutas
+  Widget _buildMapOptionsFAB(bool isDark) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // * Botón para ocultar todo
+        if (_currentView != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: FloatingActionButton(
+              onPressed: _hideAll,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+              child: Icon(
+                Icons.close,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+        // * Botón principal
+        FloatingActionButton(
+          onPressed: () {
+            _showMapOptionsBottomSheet(isDark);
+          },
+          backgroundColor: const Color(0xFF205AA8),
+          child: const Icon(Icons.layers, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  // * Mostrar bottom sheet con opciones
+  void _showMapOptionsBottomSheet(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[600] : Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Opciones del mapa',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: Icon(
+                Icons.shape_line,
+                color: _currentView == 'geocercas'
+                    ? const Color(0xFF205AA8)
+                    : (isDark ? Colors.white : Colors.black),
+              ),
+              title: Text(
+                'Mostrar zonas',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+              trailing: _currentView == 'geocercas'
+                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _showGeocercas();
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.route,
+                color: _currentView == 'rutas'
+                    ? const Color(0xFF205AA8)
+                    : (isDark ? Colors.white : Colors.black),
+              ),
+              title: Text(
+                'Mostrar variantes',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+              trailing: _currentView == 'rutas'
+                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _showRutas();
+              },
+            ),
+            if (_currentView != null) ...[
+              const Divider(),
+              ListTile(
+                leading: Icon(
+                  Icons.visibility_off,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                title: Text(
+                  'Ocultar todo',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _hideAll();
+                },
+              ),
+            ],
+            const SizedBox(height: 10),
+          ],
+        ),
       ),
     );
   }
@@ -685,4 +1556,31 @@ class _TransportePageState extends State<TransportePage> {
     _mapController?.dispose();
     super.dispose();
   }
+}
+
+/// * CustomPainter para dibujar la cola triangular del InfoWindow
+class _InfoWindowTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF1A4A8F) // * Color del degradado más oscuro
+      ..style = PaintingStyle.fill;
+
+    // * Dibujar triángulo apuntando hacia abajo en el centro inferior
+    final path = Path();
+    final tailWidth = 16.0;
+    final tailHeight = 12.0;
+    final centerX = size.width / 2;
+    final bottomY = size.height;
+
+    path.moveTo(centerX - tailWidth / 2, bottomY);
+    path.lineTo(centerX, bottomY + tailHeight);
+    path.lineTo(centerX + tailWidth / 2, bottomY);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

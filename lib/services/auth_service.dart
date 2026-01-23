@@ -11,6 +11,7 @@ import 'package:dashboardpro/model/auth/resend_code_response.dart';
 import 'package:dashboardpro/model/auth/change_password_request.dart';
 import 'package:dashboardpro/model/auth/change_password_response.dart';
 import 'package:dashboardpro/model/auth/foto_perfil_response.dart';
+import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
@@ -34,7 +35,7 @@ class AuthService {
                   'Accept': 'application/json',
                 },
               ),
-            );
+            )..interceptors.add(SessionInterceptor());
 
   /// Realiza el login del usuario
   Future<LoginResponse> login(String userName, String password) async {

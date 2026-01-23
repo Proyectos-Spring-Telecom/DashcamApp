@@ -1222,31 +1222,31 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
     final bankName = card.bank ?? '--';
     final bankNameLower = bankName.toLowerCase();
     
-    // Verificar si es NuBank
+    // * Verificar si es NuBank
     final isNuBank = bankNameLower.contains('nubank') || 
                      bankNameLower.contains('nu bank') ||
                      bankNameLower == 'nu';
     
-    // Determinar colores del gradiente basado en la marca de la tarjeta y el banco
+    // * Determinar colores del gradiente basado en la marca de la tarjeta y el banco
     List<Color> gradientColors;
     bool useGradient = false;
     
     if (isNuBank) {
-      // Degradado morado para NuBank (similar a la imagen)
+      // * Degradado morado para NuBank (similar a la imagen)
       gradientColors = [
-        const Color(0xFF8B4EB8), // Morado vibrante claro
-        const Color(0xFF6B2C91), // Morado oscuro
-        const Color(0xFF5A1F7A), // Morado más oscuro
+        const Color(0xFF8B4EB8), // * Morado vibrante claro
+        const Color(0xFF6B2C91), // * Morado oscuro
+        const Color(0xFF5A1F7A), // * Morado más oscuro
       ];
       useGradient = true;
     } else {
       switch (card.brand.toLowerCase()) {
         case 'visa':
-          // Degradado azul profundo y vibrante para VISA (más claro arriba, más oscuro abajo)
+          // * Degradado azul profundo y vibrante para VISA (más claro arriba, más oscuro abajo)
           gradientColors = [
-            const Color(0xFF2E4C8F), // Azul más claro en la parte superior
-            const Color(0xFF1A3570), // Azul medio
-            const Color(0xFF0F2449), // Azul profundo y oscuro en la parte inferior
+            const Color(0xFF2E4C8F), // * Azul más claro en la parte superior
+            const Color(0xFF1A3570), // * Azul medio
+            const Color(0xFF0F2449), // * Azul profundo y oscuro en la parte inferior
           ];
           useGradient = true;
           break;
@@ -1258,10 +1258,10 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
           useGradient = true;
           break;
         default:
-          // Usar el mismo azul que en "Agregar método de pago"
+          // * Usar el mismo azul que en "Agregar método de pago"
           gradientColors = [
-            const Color(0xFF205AA8), // Azul principal
-            const Color(0xFF205AA8), // Mismo azul (color sólido)
+            const Color(0xFF205AA8), // * Azul principal
+            const Color(0xFF205AA8), // * Mismo azul (color sólido)
           ];
           useGradient = false;
       }

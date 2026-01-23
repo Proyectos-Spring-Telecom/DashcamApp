@@ -3,6 +3,7 @@ import 'package:dashboardpro/model/netpay/netpay_customer_model.dart';
 import 'package:dashboardpro/model/netpay/assign_card_token_request.dart';
 import 'package:dashboardpro/model/netpay/create_customer_request.dart';
 import 'package:dashboardpro/model/netpay/create_customer_response.dart';
+import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -32,7 +33,7 @@ class NetPayService {
                   'Accept': 'application/json',
                 },
               ),
-            );
+            )..interceptors.add(SessionInterceptor());
 
   /// Consulta la información de un cliente de NetPay y sus tarjetas registradas
   /// Endpoint: GET /netpay/customers?customerId={customerId}
