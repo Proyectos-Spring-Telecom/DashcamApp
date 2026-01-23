@@ -325,8 +325,23 @@ class _CodigosQRPageState extends State<CodigosQRPage>
           // Large button with plus icon
           GestureDetector(
             onTap: () {
-              // Navigate to QR code generation
-              GoRouter.of(context).go(RoutesName.pagoQR);
+              // * Guardar el contexto antes de cualquier operación
+              final navigatorContext = context;
+              // * Mostrar modal de tipo de viaje antes de navegar
+              TipoViajeDialog.mostrar(
+                context: navigatorContext,
+                isDark: isDark,
+                onContinue: (bool esFamiliar, int? numeroPasajeros) {
+                  // * Verificar que el contexto esté montado antes de navegar
+                  if (navigatorContext.mounted) {
+                    GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                  }
+                  debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
+                  if (esFamiliar && numeroPasajeros != null) {
+                    debugPrint('👥 Número de pasajeros: $numeroPasajeros');
+                  }
+                },
+              );
             },
             child: Container(
               width: 60,

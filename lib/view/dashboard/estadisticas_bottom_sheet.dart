@@ -3,6 +3,7 @@ import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:dashboardpro/widgets/routes/app_routes.dart' as app_routes;
 
 class EstadisticasBottomSheet extends StatefulWidget {
   const EstadisticasBottomSheet({super.key});
@@ -344,9 +345,40 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
           // Large button with plus icon
           GestureDetector(
             onTap: () {
-              // Navigate to QR code generation
+              // * Guardar el contexto antes de cerrar el bottom sheet
+              final navigatorContext = context;
               Navigator.of(context).pop(); // Close bottom sheet first
-              GoRouter.of(context).go(RoutesName.pagoQR);
+              // * Esperar un frame para que el bottom sheet se cierre completamente
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                // * Verificar que el contexto aún esté montado
+                if (!navigatorContext.mounted) return;
+                
+                // * Mostrar modal de tipo de viaje antes de navegar
+                TipoViajeDialog.mostrar(
+                  context: navigatorContext,
+                  isDark: isDark,
+                  onContinue: (bool esFamiliar, int? numeroPasajeros) {
+                    debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
+                    if (esFamiliar && numeroPasajeros != null) {
+                      debugPrint('👥 Número de pasajeros: $numeroPasajeros');
+                    }
+                    // * Esperar otro frame para asegurar que el modal se cerró
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      // * Verificar que el contexto aún esté montado antes de navegar
+                      if (navigatorContext.mounted) {
+                        GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                      } else {
+                        debugPrint('⚠️ Contexto no montado, usando navigator key');
+                        // * Fallback: usar el navigator key global
+                        final routerContext = app_routes.rootNavigatorKey.currentContext;
+                        if (routerContext != null && routerContext.mounted) {
+                          GoRouter.of(routerContext).go(RoutesName.pagoQR);
+                        }
+                      }
+                    });
+                  },
+                );
+              });
             },
             child: Container(
               width: 60,

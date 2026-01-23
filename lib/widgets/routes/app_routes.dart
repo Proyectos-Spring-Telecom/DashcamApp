@@ -6,6 +6,10 @@ import 'package:dashboardpro/controller/auth_bloc.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// * Navigator key global para acceso desde cualquier parte de la app
+/// Útil para navegación desde interceptores y servicios
+GlobalKey<NavigatorState> get rootNavigatorKey => _rootNavigatorKey;
+
 class AppRoutes {
   /// Obtiene la ruta inicial según el rol del usuario
   static Future<String> _getInitialRouteForUser() async {

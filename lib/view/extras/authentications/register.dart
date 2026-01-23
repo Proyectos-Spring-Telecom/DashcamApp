@@ -69,12 +69,16 @@ class _RegisterState extends State<Register> {
 
   /// Carga la lista de clientes activos
   Future<void> _cargarClientes() async {
+    // * Verificar que el widget esté montado antes de actualizar el estado
+    if (!mounted) return;
+    
     setState(() {
       _isLoadingClientes = true;
     });
 
     final result = await clienteBloc.cargarClientes();
 
+    // * Verificar que el widget siga montado después de la operación asíncrona
     if (!mounted) return;
 
     setState(() {
@@ -82,6 +86,9 @@ class _RegisterState extends State<Register> {
     });
 
     if (result.isSuccess) {
+      // * Verificar nuevamente antes de actualizar los clientes
+      if (!mounted) return;
+      
       setState(() {
         _clientes = result.data ?? [];
         // Validar y limpiar selección si el cliente ya no existe

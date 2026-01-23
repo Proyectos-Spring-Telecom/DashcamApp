@@ -9,6 +9,7 @@ import 'package:dashboardpro/model/auth/user.dart';
 import 'package:quickalert/quickalert.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:dashboardpro/widgets/routes/app_routes.dart' as app_routes;
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -532,6 +533,34 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
+  // * Mostrar modal de tipo de viaje antes de generar QR
+  void _mostrarModalTipoViaje(BuildContext context, bool isDark) {
+    // * Guardar el contexto antes de cualquier operación
+    final navigatorContext = context;
+    TipoViajeDialog.mostrar(
+      context: navigatorContext,
+      isDark: isDark,
+      onContinue: (bool esFamiliar, int? numeroPasajeros) {
+        // * Verificar que el contexto esté montado antes de navegar
+        if (navigatorContext.mounted) {
+          GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+        } else {
+          debugPrint('⚠️ Contexto no montado, usando navigator key');
+          // * Fallback: usar el navigator key global
+          final routerContext = app_routes.rootNavigatorKey.currentContext;
+          if (routerContext != null && routerContext.mounted) {
+            GoRouter.of(routerContext).go(RoutesName.pagoQR);
+          }
+        }
+        // * Por ahora solo se captura, no se envía al API
+        debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
+        if (esFamiliar && numeroPasajeros != null) {
+          debugPrint('👥 Número de pasajeros: $numeroPasajeros');
+        }
+      },
+    );
+  }
+
   void _mostrarModalExtravio(BuildContext context, bool isDark) {
     final wallet = monederoBloc.wallet;
     final numeroSerieMonedero = wallet?.monederos ?? 'N/A';
@@ -766,8 +795,8 @@ class _DashboardState extends State<Dashboard> {
                     badge: CodigosQRData.cantidad.toString(),
                     isDark: isDark,
                     onTap: () {
-                      // Navigate to QR Code generation screen
-                      GoRouter.of(context).go(RoutesName.pagoQR);
+                      // * Mostrar modal de tipo de viaje antes de navegar
+                      _mostrarModalTipoViaje(context, isDark);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -1682,8 +1711,40 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
           // Large button with plus icon
           GestureDetector(
             onTap: () {
+              // * Guardar el contexto antes de cerrar el bottom sheet
+              final navigatorContext = context;
               Navigator.pop(context);
-              GoRouter.of(context).go(RoutesName.pagoQR);
+              // * Esperar un frame para que el bottom sheet se cierre completamente
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                // * Verificar que el contexto aún esté montado
+                if (!navigatorContext.mounted) return;
+                
+                // * Mostrar modal de tipo de viaje antes de navegar
+                TipoViajeDialog.mostrar(
+                  context: navigatorContext,
+                  isDark: isDark,
+                  onContinue: (bool esFamiliar, int? numeroPasajeros) {
+                    debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
+                    if (esFamiliar && numeroPasajeros != null) {
+                      debugPrint('👥 Número de pasajeros: $numeroPasajeros');
+                    }
+                    // * Esperar otro frame para asegurar que el modal se cerró
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      // * Verificar que el contexto aún esté montado antes de navegar
+                      if (navigatorContext.mounted) {
+                        GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                      } else {
+                        debugPrint('⚠️ Contexto no montado, usando navigator key');
+                        // * Fallback: usar el navigator key global
+                        final routerContext = app_routes.rootNavigatorKey.currentContext;
+                        if (routerContext != null && routerContext.mounted) {
+                          GoRouter.of(routerContext).go(RoutesName.pagoQR);
+                        }
+                      }
+                    });
+                  },
+                );
+              });
             },
             child: Container(
               width: 60,
@@ -3709,6 +3770,353 @@ class _ExtravioMonederoDialogState extends State<_ExtravioMonederoDialog> {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// * Modal para seleccionar tipo de viaje (Familiar / Individual)
+// * Clase pública para poder ser reutilizada desde otros archivos
+class TipoViajeDialog extends StatefulWidget {
+  final bool isDark;
+  final Function(bool esFamiliar, int? numeroPasajeros) onContinue;
+
+  const TipoViajeDialog({
+    required this.isDark,
+    required this.onContinue,
+  });
+
+  /// * Método estático para mostrar el modal de forma reutilizable
+  static void mostrar({
+    required BuildContext context,
+    required bool isDark,
+    required Function(bool esFamiliar, int? numeroPasajeros) onContinue,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return TipoViajeDialog(
+          isDark: isDark,
+          onContinue: (bool esFamiliar, int? numeroPasajeros) {
+            // * Cerrar el modal primero
+            Navigator.of(dialogContext).pop();
+            // * Ejecutar el callback inmediatamente después de cerrar
+            // * El callback manejará la navegación con el contexto correcto
+            onContinue(esFamiliar, numeroPasajeros);
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  State<TipoViajeDialog> createState() => _TipoViajeDialogState();
+}
+
+class _TipoViajeDialogState extends State<TipoViajeDialog> {
+  bool? _esFamiliar; // null = no seleccionado, true = sí, false = no
+  final TextEditingController _numeroPasajerosController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _numeroPasajerosController.dispose();
+    super.dispose();
+  }
+
+  bool _isFormValid() {
+    if (_esFamiliar == null) return false;
+    if (_esFamiliar == true) {
+      // Si es familiar, debe tener número de pasajeros válido
+      final numero = int.tryParse(_numeroPasajerosController.text.trim());
+      return numero != null && numero >= 1;
+    }
+    // Si no es familiar, solo necesita estar seleccionado
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = widget.isDark ? Colors.grey[800] : Colors.grey[100];
+    final textColor = widget.isDark ? Colors.white : Colors.black;
+    final hintTextColor = widget.isDark ? Colors.grey[400] : Colors.grey[600];
+    
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+              // Icono
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF205AA8).withValues(alpha: 0.2),
+                  ),
+                  child: const Icon(
+                    Icons.qr_code,
+                    color: Color(0xFF205AA8),
+                    size: 36,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Título
+              Text(
+                "Generar Código QR",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Pregunta
+              Text(
+                "¿El viaje es familiar?",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Radio buttons
+              _buildRadioOption(
+                value: true,
+                label: "Sí",
+                textColor: textColor,
+                isDark: widget.isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildRadioOption(
+                value: false,
+                label: "No",
+                textColor: textColor,
+                isDark: widget.isDark,
+              ),
+              
+              // Campo de número de pasajeros (solo si es familiar)
+              if (_esFamiliar == true) ...[
+                const SizedBox(height: 24),
+                Text(
+                  "Número de pasajeros",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _numeroPasajerosController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: "Ej: 2",
+                    hintStyle: TextStyle(color: hintTextColor),
+                    filled: true,
+                    fillColor: widget.isDark ? Colors.grey[700] : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Ingresa el número de pasajeros';
+                    }
+                    final numero = int.tryParse(value.trim());
+                    if (numero == null || numero < 1) {
+                      return 'Debe ser al menos 1';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
+              ],
+              
+              const SizedBox(height: 24),
+              
+              // Botones
+              Row(
+                children: [
+                  // Botón "Cancelar"
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: widget.isDark ? Colors.grey[700] : Colors.white,
+                        side: BorderSide(
+                          color: widget.isDark ? Colors.grey[600]! : Colors.grey[300]!,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "Cancelar",
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // Botón de acción (Pago Familiar o Pago individual)
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _isFormValid()
+                          ? () {
+                              if (_formKey.currentState!.validate()) {
+                                final numeroPasajeros = _esFamiliar == true
+                                    ? int.tryParse(_numeroPasajerosController.text.trim())
+                                    : null;
+                                widget.onContinue(_esFamiliar == true, numeroPasajeros);
+                              }
+                            }
+                          : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF205AA8),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        _esFamiliar == true ? "Pago Familiar" : "Pago individual",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRadioOption({
+    required bool value,
+    required String label,
+    required Color textColor,
+    required bool isDark,
+  }) {
+    final isSelected = _esFamiliar == value;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _esFamiliar = value;
+          if (value == false) {
+            // Limpiar el campo si se selecciona "No"
+            _numeroPasajerosController.clear();
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF205AA8).withValues(alpha: 0.1)
+              : (isDark ? Colors.grey[700] : Colors.grey[200]),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF205AA8)
+                : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Radio button visual
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF205AA8)
+                      : (isDark ? Colors.grey[500]! : Colors.grey[400]!),
+                  width: 2,
+                ),
+                color: isSelected
+                    ? const Color(0xFF205AA8).withValues(alpha: 0.2)
+                    : Colors.transparent,
+              ),
+              child: isSelected
+                  ? Center(
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF205AA8),
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
             ),
           ],
         ),
