@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/model/auth/user.dart';
 
+// * UPDATE: Página para generar y mostrar código QR de pago
 class PagoQRPage extends StatefulWidget {
-  const PagoQRPage({super.key});
+  final int? numeroPasajes; // * UPDATE: Recibir numeroPasajes desde GoRouter
+
+  const PagoQRPage({super.key, this.numeroPasajes});
 
   @override
   State<PagoQRPage> createState() => _PagoQRPageState();
@@ -17,11 +20,13 @@ class _PagoQRPageState extends State<PagoQRPage> {
   @override
   void initState() {
     super.initState();
-    // Cargar el QR cuando se inicializa la pantalla
+    // * UPDATE: Cargar el QR cuando se inicializa la pantalla con numeroPasajes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_qrLoaded) {
         _qrLoaded = true;
-        monederoBloc.obtenerQrSaldo();
+        // * IMPORTANT: Usar numeroPasajes recibido o 1 por defecto (pago individual)
+        final numeroPasajes = widget.numeroPasajes ?? 1;
+        monederoBloc.obtenerQrSaldo(numeroPasajes: numeroPasajes);
       }
     });
   }
@@ -363,7 +368,9 @@ class _PagoQRPageState extends State<PagoQRPage> {
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: () {
-                      monederoBloc.obtenerQrSaldo(forzarNuevo: true);
+                      // * UPDATE: Reintentar con el mismo numeroPasajes
+                      final numeroPasajes = widget.numeroPasajes ?? 1;
+                      monederoBloc.obtenerQrSaldo(numeroPasajes: numeroPasajes, forzarNuevo: true);
                     },
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('Reintentar'),

@@ -397,16 +397,21 @@ class _DashboardState extends State<Dashboard> {
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min, // * Evitar overflow
                         children: [
                           Icon(Icons.error_outline, color: Colors.red[700], size: 32),
                           const SizedBox(height: 8),
-                          Text(
-                            monederoBloc.walletErrorMessage ?? 'Error al cargar',
-                            style: TextStyle(
-                              color: Colors.red[900],
-                              fontSize: 14,
+                          Flexible( // * Permitir que el texto se ajuste
+                            child: Text(
+                              monederoBloc.walletErrorMessage ?? 'Error al cargar',
+                              style: TextStyle(
+                                color: Colors.red[900],
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 3, // * Limitar líneas
+                              overflow: TextOverflow.ellipsis, // * Mostrar ... si es muy largo
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
@@ -533,30 +538,33 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  // * Mostrar modal de tipo de viaje antes de generar QR
+  // * UPDATE: Mostrar modal de tipo de viaje antes de generar QR
   void _mostrarModalTipoViaje(BuildContext context, bool isDark) {
     // * Guardar el contexto antes de cualquier operación
     final navigatorContext = context;
     TipoViajeDialog.mostrar(
       context: navigatorContext,
       isDark: isDark,
-      onContinue: (bool esFamiliar, int? numeroPasajeros) {
-        // * Verificar que el contexto esté montado antes de navegar
+      onContinue: (bool esFamiliar, int numeroPasajes) {
+        // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
         if (navigatorContext.mounted) {
-          GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+          GoRouter.of(navigatorContext).go(
+            RoutesName.pagoQR,
+            extra: {'numeroPasajes': numeroPasajes},
+          );
         } else {
           debugPrint('⚠️ Contexto no montado, usando navigator key');
           // * Fallback: usar el navigator key global
           final routerContext = app_routes.rootNavigatorKey.currentContext;
           if (routerContext != null && routerContext.mounted) {
-            GoRouter.of(routerContext).go(RoutesName.pagoQR);
+            GoRouter.of(routerContext).go(
+              RoutesName.pagoQR,
+              extra: {'numeroPasajes': numeroPasajes},
+            );
           }
         }
-        // * Por ahora solo se captura, no se envía al API
         debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-        if (esFamiliar && numeroPasajeros != null) {
-          debugPrint('👥 Número de pasajeros: $numeroPasajeros');
-        }
+        debugPrint('👥 Número de pasajes: $numeroPasajes');
       },
     );
   }
@@ -1719,26 +1727,30 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
                 // * Verificar que el contexto aún esté montado
                 if (!navigatorContext.mounted) return;
                 
-                // * Mostrar modal de tipo de viaje antes de navegar
+                // * UPDATE: Mostrar modal de tipo de viaje antes de navegar
                 TipoViajeDialog.mostrar(
                   context: navigatorContext,
                   isDark: isDark,
-                  onContinue: (bool esFamiliar, int? numeroPasajeros) {
+                  onContinue: (bool esFamiliar, int numeroPasajes) {
                     debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                    if (esFamiliar && numeroPasajeros != null) {
-                      debugPrint('👥 Número de pasajeros: $numeroPasajeros');
-                    }
+                    debugPrint('👥 Número de pasajes: $numeroPasajes');
                     // * Esperar otro frame para asegurar que el modal se cerró
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      // * Verificar que el contexto aún esté montado antes de navegar
+                      // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
                       if (navigatorContext.mounted) {
-                        GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                        GoRouter.of(navigatorContext).go(
+                          RoutesName.pagoQR,
+                          extra: {'numeroPasajes': numeroPasajes},
+                        );
                       } else {
                         debugPrint('⚠️ Contexto no montado, usando navigator key');
                         // * Fallback: usar el navigator key global
                         final routerContext = app_routes.rootNavigatorKey.currentContext;
                         if (routerContext != null && routerContext.mounted) {
-                          GoRouter.of(routerContext).go(RoutesName.pagoQR);
+                          GoRouter.of(routerContext).go(
+                            RoutesName.pagoQR,
+                            extra: {'numeroPasajes': numeroPasajes},
+                          );
                         }
                       }
                     });
@@ -3780,9 +3792,12 @@ class _ExtravioMonederoDialogState extends State<_ExtravioMonederoDialog> {
 
 // * Modal para seleccionar tipo de viaje (Familiar / Individual)
 // * Clase pública para poder ser reutilizada desde otros archivos
+// * UPDATE: Modal para seleccionar tipo de viaje (Familiar / Individual)
+// * Clase pública para poder ser reutilizada desde otros archivos
 class TipoViajeDialog extends StatefulWidget {
   final bool isDark;
-  final Function(bool esFamiliar, int? numeroPasajeros) onContinue;
+  // * UPDATE: Renombrar numeroPasajeros a numeroPasajes
+  final Function(bool esFamiliar, int numeroPasajes) onContinue;
 
   const TipoViajeDialog({
     required this.isDark,
@@ -3793,7 +3808,8 @@ class TipoViajeDialog extends StatefulWidget {
   static void mostrar({
     required BuildContext context,
     required bool isDark,
-    required Function(bool esFamiliar, int? numeroPasajeros) onContinue,
+    // * UPDATE: Renombrar numeroPasajeros a numeroPasajes
+    required Function(bool esFamiliar, int numeroPasajes) onContinue,
   }) {
     showDialog(
       context: context,
@@ -3801,12 +3817,12 @@ class TipoViajeDialog extends StatefulWidget {
       builder: (BuildContext dialogContext) {
         return TipoViajeDialog(
           isDark: isDark,
-          onContinue: (bool esFamiliar, int? numeroPasajeros) {
+          onContinue: (bool esFamiliar, int numeroPasajes) {
             // * Cerrar el modal primero
             Navigator.of(dialogContext).pop();
             // * Ejecutar el callback inmediatamente después de cerrar
             // * El callback manejará la navegación con el contexto correcto
-            onContinue(esFamiliar, numeroPasajeros);
+            onContinue(esFamiliar, numeroPasajes);
           },
         );
       },
@@ -3819,23 +3835,25 @@ class TipoViajeDialog extends StatefulWidget {
 
 class _TipoViajeDialogState extends State<TipoViajeDialog> {
   bool? _esFamiliar; // null = no seleccionado, true = sí, false = no
-  final TextEditingController _numeroPasajerosController = TextEditingController();
+  // * UPDATE: Renombrar numeroPasajeros a numeroPasajes
+  final TextEditingController _numeroPasajesController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
-    _numeroPasajerosController.dispose();
+    // * UPDATE: Renombrar controller
+    _numeroPasajesController.dispose();
     super.dispose();
   }
 
   bool _isFormValid() {
     if (_esFamiliar == null) return false;
     if (_esFamiliar == true) {
-      // Si es familiar, debe tener número de pasajeros válido
-      final numero = int.tryParse(_numeroPasajerosController.text.trim());
+      // * UPDATE: Si es familiar, debe tener número de pasajes válido
+      final numero = int.tryParse(_numeroPasajesController.text.trim());
       return numero != null && numero >= 1;
     }
-    // Si no es familiar, solo necesita estar seleccionado
+    // Si no es familiar, solo necesita estar seleccionado (será 1 pasaje por defecto)
     return true;
   }
 
@@ -3922,11 +3940,11 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                 isDark: widget.isDark,
               ),
               
-              // Campo de número de pasajeros (solo si es familiar)
+              // * UPDATE: Campo de número de pasajes (solo si es familiar)
               if (_esFamiliar == true) ...[
                 const SizedBox(height: 24),
                 Text(
-                  "Número de pasajeros",
+                  "Número de pasajes",
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -3935,7 +3953,7 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _numeroPasajerosController,
+                  controller: _numeroPasajesController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
@@ -3957,7 +3975,7 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa el número de pasajeros';
+                      return 'Ingresa el número de pasajes';
                     }
                     final numero = int.tryParse(value.trim());
                     if (numero == null || numero < 1) {
@@ -4011,10 +4029,12 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                       onPressed: _isFormValid()
                           ? () {
                               if (_formKey.currentState!.validate()) {
-                                final numeroPasajeros = _esFamiliar == true
-                                    ? int.tryParse(_numeroPasajerosController.text.trim())
-                                    : null;
-                                widget.onContinue(_esFamiliar == true, numeroPasajeros);
+                                // * UPDATE: Determinar numeroPasajes
+                                // Si es familiar, usar el valor ingresado; si no, usar 1 (pago individual)
+                                final numeroPasajes = _esFamiliar == true
+                                    ? int.tryParse(_numeroPasajesController.text.trim()) ?? 1
+                                    : 1; // * IMPORTANT: Pago individual siempre es 1 pasaje
+                                widget.onContinue(_esFamiliar == true, numeroPasajes);
                               }
                             }
                           : null,
@@ -4058,8 +4078,8 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
         setState(() {
           _esFamiliar = value;
           if (value == false) {
-            // Limpiar el campo si se selecciona "No"
-            _numeroPasajerosController.clear();
+            // * UPDATE: Limpiar el campo si se selecciona "No"
+            _numeroPasajesController.clear();
           }
         });
       },

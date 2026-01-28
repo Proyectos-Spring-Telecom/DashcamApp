@@ -353,26 +353,30 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
                 // * Verificar que el contexto aún esté montado
                 if (!navigatorContext.mounted) return;
                 
-                // * Mostrar modal de tipo de viaje antes de navegar
+                // * UPDATE: Mostrar modal de tipo de viaje antes de navegar
                 TipoViajeDialog.mostrar(
                   context: navigatorContext,
                   isDark: isDark,
-                  onContinue: (bool esFamiliar, int? numeroPasajeros) {
+                  onContinue: (bool esFamiliar, int numeroPasajes) {
                     debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                    if (esFamiliar && numeroPasajeros != null) {
-                      debugPrint('👥 Número de pasajeros: $numeroPasajeros');
-                    }
+                    debugPrint('👥 Número de pasajes: $numeroPasajes');
                     // * Esperar otro frame para asegurar que el modal se cerró
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      // * Verificar que el contexto aún esté montado antes de navegar
+                      // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
                       if (navigatorContext.mounted) {
-                        GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                        GoRouter.of(navigatorContext).go(
+                          RoutesName.pagoQR,
+                          extra: {'numeroPasajes': numeroPasajes},
+                        );
                       } else {
                         debugPrint('⚠️ Contexto no montado, usando navigator key');
                         // * Fallback: usar el navigator key global
                         final routerContext = app_routes.rootNavigatorKey.currentContext;
                         if (routerContext != null && routerContext.mounted) {
-                          GoRouter.of(routerContext).go(RoutesName.pagoQR);
+                          GoRouter.of(routerContext).go(
+                            RoutesName.pagoQR,
+                            extra: {'numeroPasajes': numeroPasajes},
+                          );
                         }
                       }
                     });

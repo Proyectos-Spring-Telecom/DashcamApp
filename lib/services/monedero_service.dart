@@ -611,11 +611,17 @@ class MonederoService {
     }
   }
 
-  /// Obtiene el código QR para saldo del monedero
+  /// * UPDATE: Genera el código QR para saldo del monedero con número de pasajes
   /// Requiere token de autenticación en el header
-  /// Endpoint: GET /monederos/qr/saldo
-  Future<QrWalletResponse> obtenerQrSaldo(String? token) async {
+  /// Endpoint: POST /monederos/qr/saldo
+  /// Body: { "numeroPasajes": number }
+  Future<QrWalletResponse> obtenerQrSaldo(String? token, int numeroPasajes) async {
     try {
+      // * IMPORTANT: Validar que numeroPasajes sea válido (> 0)
+      if (numeroPasajes <= 0) {
+        throw MonederoException('El número de pasajes debe ser mayor a 0.');
+      }
+
       // Configurar headers con token de autenticación
       final headers = <String, dynamic>{
         'Content-Type': 'application/json',
@@ -630,33 +636,42 @@ class MonederoService {
         headers: headers,
       );
 
-      debugPrint('📤 Obteniendo código QR para saldo');
+      // * UPDATE: Preparar body con numeroPasajes
+      final requestBody = {
+        'numeroPasajes': numeroPasajes,
+      };
+
+      debugPrint('📤 Generando código QR para saldo');
       debugPrint('📤 URL: $baseUrl/monederos/qr/saldo');
-      debugPrint('📤 Método: GET');
+      debugPrint('📤 Método: POST');
+      debugPrint('📤 Body: $requestBody');
       if (token != null && token.isNotEmpty) {
         debugPrint('📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
       } else {
         debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
-      final response = await _dio.get(
+      // * UPDATE: Cambiar de GET a POST y enviar body
+      final response = await _dio.post(
         '/monederos/qr/saldo',
+        data: requestBody,
         options: options,
       );
 
       debugPrint('📥 Status Code recibido: ${response.statusCode}');
       debugPrint('📥 Datos recibidos: ${response.data}');
 
-      // Aceptar 200 (OK) como respuesta exitosa
-      if (response.statusCode == 200) {
+      // * UPDATE: Aceptar 201 (Created) como respuesta exitosa según especificación
+      if (response.statusCode == 201 || response.statusCode == 200) {
         try {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final qrResponse = QrWalletResponse.fromJson(responseData);
-            debugPrint('✅ QR obtenido exitosamente');
+            debugPrint('✅ QR generado exitosamente');
             debugPrint('✅ ID QR: ${qrResponse.data.idQR}');
             debugPrint('✅ Saldo: ${qrResponse.data.saldo}');
             debugPrint('✅ Número de Serie: ${qrResponse.data.numeroSerie}');
+            debugPrint('✅ Número de Pasajes: ${qrResponse.data.numeroPasajes ?? 'N/A'}');
             debugPrint('✅ QR Code (primeros 50 chars): ${qrResponse.data.qrCode.substring(0, qrResponse.data.qrCode.length > 50 ? 50 : qrResponse.data.qrCode.length)}...');
             return qrResponse;
           } else {
@@ -706,18 +721,19 @@ class MonederoService {
           errorMessage = responseData;
         }
 
+        // * ERROR HANDLING: Manejo específico de códigos de estado según especificación
         if (statusCode == 401 || statusCode == 403) {
           throw MonederoException(
               'Sesión inválida. Por favor, inicia sesión nuevamente.');
         } else if (statusCode == 404) {
-          throw MonederoException('No se pudo generar el código QR.');
+          throw MonederoException('Pasajero o monedero no encontrado.');
         } else if (statusCode == 500) {
           throw MonederoException(
               'Error del servidor. Intenta más tarde.');
         } else {
           throw MonederoException(errorMessage.isNotEmpty
               ? errorMessage
-              : 'Error al obtener el código QR.');
+              : 'Error al generar el código QR.');
         }
       } else {
         throw MonederoException(
