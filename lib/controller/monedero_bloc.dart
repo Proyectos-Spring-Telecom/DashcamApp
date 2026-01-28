@@ -634,15 +634,30 @@ class MonederoBloc {
   /// Obtiene el código QR para saldo
   /// Si hay un QR en caché y no ha sido usado, lo retorna sin hacer nueva petición
   /// Si el QR fue usado, genera uno nuevo
-  Future<void> obtenerQrSaldo({bool forzarNuevo = false}) async {
+  /// * UPDATE: Genera el código QR para saldo con número de pasajes
+  /// [numeroPasajes] es requerido y debe ser mayor a 0
+  /// [forzarNuevo] fuerza la generación de un nuevo QR incluso si hay uno en caché
+  Future<void> obtenerQrSaldo({required int numeroPasajes, bool forzarNuevo = false}) async {
     try {
+      // * IMPORTANT: Validar numeroPasajes antes de continuar
+      if (numeroPasajes <= 0) {
+        throw MonederoException('El número de pasajes debe ser mayor a 0.');
+      }
+
+      // * UPDATE: Si hay un QR en caché pero el numeroPasajes es diferente, forzar nuevo
       // Si hay un QR en caché, no fue usado y no se fuerza nuevo, retornar el caché
       if (!forzarNuevo && _qr != null && !_qrUsado && _qrStatus == MonederoStatus.loaded) {
-        debugPrint('✅ Retornando QR desde caché (ID: ${_qr!.idQR})');
-        // Asegurar que el estado esté en loaded y emitir el QR
-        _qrStatusController.add(_qrStatus);
-        _qrController.add(_qr);
-        return;
+        // * Verificar si el numeroPasajes coincide con el QR en caché
+        if (_qr!.numeroPasajes == numeroPasajes) {
+          debugPrint('✅ Retornando QR desde caché (ID: ${_qr!.idQR}, Pasajes: ${_qr!.numeroPasajes})');
+          // Asegurar que el estado esté en loaded y emitir el QR
+          _qrStatusController.add(_qrStatus);
+          _qrController.add(_qr);
+          return;
+        } else {
+          debugPrint('🔄 NumeroPasajes diferente (caché: ${_qr!.numeroPasajes}, nuevo: $numeroPasajes), generando nuevo QR...');
+          forzarNuevo = true;
+        }
       }
 
       // Si el QR fue usado o se fuerza nuevo, limpiar caché antes de generar uno nuevo
@@ -664,9 +679,10 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo código QR para saldo...');
+      debugPrint('📤 Generando código QR para saldo con $numeroPasajes pasaje(s)...');
 
-      final response = await _monederoService.obtenerQrSaldo(token);
+      // * UPDATE: Pasar numeroPasajes al servicio
+      final response = await _monederoService.obtenerQrSaldo(token, numeroPasajes);
 
       _qr = response.data;
       _qrUsado = false; // El nuevo QR aún no ha sido usado
@@ -676,7 +692,7 @@ class MonederoBloc {
       _qrErrorController.add(null);
       _qrErrorMessage = null;
 
-      debugPrint('✅ QR obtenido exitosamente (ID: ${_qr!.idQR})');
+      debugPrint('✅ QR generado exitosamente (ID: ${_qr!.idQR}, Pasajes: ${_qr!.numeroPasajes ?? 'N/A'})');
     } on MonederoException catch (e) {
       debugPrint('❌ MonederoException en obtenerQrSaldo: ${e.message}');
       _qrStatus = MonederoStatus.error;

@@ -7,12 +7,14 @@ class QrWalletModel {
   final double saldo;
   final String numeroSerie;
   final String idQR;
+  final int? numeroPasajes; // * UPDATE: Número de pasajes incluido en la respuesta
 
   QrWalletModel({
     required this.qrCode,
     required this.saldo,
     required this.numeroSerie,
     required this.idQR,
+    this.numeroPasajes, // * UPDATE: Campo opcional para mantener compatibilidad
   });
 
   factory QrWalletModel.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class QrWalletModel {
       saldo: (json['saldo'] as num?)?.toDouble() ?? 0.0,
       numeroSerie: json['numeroSerie']?.toString() ?? '',
       idQR: json['idQR']?.toString() ?? '',
+      numeroPasajes: json['numeroPasajes'] != null ? (json['numeroPasajes'] as num).toInt() : null, // * UPDATE: Parsear numeroPasajes
     );
   }
 
@@ -30,6 +33,7 @@ class QrWalletModel {
       'saldo': saldo,
       'numeroSerie': numeroSerie,
       'idQR': idQR,
+      if (numeroPasajes != null) 'numeroPasajes': numeroPasajes, // * UPDATE: Incluir numeroPasajes si existe
     };
   }
 

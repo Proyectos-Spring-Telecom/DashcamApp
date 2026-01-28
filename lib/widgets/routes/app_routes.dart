@@ -294,9 +294,16 @@ class AppRoutes {
         GoRoute(
           path: RoutesName.pagoQR,
           pageBuilder: (BuildContext context, GoRouterState state) {
+            // * UPDATE: Extraer numeroPasajes desde state.extra
+            int? numeroPasajes;
+            if (state.extra is Map) {
+              numeroPasajes = (state.extra as Map)['numeroPasajes'] as int?;
+            } else if (state.extra is int) {
+              numeroPasajes = state.extra as int;
+            }
             return FadeTransitionPage(
               key: ScaffoldKey.pagoQRScaffoldKey,
-              child: const PagoQRPage(),
+              child: PagoQRPage(numeroPasajes: numeroPasajes),
             );
           },
         ),

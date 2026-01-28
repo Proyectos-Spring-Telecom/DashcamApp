@@ -327,19 +327,20 @@ class _CodigosQRPageState extends State<CodigosQRPage>
             onTap: () {
               // * Guardar el contexto antes de cualquier operación
               final navigatorContext = context;
-              // * Mostrar modal de tipo de viaje antes de navegar
+              // * UPDATE: Mostrar modal de tipo de viaje antes de navegar
               TipoViajeDialog.mostrar(
                 context: navigatorContext,
                 isDark: isDark,
-                onContinue: (bool esFamiliar, int? numeroPasajeros) {
-                  // * Verificar que el contexto esté montado antes de navegar
+                onContinue: (bool esFamiliar, int numeroPasajes) {
+                  // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
                   if (navigatorContext.mounted) {
-                    GoRouter.of(navigatorContext).go(RoutesName.pagoQR);
+                    GoRouter.of(navigatorContext).go(
+                      RoutesName.pagoQR,
+                      extra: {'numeroPasajes': numeroPasajes},
+                    );
                   }
                   debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                  if (esFamiliar && numeroPasajeros != null) {
-                    debugPrint('👥 Número de pasajeros: $numeroPasajeros');
-                  }
+                  debugPrint('👥 Número de pasajes: $numeroPasajes');
                 },
               );
             },

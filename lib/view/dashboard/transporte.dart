@@ -3,10 +3,11 @@ import 'package:dashboardpro/dashboardpro.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:quickalert/quickalert.dart';
 
 class TransportePage extends StatefulWidget {
   const TransportePage({super.key});
@@ -69,12 +70,35 @@ class _TransportePageState extends State<TransportePage> {
   String? _selectedMarkerId;
   gmaps.LatLng? _selectedMarkerPosition;
   bool _isMarkerTapped = false; // * Flag para prevenir que el onTap del mapa limpie el estado
+  
+  // * UPDATE: Unidad seleccionada para mostrar en el InfoWindow personalizado
+  UnidadModel? _selectedUnidad;
+  
+  // * UPDATE: Flag para evitar mostrar múltiples alertas de error
+  bool _errorAlertShown = false;
+  
+  // * UPDATE: Cache de unidades para evitar actualizaciones innecesarias
+  List<UnidadModel> _lastUnidades = [];
 
   @override
   void initState() {
     super.initState();
     // * Obtener la ubicación actual al inicializar
     _obtenerUbicacionActual();
+    // * Cargar unidades de monitoreo al inicializar
+    _cargarUnidades();
+  }
+
+  /// * Carga las unidades de monitoreo desde el servicio
+  /// Filtra automáticamente por cliente del token autenticado y clientes hijos
+  Future<void> _cargarUnidades() async {
+    try {
+      debugPrint('📤 Cargando unidades de monitoreo...');
+      await monitoreoBloc.cargarUnidades();
+    } catch (e) {
+      debugPrint('❌ Error al cargar unidades: $e');
+      // * El error se manejará a través del stream de errores del bloc
+    }
   }
   
   /// * Obtiene la ubicación actual del dispositivo
@@ -240,38 +264,50 @@ class _TransportePageState extends State<TransportePage> {
   }
 
   // * Mostrar geocercas en el mapa
-  /// * Maneja el tap en el marker de ubicación del usuario
   void _onMarkerTapped() {
     debugPrint('📍 Marker tocado - user_location');
     final position = _currentLocation ?? _initialPosition;
     debugPrint('📍 Posición actual: $position');
     
-    if (!mounted) {
-      debugPrint('⚠️ Widget no montado, no se puede actualizar el estado');
-      return;
-    }
-    
-    // * Marcar que el marker fue tocado y actualizar el estado dentro de setState
-    // * para mantener la consistencia del estado reactivo de Flutter
     setState(() {
       _isMarkerTapped = true;
       _selectedMarkerId = 'user_location';
       _selectedMarkerPosition = position;
+      _selectedUnidad = null; // * Limpiar unidad seleccionada
       debugPrint('✅ InfoWindow personalizado activado');
-      debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
-      debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
     });
     
-    // * Resetear el flag después de un breve delay para permitir que el InfoWindow se muestre
-    // * Verificar que el widget esté montado y usar setState para mantener consistencia
+    // * Resetear el flag después de un breve delay
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         setState(() {
           _isMarkerTapped = false;
           debugPrint('🔄 Flag _isMarkerTapped reseteado');
         });
-      } else {
-        debugPrint('⚠️ Widget desmontado, no se puede resetear _isMarkerTapped');
+      }
+    });
+  }
+
+  /// * UPDATE: Maneja el tap en el marker de una unidad
+  void _onUnidadMarkerTapped(UnidadModel unidad) {
+    debugPrint('🚗 Marker de unidad tocado - ${unidad.codigo}');
+    final position = gmaps.LatLng(unidad.posicion.lat, unidad.posicion.lng);
+    
+    setState(() {
+      _isMarkerTapped = true;
+      _selectedMarkerId = 'unidad_${unidad.id}';
+      _selectedMarkerPosition = position;
+      _selectedUnidad = unidad; // * Guardar la unidad seleccionada
+      debugPrint('✅ InfoWindow personalizado activado para unidad ${unidad.codigo}');
+    });
+    
+    // * Resetear el flag después de un breve delay
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isMarkerTapped = false;
+          debugPrint('🔄 Flag _isMarkerTapped reseteado');
+        });
       }
     });
   }
@@ -459,6 +495,9 @@ class _TransportePageState extends State<TransportePage> {
     return byteData!.buffer.asUint8List();
   }
 
+  /// * UPDATE: Agrega markers al mapa incluyendo:
+  /// - Marker del usuario (ubicación actual)
+  /// - Markers dinámicos de las unidades de monitoreo
   Future<void> _addMarkers(BuildContext context) async {
     if (!mounted) return;
     
@@ -477,65 +516,91 @@ class _TransportePageState extends State<TransportePage> {
         'Rol: $rolNombre\n'
         'Estatus: ✓ Activo';
     
+    // * Set para almacenar todos los markers (usuario + unidades)
+    final Set<gmaps.Marker> allMarkers = {};
+    
     try {
-      // Cargar la imagen original
+      // * Cargar la imagen original para el marker del usuario
       final ByteData data = await rootBundle.load('assets/images/marker_dash.png');
       final Uint8List originalBytes = data.buffer.asUint8List();
       
-      // Definir tamaño del marcador según la plataforma
-      // Web: más grande (96px) - Mobile: más pequeño (60px)
-      // Aumentado un 20% desde los valores originales (80px -> 96px, 50px -> 60px)
+      // * Definir tamaño del marcador según la plataforma
       final int markerSize = kIsWeb ? 96 : 130;
       
-      // Redimensionar la imagen
+      // * Redimensionar la imagen
       final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, markerSize);
       
-      // Convertir bytes redimensionados a BitmapDescriptor
+      // * Convertir bytes redimensionados a BitmapDescriptor
       final customIcon = gmaps.BitmapDescriptor.fromBytes(resizedBytes);
       
-      if (mounted) {
-        setState(() {
-          _markers = {
-            gmaps.Marker(
-              markerId: const gmaps.MarkerId('user_location'),
-              position: position,
-              icon: customIcon,
-              // * Deshabilitar InfoWindow nativo para usar solo el personalizado
-              // * Dejar vacío para que no se muestre el InfoWindow nativo
-              infoWindow: const gmaps.InfoWindow(),
-              anchor: const Offset(0.5, 1.0), // Ancla el marcador desde el centro inferior
-              onTap: _onMarkerTapped,
-            ),
-          };
-        });
-        debugPrint('✅ Marcador personalizado cargado exitosamente');
-        debugPrint('📍 Posición del marcador: $position');
-        debugPrint('👤 Usuario: $nombreCompleto');
-        debugPrint('📦 Tamaño del marcador: ${markerSize}px');
-        debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
-      }
+      // * Agregar marker del usuario
+      allMarkers.add(
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId('user_location'),
+          position: position,
+          icon: customIcon,
+          infoWindow: const gmaps.InfoWindow(),
+          anchor: const Offset(0.5, 1.0),
+          onTap: _onMarkerTapped,
+        ),
+      );
+      
+      debugPrint('✅ Marcador del usuario cargado exitosamente');
+      debugPrint('📍 Posición del marcador: $position');
+      debugPrint('👤 Usuario: $nombreCompleto');
     } catch (e, stackTrace) {
       debugPrint('❌ Error al cargar el marcador personalizado: $e');
       debugPrint('📚 Stack trace: $stackTrace');
-      // Si falla, usar el marcador por defecto como respaldo
-      if (mounted) {
-        setState(() {
-          _markers = {
-            gmaps.Marker(
-              markerId: const gmaps.MarkerId('user_location'),
-              position: position,
-              icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-                  gmaps.BitmapDescriptor.hueBlue),
-              // * Deshabilitar InfoWindow nativo para usar solo el personalizado
-              // * Dejar vacío para que no se muestre el InfoWindow nativo
-              infoWindow: const gmaps.InfoWindow(),
-              onTap: _onMarkerTapped,
+      // * Si falla, usar el marcador por defecto como respaldo
+      allMarkers.add(
+        gmaps.Marker(
+          markerId: const gmaps.MarkerId('user_location'),
+          position: position,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueBlue),
+          infoWindow: const gmaps.InfoWindow(),
+          onTap: _onMarkerTapped,
+        ),
+      );
+      debugPrint('⚠️ Usando marcador por defecto como respaldo');
+    }
+    
+    // * UPDATE: Agregar markers dinámicos de las unidades de monitoreo
+    final unidades = monitoreoBloc.unidadesConPosicionValida;
+    debugPrint('🚗 Agregando ${unidades.length} unidades al mapa');
+    
+    for (var unidad in unidades) {
+      try {
+        // * UPDATE: Crear marker para cada unidad usando InfoWindow personalizado
+        // * Deshabilitar InfoWindow nativo para usar solo el personalizado
+        allMarkers.add(
+          gmaps.Marker(
+            markerId: gmaps.MarkerId('unidad_${unidad.id}'),
+            position: gmaps.LatLng(unidad.posicion.lat, unidad.posicion.lng),
+            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              unidad.estaEnRuta 
+                  ? gmaps.BitmapDescriptor.hueGreen // * Verde para unidades en ruta
+                  : gmaps.BitmapDescriptor.hueOrange, // * Naranja para otras unidades
             ),
-          };
-        });
-        debugPrint('⚠️ Usando marcador por defecto como respaldo');
-        debugPrint('📍 Posición del marcador: $position');
+            // * UPDATE: Usar InfoWindow vacío y onTap para activar el InfoWindow personalizado
+            infoWindow: const gmaps.InfoWindow(),
+            onTap: () => _onUnidadMarkerTapped(unidad),
+          ),
+        );
+        debugPrint('✅ Marker agregado para unidad ${unidad.id} (${unidad.codigo})');
+      } catch (e) {
+        debugPrint('❌ Error al agregar marker para unidad ${unidad.id}: $e');
       }
+    }
+    
+    // * Actualizar los markers en el estado
+    if (mounted) {
+      setState(() {
+        _markers = allMarkers;
+      });
+      debugPrint('✅ Total de markers en el mapa: ${allMarkers.length}');
+      debugPrint('   - Marker del usuario: 1');
+      debugPrint('   - Markers de unidades: ${unidades.length}');
     }
   }
 
@@ -664,15 +729,76 @@ class _TransportePageState extends State<TransportePage> {
             backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
             extendBodyBehindAppBar: false,
             drawer: _buildDrawer(context, isDark),
-            body: Column(
-              children: [
-                // Header personalizado igual que en dashboard
-                _buildHeader(context, isDark: isDark),
-                // Mapa
-                Expanded(
-                  child: _buildMapView(isDark),
-                ),
-              ],
+            body: StreamBuilder<List<UnidadModel>>(
+              stream: monitoreoBloc.unidadesStream,
+              initialData: monitoreoBloc.unidades,
+              builder: (context, unidadesSnapshot) {
+                // * UPDATE: Actualizar markers solo si las unidades cambiaron
+                final unidades = unidadesSnapshot.data ?? [];
+                final unidadesChanged = unidades.length != _lastUnidades.length ||
+                    !listEquals(unidades.map((u) => u.id).toList(), 
+                                _lastUnidades.map((u) => u.id).toList());
+                
+                if (unidadesChanged && _mapController != null && mounted) {
+                  _lastUnidades = List.from(unidades);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_mapController != null && mounted) {
+                      _addMarkers(context);
+                    }
+                  });
+                }
+                
+                return StreamBuilder<MonitoreoStatus>(
+                  stream: monitoreoBloc.statusStream,
+                  initialData: monitoreoBloc.status,
+                  builder: (context, statusSnapshot) {
+                    return StreamBuilder<String?>(
+                      stream: monitoreoBloc.errorStream,
+                      initialData: monitoreoBloc.errorMessage,
+                      builder: (context, errorSnapshot) {
+                        // * ERROR HANDLING: Mostrar QuickAlert si hay error
+                        final errorMessage = errorSnapshot.data;
+                        if (errorMessage != null && 
+                            errorMessage.isNotEmpty && 
+                            mounted && 
+                            !_errorAlertShown) {
+                          _errorAlertShown = true;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              QuickAlert.show(
+                                context: context,
+                                type: QuickAlertType.error,
+                                title: 'Error',
+                                text: errorMessage,
+                                confirmBtnText: 'Aceptar',
+                                confirmBtnColor: const Color(0xFF205AA8),
+                                onConfirmBtnTap: () {
+                                  monitoreoBloc.limpiarError();
+                                  _errorAlertShown = false; // * Permitir mostrar alerta nuevamente
+                                },
+                              );
+                            }
+                          });
+                        } else if (errorMessage == null || errorMessage.isEmpty) {
+                          // * Resetear flag cuando no hay error
+                          _errorAlertShown = false;
+                        }
+                        
+                        return Column(
+                          children: [
+                            // Header personalizado igual que en dashboard
+                            _buildHeader(context, isDark: isDark),
+                            // Mapa
+                            Expanded(
+                              child: _buildMapView(isDark),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+              },
             ),
           ),
         );
@@ -792,6 +918,7 @@ class _TransportePageState extends State<TransportePage> {
                 setState(() {
                   _selectedMarkerId = null;
                   _selectedMarkerPosition = null;
+                  _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
                 });
               } else if (_isMarkerTapped) {
                 debugPrint('🚫 Ignorando movimiento de cámara porque el marker fue tocado');
@@ -805,6 +932,7 @@ class _TransportePageState extends State<TransportePage> {
                 setState(() {
                   _selectedMarkerId = null;
                   _selectedMarkerPosition = null;
+                  _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
                 });
               } else if (_isMarkerTapped) {
                 debugPrint('🚫 Ignorando tap del mapa porque el marker fue tocado');
@@ -921,7 +1049,7 @@ class _TransportePageState extends State<TransportePage> {
                 debugPrint('🔍 Renderizando InfoWindow en el Stack');
                 debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
                 debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
-                return _buildCustomInfoWindow(isDark);
+                return _buildCustomInfoWindow(context, isDark);
               },
             ),
           ],
@@ -930,23 +1058,30 @@ class _TransportePageState extends State<TransportePage> {
     );
   }
   
-  /// * Construye el InfoWindow personalizado con la información del usuario
+  /// * UPDATE: Construye el InfoWindow personalizado con la información del usuario o unidad
   /// * Diseño basado en la imagen: gradiente azul, layout horizontal con foto de perfil
-  Widget _buildCustomInfoWindow(bool isDark) {
+  /// * Ahora soporta tanto información del usuario como de unidades
+  Widget _buildCustomInfoWindow(BuildContext context, bool isDark) {
     debugPrint('🎨 Construyendo InfoWindow personalizado');
     debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
     debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
     
-    final user = authBloc.currentUser;
-    final nombreCompleto = user != null
-        ? '${user.nombre} ${user.apellidoPaterno}${user.apellidoMaterno != null && user.apellidoMaterno!.isNotEmpty ? ' ${user.apellidoMaterno}' : ''}'
-        : 'Usuario';
-    final rolNombre = user?.rol?.nombre ?? 'N/A';
+    // * UPDATE: Determinar si es una unidad o el usuario
+    final bool esUnidad = _selectedUnidad != null;
     
-    // * Posicionar el InfoWindow en la parte superior del mapa
-    // * Se puede ajustar para que aparezca cerca del marker si es necesario
+    // * Información del usuario (si no es unidad)
+    final user = esUnidad ? null : authBloc.currentUser;
+    final nombreCompleto = esUnidad 
+        ? _selectedUnidad!.codigo
+        : (user != null
+            ? '${user.nombre} ${user.apellidoPaterno}${user.apellidoMaterno != null && user.apellidoMaterno!.isNotEmpty ? ' ${user.apellidoMaterno}' : ''}'
+            : 'Usuario');
+    final rolNombre = esUnidad 
+        ? _selectedUnidad!.modelo
+        : (user?.rol?.nombre ?? 'N/A');
+    
     return Positioned(
-      top: 80, // * Más abajo para que no se oculte con otros elementos
+      top: 80,
       left: 20,
       right: 20,
       child: Material(
@@ -1001,7 +1136,7 @@ class _TransportePageState extends State<TransportePage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 3),
                         // * Rol (debajo del nombre, más pequeño, blanco)
                         Text(
                           rolNombre,
@@ -1013,31 +1148,49 @@ class _TransportePageState extends State<TransportePage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        // * UPDATE: Ocupación de pasajero (solo para unidades)
+                        if (esUnidad) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'Ocupación de pasajeros: ${_selectedUnidad!.diferencia} personas',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
-                        // * Divider debajo del Rol
+                        // * UPDATE: Divider debajo del Rol (color #A6CE39 según especificación)
                         Divider(
                           color: const Color(0xFFA6CE39),
                           height: 1,
                           thickness: 1,
                         ),
                         const SizedBox(height: 8),
-                        // * Estatus "Activo" con punto verde
+                        // * UPDATE: Estatus dinámico (Activo para usuario, Estado para unidad)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // * Punto verde
+                            // * Punto de color según el tipo
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFA6CE39), // * Verde
+                              decoration: BoxDecoration(
+                                color: esUnidad 
+                                    ? (_selectedUnidad!.estaEnRuta 
+                                        ? const Color(0xFFA6CE39) // * Verde si está en ruta
+                                        : Colors.orange) // * Naranja si no está en ruta
+                                    : const Color(0xFFA6CE39), // * Verde para usuario
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Text(
-                              'Activo',
-                              style: TextStyle(
+                            Text(
+                              esUnidad 
+                                  ? _selectedUnidad!.estado.toUpperCase()
+                                  : 'Activo',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.normal,
@@ -1045,39 +1198,62 @@ class _TransportePageState extends State<TransportePage> {
                             ),
                           ],
                         ),
+                        // * UPDATE: Información adicional para unidades
+                        if (esUnidad) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'Conductor: ${_selectedUnidad!.conductor}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Velocidad: ${_selectedUnidad!.velocidad}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // * Sección derecha: Foto de perfil (1/3 del ancho)
+                  // * UPDATE: Sección derecha: Foto de perfil (usuario) o icono de vehículo (unidad)
                   Expanded(
                     flex: 1,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         width: double.infinity,
-                        height: 80,
+                        height: 130,
                         color: Colors.white.withOpacity(0.2), // * Fondo semitransparente
-                        child: user?.fotoPerfil != null && user!.fotoPerfil!.isNotEmpty
-                            ? Image.network(
-                                user.fotoPerfil!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildDefaultAvatar();
-                                },
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                              loadingProgress.expectedTotalBytes!
-                                          : null,
-                                    ),
-                                  );
-                                },
-                              )
-                            : _buildDefaultAvatar(),
+                        child: esUnidad
+                            ? _buildUnidadIcon()
+                            : (user?.fotoPerfil != null && user!.fotoPerfil!.isNotEmpty
+                                ? Image.network(
+                                    user.fotoPerfil!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return _buildDefaultAvatar();
+                                    },
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded /
+                                                  loadingProgress.expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : _buildDefaultAvatar()),
                       ),
                     ),
                   ),
@@ -1099,6 +1275,20 @@ class _TransportePageState extends State<TransportePage> {
           Icons.person,
           color: Colors.white,
           size: 40,
+        ),
+      ),
+    );
+  }
+
+  /// * UPDATE: Construye el icono de vehículo para unidades
+  Widget _buildUnidadIcon() {
+    return Container(
+      color: Colors.white.withOpacity(0.2),
+      child: Center(
+        child: Icon(
+          Icons.directions_bus, // * Icono de autobús/vehículo
+          color: Colors.white,
+          size: 60,
         ),
       ),
     );
