@@ -45,6 +45,10 @@ class RutaModel {
   });
 }
 
+/// * Tipo seleccionado en el BottomSheet: Zonas, Ruta o Variantes.
+/// ? INFO: Controla cuándo se muestra el dropdown superior; el pintado ocurre solo al elegir ítem del dropdown.
+enum MapSelectionType { none, zonas, ruta, variantes }
+
 class _TransportePageState extends State<TransportePage> {
   gmaps.GoogleMapController? _mapController;
   // * Posición inicial por defecto (fallback si no se puede obtener la ubicación)
@@ -61,6 +65,13 @@ class _TransportePageState extends State<TransportePage> {
   
   // * Estado para controlar qué se muestra
   String? _currentView; // 'geocercas' o 'rutas' o null
+
+  // ! IMPORTANT: Tipo seleccionado en BottomSheet (Zonas/Variantes). Solo habilita el dropdown; NO pinta.
+  // ? INFO: none = no mostrar dropdown; zonas/variantes = mostrar dropdown arriba del mapa
+  MapSelectionType _mapSelectionType = MapSelectionType.none;
+
+  // * ID del ítem seleccionado en el dropdown (cuando el usuario elige uno, se pinta en el mapa)
+  String? _selectedDropdownItemId;
   
   // * Estado para la ubicación actual
   bool _isLoadingLocation = false;
@@ -76,6 +87,11 @@ class _TransportePageState extends State<TransportePage> {
   
   // * UPDATE: Flag para evitar mostrar múltiples alertas de error
   bool _errorAlertShown = false;
+
+  // ! IMPORTANTE: Flag para evitar múltiples QuickAlert de error de zonas
+  bool _zonasErrorAlertShown = false;
+  // ! IMPORTANTE: Flag para evitar múltiples QuickAlert de error de rutas
+  bool _rutasErrorAlertShown = false;
   
   // * UPDATE: Cache de unidades para evitar actualizaciones innecesarias
   List<UnidadModel> _lastUnidades = [];
@@ -87,6 +103,33 @@ class _TransportePageState extends State<TransportePage> {
     _obtenerUbicacionActual();
     // * Cargar unidades de monitoreo al inicializar
     _cargarUnidades();
+    // ! IMPORTANTE: Cargar zonas desde API para dropdown y pintado dinámico de geocercas
+    _cargarZonas();
+    // ! IMPORTANTE: Cargar rutas desde API para dropdown y pintado dinámico de polylines
+    _cargarRutas();
+  }
+
+  /// * Carga las rutas desde el servicio GET /rutas/list
+  /// ? INFO: Filtra estatus === 1 y ruta !== null; el dropdown NO pinta hasta que el usuario seleccione
+  Future<void> _cargarRutas() async {
+    try {
+      debugPrint('📤 Cargando rutas...');
+      await rutasBloc.cargarRutas();
+    } catch (e) {
+      debugPrint('❌ Error al cargar rutas: $e');
+    }
+  }
+
+  /// * Carga las zonas desde el servicio GET /zonas/list
+  /// ? INFO: Filtra estatus === 1 y geocerca !== null; el dropdown NO pinta hasta que el usuario seleccione
+  Future<void> _cargarZonas() async {
+    try {
+      debugPrint('📤 Cargando zonas...');
+      await zonasBloc.cargarZonas();
+    } catch (e) {
+      debugPrint('❌ Error al cargar zonas: $e');
+      // * El error se expone por zonasBloc.errorStream y se muestra con QuickAlert
+    }
   }
 
   /// * Carga las unidades de monitoreo desde el servicio
@@ -245,12 +288,12 @@ class _TransportePageState extends State<TransportePage> {
     ];
   }
 
-  // * Obtener rutas mock
+  // * Obtener rutas mock (lista estática para dropdown; TODO: reemplazar por API)
   List<RutaModel> _getMockRutas() {
     return [
       RutaModel(
         id: 'ruta_1',
-        name: 'Ruta Principal',
+        name: 'Ruta Cuernavaca',
         startPoint: const gmaps.LatLng(19.4326, -99.1332),
         endPoint: const gmaps.LatLng(19.4500, -99.1500),
         path: [
@@ -258,6 +301,17 @@ class _TransportePageState extends State<TransportePage> {
           const gmaps.LatLng(19.4380, -99.1400),
           const gmaps.LatLng(19.4450, -99.1450),
           const gmaps.LatLng(19.4500, -99.1500),
+        ],
+      ),
+      RutaModel(
+        id: 'ruta_2',
+        name: 'Ruta Sur',
+        startPoint: const gmaps.LatLng(19.4200, -99.1400),
+        endPoint: const gmaps.LatLng(19.4100, -99.1300),
+        path: [
+          const gmaps.LatLng(19.4200, -99.1400),
+          const gmaps.LatLng(19.4150, -99.1350),
+          const gmaps.LatLng(19.4100, -99.1300),
         ],
       ),
     ];
@@ -312,11 +366,74 @@ class _TransportePageState extends State<TransportePage> {
     });
   }
 
-  void _showGeocercas() {
-    final geocercas = _getMockGeocercas();
+  /// * Pinta geocercas en el mapa.
+  /// ! IMPORTANTE: Si [singleId] se proporciona (flujo dropdown), pinta la zona dinámica desde API:
+  ///    1. Limpiar geocercas previas  2. Leer geocerca.features[0].geometry.coordinates
+  ///    3. Convertir GeoJSON [lng, lat] → LatLng(lat, lng)  4. Construir Polygon  5. Pintar y ajustar cámara
+  /// ? INFO: Sin singleId se usa mock (retrocompatibilidad).
+  void _showGeocercas({String? singleId}) {
+    // * Flujo dinámico: usuario seleccionó una zona en el dropdown (datos desde API)
+    if (singleId != null) {
+      final zone = zonasBloc.zonaPorId(singleId);
+      if (zone == null || !zone.tieneGeocercaValida) {
+        if (mounted) {
+          QuickAlert.show(
+            context: context,
+            type: QuickAlertType.error,
+            title: 'Zona no disponible',
+            text: 'La zona no se encontró o no tiene geocerca válida para pintar.',
+            confirmBtnText: 'Aceptar',
+            confirmBtnColor: const Color(0xFF205AA8),
+          );
+        }
+        return;
+      }
+      // * GeoJSON: coordinates[0] = anillo exterior, cada punto es [lng, lat] → LatLng(lat, lng)
+      final rawCoords = zone.getExteriorRingCoordinates();
+      if (rawCoords.isEmpty) {
+        if (mounted) {
+          QuickAlert.show(
+            context: context,
+            type: QuickAlertType.error,
+            title: 'Geocerca inválida',
+            text: 'No se pudieron leer las coordenadas de la zona.',
+            confirmBtnText: 'Aceptar',
+            confirmBtnColor: const Color(0xFF205AA8),
+          );
+        }
+        return;
+      }
+      final points = rawCoords
+          .map((p) => gmaps.LatLng(p[1], p[0]))
+          .toList(); // [lng, lat] → LatLng(lat, lng)
+
+      final polygonId = gmaps.PolygonId(zone.id.toString());
+      final polygon = gmaps.Polygon(
+        polygonId: polygonId,
+        points: points,
+        fillColor: Colors.blue.withOpacity(0.3),
+        strokeColor: Colors.blue,
+        strokeWidth: 2,
+        geodesic: false,
+      );
+
+      setState(() {
+        _polygons = {polygon};
+        _polylines = {};
+        _markers = {};
+        _currentView = 'geocercas';
+      });
+
+      _adjustCameraToFit(latLngPoints: points);
+      return;
+    }
+
+    // * Flujo mock: sin singleId (retrocompatibilidad)
+    final allGeocercas = _getMockGeocercas();
+    if (allGeocercas.isEmpty) return;
+
     final polygons = <gmaps.Polygon>{};
-    
-    for (var geocerca in geocercas) {
+    for (var geocerca in allGeocercas) {
       polygons.add(
         gmaps.Polygon(
           polygonId: gmaps.PolygonId(geocerca.id),
@@ -332,32 +449,126 @@ class _TransportePageState extends State<TransportePage> {
     setState(() {
       _polygons = polygons;
       _polylines = {};
-      _markers = {}; // Limpiar marcadores de rutas
+      _markers = {};
       _currentView = 'geocercas';
     });
 
-    _adjustCameraToFit(geocercas: geocercas);
+    _adjustCameraToFit(geocercas: allGeocercas);
   }
 
-  // * Mostrar rutas en el mapa
-  void _showRutas() {
-    final rutas = _getMockRutas();
+  /// * Pinta variantes (rutas) en el mapa.
+  /// ? INFO: [singleId] opcional: si se proporciona, pinta esa ruta desde API (flujo dropdown). Sin singleId usa mock (Variantes).
+  void _showRutas({String? singleId}) {
+    // * Flujo dinámico: usuario seleccionó una ruta en el dropdown (datos desde API)
+    if (singleId != null) {
+      final rutaApi = rutasBloc.rutaPorId(singleId);
+      if (rutaApi == null) {
+        if (mounted) {
+          QuickAlert.show(
+            context: context,
+            type: QuickAlertType.error,
+            title: 'Ruta no disponible',
+            text: 'La ruta no se encontró.',
+            confirmBtnText: 'Aceptar',
+            confirmBtnColor: const Color(0xFF205AA8),
+          );
+        }
+        return;
+      }
+      if (!rutaApi.tieneRutaValida) {
+        if (mounted) {
+          QuickAlert.show(
+            context: context,
+            type: QuickAlertType.error,
+            title: 'Ruta sin datos',
+            text: 'La ruta no tiene coordenadas para pintar.',
+            confirmBtnText: 'Aceptar',
+            confirmBtnColor: const Color(0xFF205AA8),
+          );
+        }
+        return;
+      }
+
+      // * Convertir coordenadas API [lng, lat] → LatLng(lat, lng)
+      final path = rutaApi.ruta
+          .map((p) => gmaps.LatLng(p[1], p[0]))
+          .toList();
+      final startPoint = gmaps.LatLng(rutaApi.puntoInicioLat, rutaApi.puntoInicioLng);
+      final endPoint = gmaps.LatLng(rutaApi.puntoFinLat, rutaApi.puntoFinLng);
+
+      // ! IMPORTANTE: Polyline azul como FAB; si la API no envía "ruta", dibujar línea inicio→fin
+      final polylinePoints = path.isNotEmpty ? path : [startPoint, endPoint];
+      final polylineId = gmaps.PolylineId(rutaApi.id.toString());
+      final polylines = <gmaps.Polyline>{
+        gmaps.Polyline(
+          polylineId: polylineId,
+          points: polylinePoints,
+          color: const Color(0xFF205AA8), // * Azul igual que botones flotantes
+          width: 5,
+          geodesic: false,
+          patterns: [
+            gmaps.PatternItem.dash(20),
+            gmaps.PatternItem.gap(15),
+          ],
+        ),
+      };
+
+      final markers = <gmaps.Marker>{
+        gmaps.Marker(
+          markerId: gmaps.MarkerId('${rutaApi.id}_start'),
+          position: startPoint,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: gmaps.InfoWindow(
+            title: 'Inicio: ${rutaApi.nombre}',
+          ),
+        ),
+        gmaps.Marker(
+          markerId: gmaps.MarkerId('${rutaApi.id}_end'),
+          position: endPoint,
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueRed,
+          ),
+          infoWindow: gmaps.InfoWindow(
+            title: 'Fin: ${rutaApi.nombre}',
+          ),
+        ),
+      };
+
+      setState(() {
+        _polylines = polylines;
+        _polygons = {};
+        _markers = markers;
+        _currentView = 'rutas';
+      });
+
+      final allPoints = [startPoint, endPoint, ...path];
+      _adjustCameraToFit(latLngPoints: allPoints);
+      return;
+    }
+
+    // * Flujo mock: Variantes (sin singleId)
+    final allRutas = _getMockRutas();
+    if (allRutas.isEmpty) return;
+
     final polylines = <gmaps.Polyline>{};
     final markers = <gmaps.Marker>{};
 
-    for (var ruta in rutas) {
-      // * Agregar polyline
+    for (var ruta in allRutas) {
       polylines.add(
         gmaps.Polyline(
           polylineId: gmaps.PolylineId(ruta.id),
           points: ruta.path,
-          color: Colors.blue,
-          width: 4,
+          color: const Color(0xFF205AA8), // * Azul igual que botones flotantes
+          width: 5,
           geodesic: false,
+          patterns: [
+            gmaps.PatternItem.dash(20),
+            gmaps.PatternItem.gap(15),
+          ],
         ),
       );
-
-      // * Agregar marcador de inicio
       markers.add(
         gmaps.Marker(
           markerId: gmaps.MarkerId('${ruta.id}_start'),
@@ -370,8 +581,6 @@ class _TransportePageState extends State<TransportePage> {
           ),
         ),
       );
-
-      // * Agregar marcador de fin
       markers.add(
         gmaps.Marker(
           markerId: gmaps.MarkerId('${ruta.id}_end'),
@@ -393,31 +602,45 @@ class _TransportePageState extends State<TransportePage> {
       _currentView = 'rutas';
     });
 
-    _adjustCameraToFit(rutas: rutas);
+    _adjustCameraToFit(rutas: allRutas);
   }
 
-  // * Ocultar todo
+  /// * Ocultar geocercas/variantes y restaurar vista por defecto.
+  /// ? INFO: También resetea el tipo de selección y el dropdown; regresa la cámara a mi ubicación.
   void _hideAll() {
     setState(() {
       _polygons = {};
       _polylines = {};
       _markers = {};
       _currentView = null;
+      _mapSelectionType = MapSelectionType.none;
+      _selectedDropdownItemId = null;
     });
-    
-    // * Restaurar marcadores originales del vehículo
+
     if (_mapController != null) {
       final context = this.context;
       if (context.mounted) {
         _addMarkers(context);
+        // ! IMPORTANTE: Regresar la vista del mapa a mi ubicación (o posición inicial)
+        final targetPosition = _currentLocation ?? _initialPosition;
+        _mapController!.animateCamera(
+          gmaps.CameraUpdate.newCameraPosition(
+            gmaps.CameraPosition(
+              target: targetPosition,
+              zoom: 15.0,
+            ),
+          ),
+        );
       }
     }
   }
 
-  // * Ajustar cámara para mostrar geocercas o rutas
+  // * Ajustar cámara para mostrar geocercas, rutas o puntos de un polígono (zonas dinámicas)
+  /// ? INFO: [latLngPoints] se usa al pintar geocerca dinámica desde API (GeoJSON → LatLng)
   Future<void> _adjustCameraToFit({
     List<GeocercaModel>? geocercas,
     List<RutaModel>? rutas,
+    List<gmaps.LatLng>? latLngPoints,
   }) async {
     if (_mapController == null) return;
 
@@ -435,6 +658,10 @@ class _TransportePageState extends State<TransportePage> {
         allPoints.add(ruta.endPoint);
         allPoints.addAll(ruta.path);
       }
+    }
+
+    if (latLngPoints != null && latLngPoints.isNotEmpty) {
+      allPoints.addAll(latLngPoints);
     }
 
     if (allPoints.isEmpty) return;
@@ -518,6 +745,7 @@ class _TransportePageState extends State<TransportePage> {
     
     // * Set para almacenar todos los markers (usuario + unidades)
     final Set<gmaps.Marker> allMarkers = {};
+    gmaps.BitmapDescriptor? busIcon; // * En ámbito para todo el método (incluye markers de unidades)
     
     try {
       // * Cargar la imagen original para el marker del usuario
@@ -532,6 +760,16 @@ class _TransportePageState extends State<TransportePage> {
       
       // * Convertir bytes redimensionados a BitmapDescriptor
       final customIcon = gmaps.BitmapDescriptor.fromBytes(resizedBytes);
+      
+      // * Cargar icono de unidad (autobús) desde assets
+      try {
+        final ByteData busData = await rootBundle.load('assets/images/marker_bus.png');
+        final Uint8List busOriginalBytes = busData.buffer.asUint8List();
+        final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, markerSize);
+        busIcon = gmaps.BitmapDescriptor.fromBytes(busResizedBytes);
+      } catch (e) {
+        debugPrint('⚠️ No se pudo cargar marker_bus.png, usando marcador por defecto: $e');
+      }
       
       // * Agregar marker del usuario
       allMarkers.add(
@@ -577,12 +815,11 @@ class _TransportePageState extends State<TransportePage> {
           gmaps.Marker(
             markerId: gmaps.MarkerId('unidad_${unidad.id}'),
             position: gmaps.LatLng(unidad.posicion.lat, unidad.posicion.lng),
-            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            icon: busIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
               unidad.estaEnRuta 
-                  ? gmaps.BitmapDescriptor.hueGreen // * Verde para unidades en ruta
-                  : gmaps.BitmapDescriptor.hueOrange, // * Naranja para otras unidades
+                  ? gmaps.BitmapDescriptor.hueGreen 
+                  : gmaps.BitmapDescriptor.hueOrange,
             ),
-            // * UPDATE: Usar InfoWindow vacío y onTap para activar el InfoWindow personalizado
             infoWindow: const gmaps.InfoWindow(),
             onTap: () => _onUnidadMarkerTapped(unidad),
           ),
@@ -784,15 +1021,80 @@ class _TransportePageState extends State<TransportePage> {
                           _errorAlertShown = false;
                         }
                         
-                        return Column(
-                          children: [
-                            // Header personalizado igual que en dashboard
-                            _buildHeader(context, isDark: isDark),
-                            // Mapa
-                            Expanded(
-                              child: _buildMapView(isDark),
-                            ),
-                          ],
+                        return StreamBuilder<String?>(
+                          stream: zonasBloc.errorStream,
+                          initialData: zonasBloc.errorMessage,
+                          builder: (context, zonasErrorSnapshot) {
+                            // ! IMPORTANTE: QuickAlert para errores del servicio de zonas
+                            final zonasErrorMessage = zonasErrorSnapshot.data;
+                            if (zonasErrorMessage != null &&
+                                zonasErrorMessage.isNotEmpty &&
+                                mounted &&
+                                !_zonasErrorAlertShown) {
+                              _zonasErrorAlertShown = true;
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  QuickAlert.show(
+                                    context: context,
+                                    type: QuickAlertType.error,
+                                    title: 'Error al cargar zonas',
+                                    text: zonasErrorMessage,
+                                    confirmBtnText: 'Aceptar',
+                                    confirmBtnColor: const Color(0xFF205AA8),
+                                    onConfirmBtnTap: () {
+                                      zonasBloc.limpiarError();
+                                      _zonasErrorAlertShown = false;
+                                    },
+                                  );
+                                }
+                              });
+                            } else if (zonasErrorMessage == null ||
+                                zonasErrorMessage.isEmpty) {
+                              _zonasErrorAlertShown = false;
+                            }
+
+                            return StreamBuilder<String?>(
+                              stream: rutasBloc.errorStream,
+                              initialData: rutasBloc.errorMessage,
+                              builder: (context, rutasErrorSnapshot) {
+                                final rutasErrorMessage = rutasErrorSnapshot.data;
+                                if (rutasErrorMessage != null &&
+                                    rutasErrorMessage.isNotEmpty &&
+                                    mounted &&
+                                    !_rutasErrorAlertShown) {
+                                  _rutasErrorAlertShown = true;
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    if (mounted) {
+                                      QuickAlert.show(
+                                        context: context,
+                                        type: QuickAlertType.error,
+                                        title: 'Error al cargar rutas',
+                                        text: rutasErrorMessage,
+                                        confirmBtnText: 'Aceptar',
+                                        confirmBtnColor: const Color(0xFF205AA8),
+                                        onConfirmBtnTap: () {
+                                          rutasBloc.limpiarError();
+                                          _rutasErrorAlertShown = false;
+                                        },
+                                      );
+                                    }
+                                  });
+                                } else if (rutasErrorMessage == null ||
+                                    rutasErrorMessage.isEmpty) {
+                                  _rutasErrorAlertShown = false;
+                                }
+
+                                return Column(
+                                  children: [
+                                    _buildHeader(context, isDark: isDark),
+                                    Expanded(
+                                      child: _buildMapView(isDark),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
                         );
                       },
                     );
@@ -939,6 +1241,15 @@ class _TransportePageState extends State<TransportePage> {
               }
             },
           ),
+          // ! IMPORTANT: Dropdown con búsqueda arriba del mapa. Solo visible tras elegir Zonas o Variantes en el BottomSheet.
+          // ? INFO: Pintado en mapa ocurre ÚNICAMENTE al seleccionar un ítem del dropdown (ver _onDropdownItemSelected).
+          if (_mapSelectionType != MapSelectionType.none && _isMapReady && !_hasAuthError)
+            Positioned(
+              top: -35,
+              left: 0,
+              right: 0,
+              child: _buildZonasVariantesDropdownBar(isDark),
+            ),
           // Loading indicator while map initializes
           if (!_isMapReady && !_hasAuthError)
             Container(
@@ -1198,6 +1509,39 @@ class _TransportePageState extends State<TransportePage> {
                             ),
                           ],
                         ),
+                        // * UPDATE: Información adicional para pasajero (mi ubicación): Correo, Teléfono, Último Acceso
+                        if (!esUnidad && user != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Correo: ${user.userName.isNotEmpty ? user.userName : 'N/A'}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Teléfono: ${user.telefono != null && user.telefono!.isNotEmpty ? user.telefono : 'N/A'}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Último Acceso: ${user.ultimoLogin != null && user.ultimoLogin!.isNotEmpty ? user.ultimoLogin : 'N/A'}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                         // * UPDATE: Información adicional para unidades
                         if (esUnidad) ...[
                           const SizedBox(height: 3),
@@ -1375,13 +1719,139 @@ class _TransportePageState extends State<TransportePage> {
     );
   }
 
+  /// * Barra del dropdown arriba del mapa. Aparece solo tras elegir Zonas, Ruta o Variantes en el BottomSheet.
+  /// ? INFO: Al tocar "Seleccionar" se abre un modal con búsqueda; al elegir un ítem se pinta en el mapa.
+  Widget _buildZonasVariantesDropdownBar(bool isDark) {
+    final isZonas = _mapSelectionType == MapSelectionType.zonas;
+    final isRuta = _mapSelectionType == MapSelectionType.ruta;
+    final label = isZonas ? 'Zonas' : (isRuta ? 'Ruta' : 'Variantes');
+    final hint = isZonas ? 'Selecciona una zona...' : (isRuta ? 'Selecciona una ruta...' : 'Selecciona una variante...');
+    // ? INFO: Zonas y Rutas desde API; Variantes desde mock
+    String? selectedName;
+    if (_selectedDropdownItemId != null) {
+      if (isZonas) {
+        final zone = zonasBloc.zonaPorId(_selectedDropdownItemId!);
+        selectedName = zone?.nombre;
+      } else if (isRuta) {
+        final ruta = rutasBloc.rutaPorId(_selectedDropdownItemId!);
+        selectedName = ruta?.nombre;
+      } else {
+        final list = _getMockRutas().where((e) => e.id == _selectedDropdownItemId).toList();
+        selectedName = list.isNotEmpty ? list.first.name : null;
+      }
+    }
+
+    // * Color del dropdown en modo oscuro: mismo que el campo "Buscar zona/variante" (grey[800])
+    final Color dropdownDarkColor = isDark ? Colors.grey[800]! : Colors.white;
+    final Color dropdownBorderColor = isDark ? Colors.grey[800]! : Colors.grey[400]!;
+    return Material(
+      elevation: 4,
+      color: dropdownDarkColor,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: InkWell(
+            onTap: () => _showDropdownSelectionModal(isDark),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: dropdownBorderColor,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isZonas ? Icons.shape_line : Icons.route,
+                    color: const Color(0xFFA6CE39),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          selectedName ?? hint,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: selectedName != null
+                                ? (isDark ? Colors.white : Colors.black)
+                                : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: Color(0xFFA6CE39)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// * Abre el modal con lista y búsqueda. Al seleccionar un ítem se pinta en el mapa (punto exacto del pintado).
+  /// ? INFO: Zonas y Rutas desde API; Variantes desde mock.
+  void _showDropdownSelectionModal(bool isDark) {
+    final isZonas = _mapSelectionType == MapSelectionType.zonas;
+    final isRuta = _mapSelectionType == MapSelectionType.ruta;
+    // ! IMPORTANTE: Rutas desde API; si está vacío, cargar antes de abrir
+    if (isRuta && rutasBloc.rutas.isEmpty) {
+      rutasBloc.cargarRutas();
+    }
+    final items = isZonas
+        ? zonasBloc.zonas.map((z) => MapEntry(z.id.toString(), z.nombre)).toList()
+        : isRuta
+            ? rutasBloc.rutas.map((r) => MapEntry(r.id.toString(), r.nombre)).toList()
+            : _getMockRutas().map((r) => MapEntry(r.id, r.name)).toList();
+    final searchHint = isRuta ? 'Buscar ruta...' : null;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _DropdownSelectionModalContent(
+        isDark: isDark,
+        isZonas: isZonas,
+        searchHint: searchHint,
+        items: items,
+        onSelect: (String id) {
+          Navigator.pop(context);
+          setState(() {
+            _selectedDropdownItemId = id;
+          });
+          if (isZonas) {
+            _showGeocercas(singleId: id);
+          } else {
+            _showRutas(singleId: id);
+          }
+        },
+      ),
+    );
+  }
+
   // * Construir FAB con opciones para geocercas y rutas
   Widget _buildMapOptionsFAB(bool isDark) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // * Botón para ocultar todo
-        if (_currentView != null)
+        // * Botón para ocultar todo (visible si hay algo pintado o si el dropdown está activo)
+        if (_currentView != null || _mapSelectionType != MapSelectionType.none)
           Container(
             margin: const EdgeInsets.only(bottom: 10),
             child: FloatingActionButton(
@@ -1437,49 +1907,80 @@ class _TransportePageState extends State<TransportePage> {
               ),
             ),
             const SizedBox(height: 20),
+            // ! IMPORTANT: Al elegir Zonas/Ruta/Variantes solo se habilita el dropdown; NO se pinta aún.
             ListTile(
               leading: Icon(
                 Icons.shape_line,
-                color: _currentView == 'geocercas'
+                color: _mapSelectionType == MapSelectionType.zonas
                     ? const Color(0xFF205AA8)
                     : (isDark ? Colors.white : Colors.black),
               ),
               title: Text(
-                'Mostrar zonas',
+                'Zonas',
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-              trailing: _currentView == 'geocercas'
+              trailing: _mapSelectionType == MapSelectionType.zonas
                   ? const Icon(Icons.check, color: Color(0xFF205AA8))
                   : null,
               onTap: () {
                 Navigator.pop(context);
-                _showGeocercas();
+                setState(() {
+                  _mapSelectionType = MapSelectionType.zonas;
+                  _selectedDropdownItemId = null;
+                });
               },
             ),
             ListTile(
               leading: Icon(
                 Icons.route,
-                color: _currentView == 'rutas'
+                color: _mapSelectionType == MapSelectionType.ruta
                     ? const Color(0xFF205AA8)
                     : (isDark ? Colors.white : Colors.black),
               ),
               title: Text(
-                'Mostrar variantes',
+                'Ruta',
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-              trailing: _currentView == 'rutas'
+              trailing: _mapSelectionType == MapSelectionType.ruta
                   ? const Icon(Icons.check, color: Color(0xFF205AA8))
                   : null,
               onTap: () {
                 Navigator.pop(context);
-                _showRutas();
+                setState(() {
+                  _mapSelectionType = MapSelectionType.ruta;
+                  _selectedDropdownItemId = null;
+                });
               },
             ),
-            if (_currentView != null) ...[
+            ListTile(
+              leading: Icon(
+                Icons.route,
+                color: _mapSelectionType == MapSelectionType.variantes
+                    ? const Color(0xFF205AA8)
+                    : (isDark ? Colors.white : Colors.black),
+              ),
+              title: Text(
+                'Variantes',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+              trailing: _mapSelectionType == MapSelectionType.variantes
+                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _mapSelectionType = MapSelectionType.variantes;
+                  _selectedDropdownItemId = null;
+                });
+              },
+            ),
+            if (_currentView != null || _mapSelectionType != MapSelectionType.none) ...[
               const Divider(),
               ListTile(
                 leading: Icon(
@@ -1798,4 +2299,150 @@ class _InfoWindowTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// * Contenido del modal de selección con búsqueda (Zonas, Ruta o Variantes).
+/// ? INFO: Lista estática (mock); preparado para reemplazar por API.
+class _DropdownSelectionModalContent extends StatefulWidget {
+  final bool isDark;
+  final bool isZonas;
+  /// Hint del campo de búsqueda. Si null, se usa "Buscar zona..." o "Buscar variante..." según isZonas.
+  final String? searchHint;
+  final List<MapEntry<String, String>> items;
+  final void Function(String id) onSelect;
+
+  const _DropdownSelectionModalContent({
+    required this.isDark,
+    required this.isZonas,
+    this.searchHint,
+    required this.items,
+    required this.onSelect,
+  });
+
+  @override
+  State<_DropdownSelectionModalContent> createState() =>
+      _DropdownSelectionModalContentState();
+}
+
+class _DropdownSelectionModalContentState
+    extends State<_DropdownSelectionModalContent> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _query = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ! IMPORTANTE: Altura mínima para mostrar al menos ~10 ítems (ListTile ~56px)
+  static const double _minListHeight = 10 * 56.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.items
+        .where((e) => e.value.toLowerCase().contains(_query))
+        .toList();
+    // * Color en modo oscuro: #2E2E2E (fondo del modal y borde del TextField)
+    const Color darkBgColor = Color(0xFF2E2E2E);
+    final bgColor = widget.isDark ? darkBgColor : Colors.white;
+    final textColor = widget.isDark ? Colors.white : Colors.black;
+    final screenHeight = MediaQuery.of(context).size.height;
+    // ! IMPORTANTE: maxHeight debe ser >= minHeight (BoxConstraints normalizados)
+    final maxModalHeight = screenHeight * 0.6;
+    final desiredMinHeight = _minListHeight + 120;
+    final minModalHeight = desiredMinHeight.clamp(0.0, maxModalHeight);
+    // Altura de la lista: ~10 ítems visibles, sin exceder el espacio disponible en el modal
+    final listHeight = _minListHeight.clamp(0.0, maxModalHeight - 120);
+
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: minModalHeight,
+        maxHeight: maxModalHeight,
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: widget.isDark ? Colors.grey[600] : Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: widget.searchHint ??
+                    (widget.isZonas ? 'Buscar zona...' : 'Buscar variante...'),
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: widget.isDark ? darkBgColor : Colors.grey[400]!,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: widget.isDark ? darkBgColor : Colors.grey[400]!,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: widget.isDark ? darkBgColor : const Color(0xFF205AA8),
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: widget.isDark ? Colors.grey[800] : Colors.grey[100],
+              ),
+              style: TextStyle(color: textColor),
+            ),
+          ),
+          // ? INFO: Lista con altura fija (~10 ítems); scroll si hay más
+          SizedBox(
+            height: listHeight,
+            child: ListView.builder(
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final entry = filtered[index];
+                return ListTile(
+                  leading: Icon(
+                    widget.isZonas ? Icons.shape_line : Icons.route,
+                    color: const Color(0xFF205AA8),
+                  ),
+                  title: Text(
+                    entry.value,
+                    style: TextStyle(color: textColor),
+                  ),
+                  onTap: () => widget.onSelect(entry.key),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
