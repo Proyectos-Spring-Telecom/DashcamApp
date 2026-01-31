@@ -45,8 +45,8 @@ class RutaModel {
   });
 }
 
-/// * Tipo seleccionado en el BottomSheet: Zonas, Ruta o Variantes.
-/// ? INFO: Controla cuándo se muestra el dropdown superior; el pintado ocurre solo al elegir ítem del dropdown.
+/// * Tipo de lista a mostrar en BottomSheet (Zonas, Ruta o Variantes).
+/// ! CAMBIO DE FLUJO: ya no hay dropdown; se usa solo para abrir la lista correspondiente.
 enum MapSelectionType { none, zonas, ruta, variantes }
 
 class _TransportePageState extends State<TransportePage> {
@@ -55,9 +55,31 @@ class _TransportePageState extends State<TransportePage> {
   static const gmaps.LatLng _defaultPosition =
       gmaps.LatLng(19.4326, -99.1332); // Ciudad de México
   gmaps.LatLng _initialPosition = _defaultPosition;
-  Set<gmaps.Marker> _markers = {};
-  Set<gmaps.Polygon> _polygons = {};
-  Set<gmaps.Polyline> _polylines = {};
+
+  // ! IMPORTANTE: Sets independientes por tipo de objeto; nunca sobrescribir un set al pintar otro.
+  // ? INFO: markers del mapa = _userLocationMarker ∪ _vehicleMarkers ∪ _routeMarkers
+  Set<gmaps.Marker> _userLocationMarker = {};
+  Set<gmaps.Marker> _vehicleMarkers = {};
+  Set<gmaps.Marker> _routeMarkers = {}; // * Marcadores inicio/fin de la ruta seleccionada
+  Set<gmaps.Polygon> _zonePolygons = {};
+  Set<gmaps.Polyline> _routePolylines = {};
+  // ! IMPORTANTE: Sets independientes para variantes (polyline + estaciones)
+  Set<gmaps.Polyline> _variantPolylines = {};
+  Set<gmaps.Marker> _stationMarkers = {};
+
+  /// * Unión de todos los markers para el mapa (usuario + unidades + inicio/fin ruta + estaciones variante).
+  /// ⚠️ WARNING: No asignar a este getter; actualizar solo los sets individuales.
+  Set<gmaps.Marker> get _allMarkers => {
+    ..._userLocationMarker,
+    ..._vehicleMarkers,
+    ..._routeMarkers,
+    ..._stationMarkers,
+  };
+
+  /// * Unión de todas las polylines (rutas + variantes).
+  /// ⚠️ WARNING: No sobrescribir un set al agregar otro tipo de objeto.
+  Set<gmaps.Polyline> get _allPolylines => {..._routePolylines, ..._variantPolylines};
+
   gmaps.MapType _currentMapType = gmaps.MapType.normal;
   bool _isMapReady = false;
   bool _hasAuthError = false;
@@ -66,13 +88,6 @@ class _TransportePageState extends State<TransportePage> {
   // * Estado para controlar qué se muestra
   String? _currentView; // 'geocercas' o 'rutas' o null
 
-  // ! IMPORTANT: Tipo seleccionado en BottomSheet (Zonas/Variantes). Solo habilita el dropdown; NO pinta.
-  // ? INFO: none = no mostrar dropdown; zonas/variantes = mostrar dropdown arriba del mapa
-  MapSelectionType _mapSelectionType = MapSelectionType.none;
-
-  // * ID del ítem seleccionado en el dropdown (cuando el usuario elige uno, se pinta en el mapa)
-  String? _selectedDropdownItemId;
-  
   // * Estado para la ubicación actual
   bool _isLoadingLocation = false;
   gmaps.LatLng? _currentLocation;
@@ -92,6 +107,8 @@ class _TransportePageState extends State<TransportePage> {
   bool _zonasErrorAlertShown = false;
   // ! IMPORTANTE: Flag para evitar múltiples QuickAlert de error de rutas
   bool _rutasErrorAlertShown = false;
+  // ! IMPORTANTE: Flag para evitar múltiples QuickAlert de error de variantes
+  bool _variantesErrorAlertShown = false;
   
   // * UPDATE: Cache de unidades para evitar actualizaciones innecesarias
   List<UnidadModel> _lastUnidades = [];
@@ -107,6 +124,19 @@ class _TransportePageState extends State<TransportePage> {
     _cargarZonas();
     // ! IMPORTANTE: Cargar rutas desde API para dropdown y pintado dinámico de polylines
     _cargarRutas();
+    // ! IMPORTANTE: Cargar variantes desde API para listado y pintado con estaciones
+    _cargarVariantes();
+  }
+
+  /// * Carga las variantes desde el servicio GET /variantes/list
+  /// ? INFO: Listado para BottomSheet; pintado (polyline + estaciones) al seleccionar
+  Future<void> _cargarVariantes() async {
+    try {
+      debugPrint('📤 Cargando variantes...');
+      await variantesBloc.cargarVariantes();
+    } catch (e) {
+      debugPrint('❌ Error al cargar variantes: $e');
+    }
   }
 
   /// * Carga las rutas desde el servicio GET /rutas/list
@@ -417,10 +447,9 @@ class _TransportePageState extends State<TransportePage> {
         geodesic: false,
       );
 
+      // ! IMPORTANTE: Solo actualizar zonas; no tocar markers ni polylines
       setState(() {
-        _polygons = {polygon};
-        _polylines = {};
-        _markers = {};
+        _zonePolygons = {polygon};
         _currentView = 'geocercas';
       });
 
@@ -446,10 +475,9 @@ class _TransportePageState extends State<TransportePage> {
       );
     }
 
+    // ! IMPORTANTE: Solo actualizar zonas; no tocar markers ni polylines
     setState(() {
-      _polygons = polygons;
-      _polylines = {};
-      _markers = {};
+      _zonePolygons = polygons;
       _currentView = 'geocercas';
     });
 
@@ -458,7 +486,29 @@ class _TransportePageState extends State<TransportePage> {
 
   /// * Pinta variantes (rutas) en el mapa.
   /// ? INFO: [singleId] opcional: si se proporciona, pinta esa ruta desde API (flujo dropdown). Sin singleId usa mock (Variantes).
-  void _showRutas({String? singleId}) {
+  /// * UPDATE: Marcadores inicio/fin usan marker_inicio.png y marker_fin.png.
+  Future<void> _showRutas({String? singleId}) async {
+    // * Cargar iconos personalizados para inicio y fin de ruta
+    gmaps.BitmapDescriptor? inicioIcon;
+    gmaps.BitmapDescriptor? finIcon;
+    try {
+      final markerSize = kIsWeb ? 96 : 130;
+      final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
+      final bytesInicio = dataInicio.buffer.asUint8List();
+      inicioIcon = gmaps.BitmapDescriptor.fromBytes(
+        await _resizeMarkerImage(bytesInicio, markerSize),
+      );
+      final dataFin = await rootBundle.load('assets/images/marker_fin.png');
+      final bytesFin = dataFin.buffer.asUint8List();
+      finIcon = gmaps.BitmapDescriptor.fromBytes(
+        await _resizeMarkerImage(bytesFin, markerSize),
+      );
+    } catch (e) {
+      debugPrint(
+        '⚠️ No se pudieron cargar marker_inicio/marker_fin, usando marcadores por defecto: $e',
+      );
+    }
+
     // * Flujo dinámico: usuario seleccionó una ruta en el dropdown (datos desde API)
     if (singleId != null) {
       final rutaApi = rutasBloc.rutaPorId(singleId);
@@ -504,7 +554,7 @@ class _TransportePageState extends State<TransportePage> {
           polylineId: polylineId,
           points: polylinePoints,
           color: const Color(0xFF205AA8), // * Azul igual que botones flotantes
-          width: 5,
+          width: 3,
           geodesic: false,
           patterns: [
             gmaps.PatternItem.dash(20),
@@ -513,11 +563,12 @@ class _TransportePageState extends State<TransportePage> {
         ),
       };
 
-      final markers = <gmaps.Marker>{
+      // ! IMPORTANTE: Solo actualizar polylines y markers de ruta (inicio/fin); no tocar usuario, unidades ni zonas
+      final routeMarkers = <gmaps.Marker>{
         gmaps.Marker(
           markerId: gmaps.MarkerId('${rutaApi.id}_start'),
           position: startPoint,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          icon: inicioIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
             gmaps.BitmapDescriptor.hueGreen,
           ),
           infoWindow: gmaps.InfoWindow(
@@ -527,7 +578,7 @@ class _TransportePageState extends State<TransportePage> {
         gmaps.Marker(
           markerId: gmaps.MarkerId('${rutaApi.id}_end'),
           position: endPoint,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          icon: finIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
             gmaps.BitmapDescriptor.hueRed,
           ),
           infoWindow: gmaps.InfoWindow(
@@ -536,10 +587,10 @@ class _TransportePageState extends State<TransportePage> {
         ),
       };
 
+      if (!mounted) return;
       setState(() {
-        _polylines = polylines;
-        _polygons = {};
-        _markers = markers;
+        _routePolylines = polylines;
+        _routeMarkers = routeMarkers;
         _currentView = 'rutas';
       });
 
@@ -561,7 +612,7 @@ class _TransportePageState extends State<TransportePage> {
           polylineId: gmaps.PolylineId(ruta.id),
           points: ruta.path,
           color: const Color(0xFF205AA8), // * Azul igual que botones flotantes
-          width: 5,
+          width: 3,
           geodesic: false,
           patterns: [
             gmaps.PatternItem.dash(20),
@@ -573,7 +624,7 @@ class _TransportePageState extends State<TransportePage> {
         gmaps.Marker(
           markerId: gmaps.MarkerId('${ruta.id}_start'),
           position: ruta.startPoint,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          icon: inicioIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
             gmaps.BitmapDescriptor.hueGreen,
           ),
           infoWindow: gmaps.InfoWindow(
@@ -585,7 +636,7 @@ class _TransportePageState extends State<TransportePage> {
         gmaps.Marker(
           markerId: gmaps.MarkerId('${ruta.id}_end'),
           position: ruta.endPoint,
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          icon: finIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
             gmaps.BitmapDescriptor.hueRed,
           ),
           infoWindow: gmaps.InfoWindow(
@@ -595,33 +646,175 @@ class _TransportePageState extends State<TransportePage> {
       );
     }
 
+    if (!mounted) return;
+    // ! IMPORTANTE: Solo actualizar polylines y markers de ruta; no tocar usuario, unidades ni zonas
     setState(() {
-      _polylines = polylines;
-      _polygons = {};
-      _markers = markers;
+      _routePolylines = polylines;
+      _routeMarkers = markers;
       _currentView = 'rutas';
     });
 
     _adjustCameraToFit(rutas: allRutas);
   }
 
-  /// * Ocultar geocercas/variantes y restaurar vista por defecto.
-  /// ? INFO: También resetea el tipo de selección y el dropdown; regresa la cámara a mi ubicación.
+  /// * Pinta la variante seleccionada en el mapa: polyline + estaciones (markers).
+  /// ? INFO: Solo actualiza _variantPolylines y _stationMarkers; no toca zonas, rutas, unidades ni usuario.
+  /// ⚠️ WARNING: No sobrescribir otros sets del mapa.
+  /// * UPDATE: Marcadores de estaciones usan imagen marker_variante.png.
+  Future<void> _showVariantes({String? singleId}) async {
+    if (singleId == null) return;
+    final variante = variantesBloc.variantePorId(singleId);
+    if (variante == null) {
+      if (mounted) {
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.error,
+          title: 'Variante no disponible',
+          text: 'La variante no se encontró.',
+          confirmBtnText: 'Aceptar',
+          confirmBtnColor: const Color(0xFF205AA8),
+        );
+      }
+      return;
+    }
+    if (!variante.tieneRecorridoValido) {
+      if (mounted) {
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.error,
+          title: 'Variante sin datos',
+          text: 'La variante no tiene coordenadas para pintar.',
+          confirmBtnText: 'Aceptar',
+          confirmBtnColor: const Color(0xFF205AA8),
+        );
+      }
+      return;
+    }
+
+    // * Cargar iconos: estaciones (marker_variante 30/50), inicio (marker_inicio), fin (marker_fin)
+    gmaps.BitmapDescriptor? varianteIcon;
+    gmaps.BitmapDescriptor? inicioIcon;
+    gmaps.BitmapDescriptor? finIcon;
+    final int markerSize = kIsWeb ? 96 : 130;
+    final int varianteMarkerSize = kIsWeb ? 30 : 30; // * marker_variante: 30 móvil, 50 web
+    try {
+      final dataVar = await rootBundle.load('assets/images/marker_variante.png');
+      varianteIcon = gmaps.BitmapDescriptor.fromBytes(
+        await _resizeMarkerImage(dataVar.buffer.asUint8List(), varianteMarkerSize),
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar marker_variante.png: $e');
+    }
+    try {
+      final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
+      inicioIcon = gmaps.BitmapDescriptor.fromBytes(
+        await _resizeMarkerImage(dataInicio.buffer.asUint8List(), markerSize),
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar marker_inicio.png: $e');
+    }
+    try {
+      final dataFin = await rootBundle.load('assets/images/marker_fin.png');
+      finIcon = gmaps.BitmapDescriptor.fromBytes(
+        await _resizeMarkerImage(dataFin.buffer.asUint8List(), markerSize),
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar marker_fin.png: $e');
+    }
+
+    // ? INFO: puntoInicio y puntoFin del JSON (coordenadas); polyline = inicio + recorridoDetallado + fin
+    final startPoint = gmaps.LatLng(variante.puntoInicioLat, variante.puntoInicioLng);
+    final endPoint = gmaps.LatLng(variante.puntoFinLat, variante.puntoFinLng);
+    final estacionPoints = variante.recorridoDetallado
+        .map((e) => gmaps.LatLng(e.lat, e.lng))
+        .toList();
+    final polylinePoints = [startPoint, ...estacionPoints, endPoint];
+
+    final polylineId = gmaps.PolylineId('variante_${variante.id}');
+    final polylines = <gmaps.Polyline>{
+      gmaps.Polyline(
+        polylineId: polylineId,
+        points: polylinePoints,
+        color: const Color(0xFF205AA8),
+        width: 3,
+        geodesic: false,
+        patterns: [
+          gmaps.PatternItem.dash(20),
+          gmaps.PatternItem.gap(15),
+        ],
+      ),
+    };
+
+    // ! IMPORTANTE: Pintar puntoInicio, estaciones (recorridoDetallado) y puntoFin
+    final stationMarkers = <gmaps.Marker>{};
+    // * Marcador puntoInicio (del JSON puntoInicio.coordenadas)
+    stationMarkers.add(
+      gmaps.Marker(
+        markerId: gmaps.MarkerId('variante_${variante.id}_inicio'),
+        position: startPoint,
+        icon: inicioIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          gmaps.BitmapDescriptor.hueGreen,
+        ),
+        infoWindow: gmaps.InfoWindow(title: 'Inicio: ${variante.nombreVariante}'),
+      ),
+    );
+    // * Marcadores de estaciones (recorridoDetallado)
+    for (var i = 0; i < variante.recorridoDetallado.length; i++) {
+      final e = variante.recorridoDetallado[i];
+      final position = gmaps.LatLng(e.lat, e.lng);
+      final title = e.nombre != null && e.nombre!.isNotEmpty
+          ? e.nombre!
+          : 'Estación ${i + 1}';
+      stationMarkers.add(
+        gmaps.Marker(
+          markerId: gmaps.MarkerId('variante_${variante.id}_estacion_$i'),
+          position: position,
+          icon: varianteIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
+            gmaps.BitmapDescriptor.hueOrange,
+          ),
+          infoWindow: gmaps.InfoWindow(title: title),
+        ),
+      );
+    }
+    // * Marcador puntoFin (del JSON puntoFin.coordenadas)
+    stationMarkers.add(
+      gmaps.Marker(
+        markerId: gmaps.MarkerId('variante_${variante.id}_fin'),
+        position: endPoint,
+        icon: finIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
+          gmaps.BitmapDescriptor.hueRed,
+        ),
+        infoWindow: gmaps.InfoWindow(title: 'Fin: ${variante.nombreVariante}'),
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _variantPolylines = polylines;
+      _stationMarkers = stationMarkers;
+      _currentView = 'variantes';
+    });
+
+    final allPoints = [startPoint, endPoint, ...estacionPoints];
+    _adjustCameraToFit(latLngPoints: allPoints);
+  }
+
+  /// * Ocultar geocercas/variantes/rutas y restaurar vista por defecto.
+  /// ? INFO: Solo limpia zonas, rutas y variantes; usuario y unidades siguen visibles.
   void _hideAll() {
     setState(() {
-      _polygons = {};
-      _polylines = {};
-      _markers = {};
+      _zonePolygons = {};
+      _routePolylines = {};
+      _routeMarkers = {};
+      _variantPolylines = {};
+      _stationMarkers = {};
       _currentView = null;
-      _mapSelectionType = MapSelectionType.none;
-      _selectedDropdownItemId = null;
     });
 
     if (_mapController != null) {
       final context = this.context;
       if (context.mounted) {
         _addMarkers(context);
-        // ! IMPORTANTE: Regresar la vista del mapa a mi ubicación (o posición inicial)
         final targetPosition = _currentLocation ?? _initialPosition;
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
@@ -743,25 +936,18 @@ class _TransportePageState extends State<TransportePage> {
         'Rol: $rolNombre\n'
         'Estatus: ✓ Activo';
     
-    // * Set para almacenar todos los markers (usuario + unidades)
-    final Set<gmaps.Marker> allMarkers = {};
-    gmaps.BitmapDescriptor? busIcon; // * En ámbito para todo el método (incluye markers de unidades)
-    
+    // ! IMPORTANTE: Actualizar solo _userLocationMarker y _vehicleMarkers; no tocar _routeMarkers, zonas ni polylines
+    final Set<gmaps.Marker> userMarkers = {};
+    final Set<gmaps.Marker> vehicleMarkers = {};
+    gmaps.BitmapDescriptor? busIcon;
+
     try {
-      // * Cargar la imagen original para el marker del usuario
       final ByteData data = await rootBundle.load('assets/images/marker_dash.png');
       final Uint8List originalBytes = data.buffer.asUint8List();
-      
-      // * Definir tamaño del marcador según la plataforma
       final int markerSize = kIsWeb ? 96 : 130;
-      
-      // * Redimensionar la imagen
       final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, markerSize);
-      
-      // * Convertir bytes redimensionados a BitmapDescriptor
       final customIcon = gmaps.BitmapDescriptor.fromBytes(resizedBytes);
-      
-      // * Cargar icono de unidad (autobús) desde assets
+
       try {
         final ByteData busData = await rootBundle.load('assets/images/marker_bus.png');
         final Uint8List busOriginalBytes = busData.buffer.asUint8List();
@@ -770,9 +956,8 @@ class _TransportePageState extends State<TransportePage> {
       } catch (e) {
         debugPrint('⚠️ No se pudo cargar marker_bus.png, usando marcador por defecto: $e');
       }
-      
-      // * Agregar marker del usuario
-      allMarkers.add(
+
+      userMarkers.add(
         gmaps.Marker(
           markerId: const gmaps.MarkerId('user_location'),
           position: position,
@@ -782,15 +967,11 @@ class _TransportePageState extends State<TransportePage> {
           onTap: _onMarkerTapped,
         ),
       );
-      
       debugPrint('✅ Marcador del usuario cargado exitosamente');
-      debugPrint('📍 Posición del marcador: $position');
-      debugPrint('👤 Usuario: $nombreCompleto');
     } catch (e, stackTrace) {
       debugPrint('❌ Error al cargar el marcador personalizado: $e');
       debugPrint('📚 Stack trace: $stackTrace');
-      // * Si falla, usar el marcador por defecto como respaldo
-      allMarkers.add(
+      userMarkers.add(
         gmaps.Marker(
           markerId: const gmaps.MarkerId('user_location'),
           position: position,
@@ -800,44 +981,37 @@ class _TransportePageState extends State<TransportePage> {
           onTap: _onMarkerTapped,
         ),
       );
-      debugPrint('⚠️ Usando marcador por defecto como respaldo');
     }
-    
-    // * UPDATE: Agregar markers dinámicos de las unidades de monitoreo
+
     final unidades = monitoreoBloc.unidadesConPosicionValida;
     debugPrint('🚗 Agregando ${unidades.length} unidades al mapa');
-    
+
     for (var unidad in unidades) {
       try {
-        // * UPDATE: Crear marker para cada unidad usando InfoWindow personalizado
-        // * Deshabilitar InfoWindow nativo para usar solo el personalizado
-        allMarkers.add(
+        vehicleMarkers.add(
           gmaps.Marker(
             markerId: gmaps.MarkerId('unidad_${unidad.id}'),
             position: gmaps.LatLng(unidad.posicion.lat, unidad.posicion.lng),
             icon: busIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(
-              unidad.estaEnRuta 
-                  ? gmaps.BitmapDescriptor.hueGreen 
+              unidad.estaEnRuta
+                  ? gmaps.BitmapDescriptor.hueGreen
                   : gmaps.BitmapDescriptor.hueOrange,
             ),
             infoWindow: const gmaps.InfoWindow(),
             onTap: () => _onUnidadMarkerTapped(unidad),
           ),
         );
-        debugPrint('✅ Marker agregado para unidad ${unidad.id} (${unidad.codigo})');
       } catch (e) {
         debugPrint('❌ Error al agregar marker para unidad ${unidad.id}: $e');
       }
     }
-    
-    // * Actualizar los markers en el estado
+
     if (mounted) {
       setState(() {
-        _markers = allMarkers;
+        _userLocationMarker = userMarkers;
+        _vehicleMarkers = vehicleMarkers;
       });
-      debugPrint('✅ Total de markers en el mapa: ${allMarkers.length}');
-      debugPrint('   - Marker del usuario: 1');
-      debugPrint('   - Markers de unidades: ${unidades.length}');
+      debugPrint('✅ Markers actualizados: usuario=1, unidades=${vehicleMarkers.length}');
     }
   }
 
@@ -1084,13 +1258,47 @@ class _TransportePageState extends State<TransportePage> {
                                   _rutasErrorAlertShown = false;
                                 }
 
-                                return Column(
-                                  children: [
-                                    _buildHeader(context, isDark: isDark),
-                                    Expanded(
-                                      child: _buildMapView(isDark),
-                                    ),
-                                  ],
+                                return StreamBuilder<String?>(
+                                  stream: variantesBloc.errorStream,
+                                  initialData: variantesBloc.errorMessage,
+                                  builder: (context, variantesErrorSnapshot) {
+                                    // ! IMPORTANTE: QuickAlert para errores del servicio de variantes
+                                    final variantesErrorMessage = variantesErrorSnapshot.data;
+                                    if (variantesErrorMessage != null &&
+                                        variantesErrorMessage.isNotEmpty &&
+                                        mounted &&
+                                        !_variantesErrorAlertShown) {
+                                      _variantesErrorAlertShown = true;
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (mounted) {
+                                          QuickAlert.show(
+                                            context: context,
+                                            type: QuickAlertType.error,
+                                            title: 'Error al cargar variantes',
+                                            text: variantesErrorMessage,
+                                            confirmBtnText: 'Aceptar',
+                                            confirmBtnColor: const Color(0xFF205AA8),
+                                            onConfirmBtnTap: () {
+                                              variantesBloc.limpiarError();
+                                              _variantesErrorAlertShown = false;
+                                            },
+                                          );
+                                        }
+                                      });
+                                    } else if (variantesErrorMessage == null ||
+                                        variantesErrorMessage.isEmpty) {
+                                      _variantesErrorAlertShown = false;
+                                    }
+
+                                    return Column(
+                                      children: [
+                                        _buildHeader(context, isDark: isDark),
+                                        Expanded(
+                                          child: _buildMapView(isDark),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -1187,9 +1395,11 @@ class _TransportePageState extends State<TransportePage> {
               zoom: 13,
               tilt: 0,
             ),
-            markers: _markers,
-            polygons: _polygons,
-            polylines: _polylines,
+            // ? INFO: Unión de todos los markers (usuario + unidades + rutas + estaciones variante)
+            markers: _allMarkers,
+            polygons: _zonePolygons,
+            // ? INFO: Unión de polylines (rutas + variantes)
+            polylines: _allPolylines,
             mapType: _currentMapType,
             onMapCreated: _onMapCreated,
             myLocationButtonEnabled: false,
@@ -1241,15 +1451,7 @@ class _TransportePageState extends State<TransportePage> {
               }
             },
           ),
-          // ! IMPORTANT: Dropdown con búsqueda arriba del mapa. Solo visible tras elegir Zonas o Variantes en el BottomSheet.
-          // ? INFO: Pintado en mapa ocurre ÚNICAMENTE al seleccionar un ítem del dropdown (ver _onDropdownItemSelected).
-          if (_mapSelectionType != MapSelectionType.none && _isMapReady && !_hasAuthError)
-            Positioned(
-              top: -35,
-              left: 0,
-              right: 0,
-              child: _buildZonasVariantesDropdownBar(isDark),
-            ),
+          // ! CAMBIO DE FLUJO: eliminación del dropdown; listas se abren directamente desde "Opciones del mapa".
           // Loading indicator while map initializes
           if (!_isMapReady && !_hasAuthError)
             Container(
@@ -1719,107 +1921,25 @@ class _TransportePageState extends State<TransportePage> {
     );
   }
 
-  /// * Barra del dropdown arriba del mapa. Aparece solo tras elegir Zonas, Ruta o Variantes en el BottomSheet.
-  /// ? INFO: Al tocar "Seleccionar" se abre un modal con búsqueda; al elegir un ítem se pinta en el mapa.
-  Widget _buildZonasVariantesDropdownBar(bool isDark) {
-    final isZonas = _mapSelectionType == MapSelectionType.zonas;
-    final isRuta = _mapSelectionType == MapSelectionType.ruta;
-    final label = isZonas ? 'Zonas' : (isRuta ? 'Ruta' : 'Variantes');
-    final hint = isZonas ? 'Selecciona una zona...' : (isRuta ? 'Selecciona una ruta...' : 'Selecciona una variante...');
-    // ? INFO: Zonas y Rutas desde API; Variantes desde mock
-    String? selectedName;
-    if (_selectedDropdownItemId != null) {
-      if (isZonas) {
-        final zone = zonasBloc.zonaPorId(_selectedDropdownItemId!);
-        selectedName = zone?.nombre;
-      } else if (isRuta) {
-        final ruta = rutasBloc.rutaPorId(_selectedDropdownItemId!);
-        selectedName = ruta?.nombre;
-      } else {
-        final list = _getMockRutas().where((e) => e.id == _selectedDropdownItemId).toList();
-        selectedName = list.isNotEmpty ? list.first.name : null;
-      }
-    }
-
-    // * Color del dropdown en modo oscuro: mismo que el campo "Buscar zona/variante" (grey[800])
-    final Color dropdownDarkColor = isDark ? Colors.grey[800]! : Colors.white;
-    final Color dropdownBorderColor = isDark ? Colors.grey[800]! : Colors.grey[400]!;
-    return Material(
-      elevation: 4,
-      color: dropdownDarkColor,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: InkWell(
-            onTap: () => _showDropdownSelectionModal(isDark),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: dropdownBorderColor,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isZonas ? Icons.shape_line : Icons.route,
-                    color: const Color(0xFFA6CE39),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          selectedName ?? hint,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedName != null
-                                ? (isDark ? Colors.white : Colors.black)
-                                : (isDark ? Colors.grey[500] : Colors.grey[600]),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.arrow_drop_down, color: Color(0xFFA6CE39)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// * Abre el modal con lista y búsqueda. Al seleccionar un ítem se pinta en el mapa (punto exacto del pintado).
-  /// ? INFO: Zonas y Rutas desde API; Variantes desde mock.
-  void _showDropdownSelectionModal(bool isDark) {
-    final isZonas = _mapSelectionType == MapSelectionType.zonas;
-    final isRuta = _mapSelectionType == MapSelectionType.ruta;
-    // ! IMPORTANTE: Rutas desde API; si está vacío, cargar antes de abrir
+  /// * Abre directamente el BottomSheet con la lista (zonas, rutas o variantes).
+  /// ! CAMBIO DE FLUJO: acceso directo a listas desde "Opciones del mapa"; no hay dropdown.
+  /// ⚠️ WARNING: no modificar lógica del mapa; solo UX de apertura del modal.
+  void _showListBottomSheet(bool isDark, MapSelectionType type) {
+    final isZonas = type == MapSelectionType.zonas;
+    final isRuta = type == MapSelectionType.ruta;
+    final isVariantes = type == MapSelectionType.variantes;
     if (isRuta && rutasBloc.rutas.isEmpty) {
       rutasBloc.cargarRutas();
+    }
+    if (isVariantes && variantesBloc.variantes.isEmpty) {
+      variantesBloc.cargarVariantes();
     }
     final items = isZonas
         ? zonasBloc.zonas.map((z) => MapEntry(z.id.toString(), z.nombre)).toList()
         : isRuta
             ? rutasBloc.rutas.map((r) => MapEntry(r.id.toString(), r.nombre)).toList()
-            : _getMockRutas().map((r) => MapEntry(r.id, r.name)).toList();
-    final searchHint = isRuta ? 'Buscar ruta...' : null;
+            : variantesBloc.variantes.map((v) => MapEntry(v.id.toString(), v.nombreVariante)).toList();
+    final searchHint = isRuta ? 'Buscar ruta...' : (isVariantes ? 'Buscar variante...' : null);
 
     showModalBottomSheet<void>(
       context: context,
@@ -1828,17 +1948,17 @@ class _TransportePageState extends State<TransportePage> {
       builder: (context) => _DropdownSelectionModalContent(
         isDark: isDark,
         isZonas: isZonas,
+        isRuta: isRuta,
         searchHint: searchHint,
         items: items,
         onSelect: (String id) {
           Navigator.pop(context);
-          setState(() {
-            _selectedDropdownItemId = id;
-          });
           if (isZonas) {
             _showGeocercas(singleId: id);
-          } else {
+          } else if (isRuta) {
             _showRutas(singleId: id);
+          } else {
+            _showVariantes(singleId: id);
           }
         },
       ),
@@ -1850,8 +1970,8 @@ class _TransportePageState extends State<TransportePage> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // * Botón para ocultar todo (visible si hay algo pintado o si el dropdown está activo)
-        if (_currentView != null || _mapSelectionType != MapSelectionType.none)
+        // * Botón para ocultar todo (visible solo si hay algo pintado en el mapa)
+        if (_currentView != null)
           Container(
             margin: const EdgeInsets.only(bottom: 10),
             child: FloatingActionButton(
@@ -1875,7 +1995,8 @@ class _TransportePageState extends State<TransportePage> {
     );
   }
 
-  // * Mostrar bottom sheet con opciones
+  // * Mostrar bottom sheet con opciones del mapa.
+  /// ? UX: al seleccionar Zonas/Ruta/Variantes se cierra este sheet y se abre directamente la lista correspondiente.
   void _showMapOptionsBottomSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1907,13 +2028,11 @@ class _TransportePageState extends State<TransportePage> {
               ),
             ),
             const SizedBox(height: 20),
-            // ! IMPORTANT: Al elegir Zonas/Ruta/Variantes solo se habilita el dropdown; NO se pinta aún.
+            // ? UX: acceso directo a listas; al tap se cierra este sheet y se abre la lista (zonas/rutas/variantes).
             ListTile(
               leading: Icon(
                 Icons.shape_line,
-                color: _mapSelectionType == MapSelectionType.zonas
-                    ? const Color(0xFF205AA8)
-                    : (isDark ? Colors.white : Colors.black),
+                color: isDark ? Colors.white : Colors.black,
               ),
               title: Text(
                 'Zonas',
@@ -1921,23 +2040,15 @@ class _TransportePageState extends State<TransportePage> {
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-              trailing: _mapSelectionType == MapSelectionType.zonas
-                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
-                  : null,
               onTap: () {
                 Navigator.pop(context);
-                setState(() {
-                  _mapSelectionType = MapSelectionType.zonas;
-                  _selectedDropdownItemId = null;
-                });
+                _showListBottomSheet(isDark, MapSelectionType.zonas);
               },
             ),
             ListTile(
               leading: Icon(
-                Icons.route,
-                color: _mapSelectionType == MapSelectionType.ruta
-                    ? const Color(0xFF205AA8)
-                    : (isDark ? Colors.white : Colors.black),
+                Icons.add_road,
+                color: isDark ? Colors.white : Colors.black,
               ),
               title: Text(
                 'Ruta',
@@ -1945,23 +2056,15 @@ class _TransportePageState extends State<TransportePage> {
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-              trailing: _mapSelectionType == MapSelectionType.ruta
-                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
-                  : null,
               onTap: () {
                 Navigator.pop(context);
-                setState(() {
-                  _mapSelectionType = MapSelectionType.ruta;
-                  _selectedDropdownItemId = null;
-                });
+                _showListBottomSheet(isDark, MapSelectionType.ruta);
               },
             ),
             ListTile(
               leading: Icon(
                 Icons.route,
-                color: _mapSelectionType == MapSelectionType.variantes
-                    ? const Color(0xFF205AA8)
-                    : (isDark ? Colors.white : Colors.black),
+                color: isDark ? Colors.white : Colors.black,
               ),
               title: Text(
                 'Variantes',
@@ -1969,18 +2072,12 @@ class _TransportePageState extends State<TransportePage> {
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-              trailing: _mapSelectionType == MapSelectionType.variantes
-                  ? const Icon(Icons.check, color: Color(0xFF205AA8))
-                  : null,
               onTap: () {
                 Navigator.pop(context);
-                setState(() {
-                  _mapSelectionType = MapSelectionType.variantes;
-                  _selectedDropdownItemId = null;
-                });
+                _showListBottomSheet(isDark, MapSelectionType.variantes);
               },
             ),
-            if (_currentView != null || _mapSelectionType != MapSelectionType.none) ...[
+            if (_currentView != null) ...[
               const Divider(),
               ListTile(
                 leading: Icon(
@@ -2306,6 +2403,8 @@ class _InfoWindowTailPainter extends CustomPainter {
 class _DropdownSelectionModalContent extends StatefulWidget {
   final bool isDark;
   final bool isZonas;
+  /// true cuando la lista es de rutas (icono add_road); false para variantes (icono route).
+  final bool isRuta;
   /// Hint del campo de búsqueda. Si null, se usa "Buscar zona..." o "Buscar variante..." según isZonas.
   final String? searchHint;
   final List<MapEntry<String, String>> items;
@@ -2314,6 +2413,7 @@ class _DropdownSelectionModalContent extends StatefulWidget {
   const _DropdownSelectionModalContent({
     required this.isDark,
     required this.isZonas,
+    required this.isRuta,
     this.searchHint,
     required this.items,
     required this.onSelect,
@@ -2429,7 +2529,9 @@ class _DropdownSelectionModalContentState
                 final entry = filtered[index];
                 return ListTile(
                   leading: Icon(
-                    widget.isZonas ? Icons.shape_line : Icons.route,
+                    widget.isZonas
+                        ? Icons.shape_line
+                        : (widget.isRuta ? Icons.add_road : Icons.route),
                     color: const Color(0xFF205AA8),
                   ),
                   title: Text(
