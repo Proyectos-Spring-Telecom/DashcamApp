@@ -15,6 +15,8 @@ class PasajeroWalletModel {
   final double? ultimoDebito;
   final DateTime? fechaUltimoDebito;
   final String? customerIdNetPay; // ID del cliente en NetPay
+  /// Total de códigos QR generados hoy (desde GET /pasajeros/wallet).
+  final int? totalQRCodesHoy;
   final List<GastoRecargaMesModel> gastosYRecargasPorMes;
   final List<GastoMesModel> gastosPorMes;
 
@@ -32,6 +34,7 @@ class PasajeroWalletModel {
     this.ultimoDebito,
     this.fechaUltimoDebito,
     this.customerIdNetPay,
+    this.totalQRCodesHoy,
     required this.gastosYRecargasPorMes,
     required this.gastosPorMes,
   });
@@ -61,6 +64,11 @@ class PasajeroWalletModel {
           ? DateTime.tryParse(json['FechaUltimoDebito'].toString())
           : null,
       customerIdNetPay: json['customerIdNetPay']?.toString(),
+      totalQRCodesHoy: json['totalQRCodesHoy'] != null
+          ? (json['totalQRCodesHoy'] is num
+              ? (json['totalQRCodesHoy'] as num).toInt()
+              : int.tryParse(json['totalQRCodesHoy'].toString()))
+          : null,
       gastosYRecargasPorMes: json['gastosYRecargasPorMes'] != null
           ? (json['gastosYRecargasPorMes'] as List<dynamic>)
               .map((item) => GastoRecargaMesModel.fromJson(item as Map<String, dynamic>))
@@ -89,6 +97,7 @@ class PasajeroWalletModel {
       'UltimoDebito': ultimoDebito,
       'FechaUltimoDebito': fechaUltimoDebito?.toIso8601String(),
       'customerIdNetPay': customerIdNetPay,
+      'totalQRCodesHoy': totalQRCodesHoy,
       'gastosYRecargasPorMes': gastosYRecargasPorMes.map((item) => item.toJson()).toList(),
       'gastosPorMes': gastosPorMes.map((item) => item.toJson()).toList(),
     };

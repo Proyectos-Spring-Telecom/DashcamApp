@@ -37,6 +37,28 @@ class AuthService {
               ),
             )..interceptors.add(SessionInterceptor());
 
+  /// Extrae mensaje de error del body de respuesta (String, Map con message/error/detail, etc.).
+  static String _extractErrorMessage(dynamic responseData) {
+    if (responseData == null) return '';
+    if (responseData is String) return responseData.trim();
+    if (responseData is Map<String, dynamic>) {
+      return responseData['message']?.toString()?.trim() ??
+          responseData['error']?.toString()?.trim() ??
+          responseData['detail']?.toString()?.trim() ??
+          responseData['msg']?.toString()?.trim() ??
+          '';
+    }
+    if (responseData is Map) {
+      final m = Map<String, dynamic>.from(responseData as Map);
+      return m['message']?.toString()?.trim() ??
+          m['error']?.toString()?.trim() ??
+          m['detail']?.toString()?.trim() ??
+          m['msg']?.toString()?.trim() ??
+          '';
+    }
+    return responseData.toString().trim();
+  }
+
   /// Realiza el login del usuario
   Future<LoginResponse> login(String userName, String password) async {
     try {
@@ -67,8 +89,16 @@ class AuthService {
 
       if (e.response != null) {
         final statusCode = e.response!.statusCode;
+        final responseData = e.response!.data;
         if (statusCode == 400 || statusCode == 401) {
           throw AuthException('Usuario o contraseña incorrectos');
+        } else if (statusCode == 404) {
+          // Mostrar el texto del response body (mismo diseño que el resto de errores de login)
+          String message = _extractErrorMessage(responseData);
+          if (message.isEmpty) {
+            message = e.response!.statusMessage ?? 'Not Found';
+          }
+          throw AuthException(message);
         } else if (statusCode == 500) {
           throw AuthException('Error en el servidor. Intenta más tarde.');
         } else {

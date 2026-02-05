@@ -2,6 +2,8 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:flutter/services.dart';
+import 'package:quickalert/quickalert.dart';
+import 'package:intl/intl.dart';
 
 class CodigosQRPage extends StatefulWidget {
   const CodigosQRPage({super.key});
@@ -14,12 +16,23 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedTabIndex = 1; // Códigos QR is selected
+  bool _qrTransaccionesLoaded = false;
+  bool _qrErrorAlertShown = false;
+  late ScrollController _scrollControllerQr;
 
   @override
   void initState() {
     super.initState();
+    _scrollControllerQr = ScrollController();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
+    // Cargar transacciones débito QR del día al estar en tab Códigos QR
+    if (_selectedTabIndex == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _qrTransaccionesLoaded = true;
+        transaccionQrDebitoBloc.cargar();
+      });
+    }
   }
 
   void _handleTabChange() {
@@ -27,19 +40,21 @@ class _CodigosQRPageState extends State<CodigosQRPage>
       setState(() {
         _selectedTabIndex = _tabController.index;
       });
-
-      // Navigate to appropriate screen when tabs change
+      if (_tabController.index != 1) {
+        _qrTransaccionesLoaded = false;
+      } else if (!_qrTransaccionesLoaded) {
+        _qrTransaccionesLoaded = true;
+        transaccionQrDebitoBloc.cargar();
+      }
       if (_tabController.index == 0) {
-        // General - Navigate to dashboard
         GoRouter.of(context).go(RoutesName.dashboard);
       }
-      // Viajes (index 2) - Show content in same page, no navigation
-      // Operaciones (index 3) - Show content in same page, no navigation
     }
   }
 
   @override
   void dispose() {
+    _scrollControllerQr.dispose();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
@@ -92,6 +107,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
   Widget mobileWidget({required BuildContext context, required bool isDark}) {
     final textColor = isDark ? Colors.white : Colors.black;
     return SingleChildScrollView(
+      controller: _scrollControllerQr,
       child: Column(
         children: [
           // Header
@@ -111,8 +127,8 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                   _buildCodigoQRSection(context, isDark: isDark),
                   const SizedBox(height: 32.0),
 
-                  // Mis códigos section
-                  _buildMisCodigosSection(isDark: isDark),
+                  // Mis códigos section (listado transacciones débito QR del día)
+                  _buildMisCodigosSection(isDark: isDark, scrollController: _scrollControllerQr),
                 ] else if (_selectedTabIndex == 2) ...[
                   // Viajes section
                   _buildViajesSection(isDark: isDark),
@@ -131,6 +147,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
   Widget desktopWidget({required BuildContext context, required bool isDark}) {
     final textColor = isDark ? Colors.white : Colors.black;
     return SingleChildScrollView(
+      controller: _scrollControllerQr,
       child: Column(
         children: [
           // Header
@@ -152,8 +169,8 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                     _buildCodigoQRSection(context, isDark: isDark),
                     const SizedBox(height: 32.0),
 
-                    // Mis códigos section
-                    _buildMisCodigosSection(isDark: isDark),
+                    // Mis códigos section (listado transacciones débito QR del día)
+                    _buildMisCodigosSection(isDark: isDark, scrollController: _scrollControllerQr),
                   ] else if (_selectedTabIndex == 2) ...[
                     // Viajes section
                     _buildViajesSection(isDark: isDark),
@@ -348,7 +365,7 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFF205AA8), // Blue
+                color: const Color(0xFFA6CE39), // Green
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -363,53 +380,252 @@ class _CodigosQRPageState extends State<CodigosQRPage>
     );
   }
 
-  Widget _buildMisCodigosSection({bool isDark = true}) {
+  /// * Listado de transacciones débito QR del día (paginado).
+  /// Muestra loading, error (QuickAlert + Reintentar), vacío o lista.
+  Widget _buildMisCodigosSection({
+    bool isDark = true,
+    required ScrollController scrollController,
+  }) {
     final textColor = isDark ? Colors.white : Colors.black;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Mis códigos",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    return StreamBuilder<TransaccionQrDebitoStatus>(
+      stream: transaccionQrDebitoBloc.statusStream,
+      initialData: transaccionQrDebitoBloc.status,
+      builder: (context, statusSnapshot) {
+        final status = statusSnapshot.data ?? TransaccionQrDebitoStatus.initial;
+        return StreamBuilder<List<TransaccionModel>>(
+          stream: transaccionQrDebitoBloc.dataStream,
+          initialData: transaccionQrDebitoBloc.transacciones,
+          builder: (context, dataSnapshot) {
+            final transacciones = dataSnapshot.data ?? [];
+            return StreamBuilder<String?>(
+              stream: transaccionQrDebitoBloc.errorStream,
+              initialData: transaccionQrDebitoBloc.errorMessage,
+              builder: (context, errorSnapshot) {
+                final error = errorSnapshot.data;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Mis códigos",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (status == TransaccionQrDebitoStatus.loading && transacciones.isEmpty)
+                      _buildLoadingQr(textColor: textColor)
+                    else if (error != null && transacciones.isEmpty) ...[
+                      if (!_qrErrorAlertShown) ...[
+                        Builder(
+                          builder: (context) {
+                            _qrErrorAlertShown = true;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                QuickAlert.show(
+                                  context: context,
+                                  type: QuickAlertType.error,
+                                  title: 'Error al obtener transacciones QR',
+                                  text: error,
+                                  confirmBtnText: 'Aceptar',
+                                  confirmBtnColor: const Color(0xFF205AA8),
+                                );
+                              }
+                            });
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
+                      _buildErrorQr(
+                        error: error,
+                        textColor: textColor,
+                        isDark: isDark,
+                      ),
+                    ]
+                    else if (transacciones.isEmpty)
+                      _buildEmptyQr(textColor: textColor)
+                    else
+                      _buildListaTransaccionesQr(
+                        transacciones: transacciones,
+                        isDark: isDark,
+                        scrollController: scrollController,
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingQr({required Color textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF205AA8)),
+            const SizedBox(height: 16),
+            Text(
+              'Cargando transacciones QR...',
+              style: TextStyle(color: textColor, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorQr({
+    required String error,
+    required Color textColor,
+    bool isDark = true,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24.0),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Error al cargar transacciones QR',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        // List of QR codes
-        _buildCodigoItem(
-          code: "1234567VBDFFJGRTH",
-          date: "01-Mayo-2025",
-          amount: "-\$ 15",
-          type: "Débito",
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildCodigoItem(
-          code: "1234567VBDFFJGRTH",
-          date: "01-Mayo-2025",
-          amount: "-\$ 15",
-          type: "Débito",
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildCodigoItem(
-          code: "1234567VBDFFJGRTH",
-          date: "01-Mayo-2025",
-          amount: "-\$ 15",
-          type: "Débito",
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildCodigoItem(
-          code: "1234567VBDFFJGRTH",
-          date: "01-Mayo-2025",
-          amount: "-\$ 15",
-          type: "Débito",
-          isDark: isDark,
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            error,
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              _qrErrorAlertShown = false;
+              transaccionQrDebitoBloc.limpiarError();
+              transaccionQrDebitoBloc.cargar();
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF205AA8)),
+            child: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyQr({required Color textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      child: Column(
+        children: [
+          Icon(Icons.receipt_long_outlined, color: Colors.grey[400], size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'No hay transacciones débito QR hoy',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Las transacciones realizadas con código QR aparecerán aquí',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListaTransaccionesQr({
+    required List<TransaccionModel> transacciones,
+    required bool isDark,
+    required ScrollController scrollController,
+  }) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo is ScrollEndNotification &&
+            scrollController.hasClients &&
+            scrollController.position.pixels >=
+                scrollController.position.maxScrollExtent - 200) {
+          if (transaccionQrDebitoBloc.hasMorePages &&
+              !transaccionQrDebitoBloc.isLoadingMore) {
+            transaccionQrDebitoBloc.cargarMas();
+          }
+        }
+        return false;
+      },
+      child: Column(
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: transacciones.length +
+                (transaccionQrDebitoBloc.hasMorePages ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= transacciones.length) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(
+                    child: transaccionQrDebitoBloc.isLoadingMore
+                        ? const CircularProgressIndicator(color: Color(0xFF205AA8))
+                        : const SizedBox.shrink(),
+                  ),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _buildTransaccionQrItem(
+                  transaccion: transacciones[index],
+                  isDark: isDark,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// * Un ítem del listado: numeroSerieMonedero, fhRegistro, tipoTransaccion, monto.
+  /// ? INFO: fhRegistro viene en UTC (ej. 2026-02-04T13:53:08.000Z); se muestra en UTC (13:53 → 1:53 PM).
+  Widget _buildTransaccionQrItem({
+    required TransaccionModel transaccion,
+    bool isDark = true,
+  }) {
+    String fechaHoraTexto = 'N/A';
+    if (transaccion.fechaHora != null) {
+      final fecha = transaccion.fechaHora!;
+      final utc = fecha.isUtc ? fecha : fecha.toUtc();
+      final hour = utc.hour;
+      final minute = utc.minute;
+      final hora12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      final amPm = hour >= 12 ? 'PM' : 'AM';
+      fechaHoraTexto =
+          '${utc.day.toString().padLeft(2, '0')}-${utc.month.toString().padLeft(2, '0')}-${utc.year} ${hora12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $amPm';
+    }
+    String montoTexto = 'N/A';
+    if (transaccion.monto != null) {
+      final formatter = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
+      montoTexto = '-${formatter.format(transaccion.monto)}';
+    }
+    final code = transaccion.numeroSerieMonedero ?? 'N/A';
+    final type = transaccion.tipoTransaccion ?? 'Débito';
+    return _buildCodigoItem(
+      code: code,
+      date: fechaHoraTexto,
+      amount: montoTexto,
+      type: type,
+      isDark: isDark,
     );
   }
 
@@ -430,18 +646,17 @@ class _CodigosQRPageState extends State<CodigosQRPage>
       ),
       child: Row(
         children: [
-          // QR icon
+          // QR icon (mismo azul que Registros: 0xFF205AA8)
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFFDB462)
-                  .withOpacity(0.2), // Orange with opacity
+              color: const Color(0xFF205AA8).withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.qr_code,
-              color: Color(0xFFFDB462), // Orange
+              color: Color(0xFF205AA8),
               size: 28,
             ),
           ),
@@ -470,14 +685,14 @@ class _CodigosQRPageState extends State<CodigosQRPage>
               ],
             ),
           ),
-          // Amount and type
+          // Amount and type (monto en azul 0xFF205AA8 como en Registros)
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 amount,
                 style: TextStyle(
-                  color: textColor,
+                  color: const Color(0xFF205AA8),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),

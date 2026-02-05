@@ -800,7 +800,7 @@ class _DashboardState extends State<Dashboard> {
                     icon: Icons.qr_code,
                     title: "Generar Código QR",
                     color: const Color(0xFFFDB462), // Yellow
-                    badge: CodigosQRData.cantidad.toString(),
+                    badge: _buildTotalQRCodesHoyBadge(isDark: isDark),
                     isDark: isDark,
                     onTap: () {
                       // * Mostrar modal de tipo de viaje antes de navegar
@@ -868,12 +868,24 @@ class _DashboardState extends State<Dashboard> {
     required IconData icon,
     required String title,
     required Color color,
-    String? badge,
+    dynamic badge,
     required bool isDark,
     required VoidCallback onTap,
   }) {
     final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
     final textColor = isDark ? Colors.white : Colors.black;
+    final badgeWidget = badge is Widget
+        ? badge
+        : (badge != null && badge is String)
+            ? Text(
+                badge as String,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : null;
 
     return GestureDetector(
       onTap: onTap,
@@ -902,15 +914,7 @@ class _DashboardState extends State<Dashboard> {
                     size: 28,
                   ),
                 ),
-                if (badge != null)
-                  Text(
-                    badge,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                if (badgeWidget != null) badgeWidget,
               ],
             ),
             const SizedBox(height: 12),
@@ -925,6 +929,26 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Badge dinámico con total de códigos QR generados hoy (totalQRCodesHoy del wallet).
+  Widget _buildTotalQRCodesHoyBadge({bool isDark = true}) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    return StreamBuilder<PasajeroWalletModel?>(
+      stream: monederoBloc.walletStream,
+      initialData: monederoBloc.wallet,
+      builder: (context, snapshot) {
+        final total = snapshot.data?.totalQRCodesHoy ?? 0;
+        return Text(
+          total.toString(),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+      },
     );
   }
 
@@ -1480,6 +1504,8 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
   late TabController _tabController;
   late int _selectedTabIndex;
   bool _transaccionesLoaded = false;
+  bool _qrTransaccionesLoaded = false;
+  bool _qrErrorAlertShown = false;
 
   @override
   void initState() {
@@ -1491,11 +1517,16 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
       initialIndex: widget.initialTabIndex,
     );
     _tabController.addListener(_handleTabChange);
-    
-    // Si el tab inicial es Registros, cargar transacciones
+
     if (widget.initialTabIndex == 3) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadTransacciones();
+      });
+    }
+    if (widget.initialTabIndex == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _qrTransaccionesLoaded = true;
+        transaccionQrDebitoBloc.cargar();
       });
     }
   }
@@ -1505,14 +1536,18 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
       setState(() {
         _selectedTabIndex = _tabController.index;
       });
-      
-      // Cargar transacciones cuando se selecciona el tab de Registros
+
       if (_selectedTabIndex == 3 && !_transaccionesLoaded) {
         _loadTransacciones();
       } else if (_selectedTabIndex != 3) {
-        // Resetear flag cuando se sale del tab de Registros
-        // para recargar cuando se vuelva a entrar
         _transaccionesLoaded = false;
+      }
+
+      if (_selectedTabIndex == 1 && !_qrTransaccionesLoaded) {
+        _qrTransaccionesLoaded = true;
+        transaccionQrDebitoBloc.cargar();
+      } else if (_selectedTabIndex != 1) {
+        _qrTransaccionesLoaded = false;
       }
     }
   }
@@ -1598,9 +1633,12 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
                                     _buildCodigoQRSection(context,
                                         textColor: textColor, isDark: isDark),
                                     const SizedBox(height: 24.0),
-                                    // Mis códigos section
+                                    // Mis códigos: listado transacciones débito QR del día
                                     _buildMisCodigosSection(
-                                        textColor: textColor, isDark: isDark),
+                                      textColor: textColor,
+                                      isDark: isDark,
+                                      scrollController: scrollController,
+                                    ),
                                   ] else if (_selectedTabIndex == 2) ...[
                                     // Viajes section
                                     _buildViajesSection(
@@ -1777,52 +1815,257 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
     );
   }
 
-  Widget _buildMisCodigosSection(
-      {Color textColor = Colors.white, bool isDark = true}) {
-    final codigos = CodigosQRData.codigos;
+  /// * Listado de transacciones débito QR del día (servicio POST paginado).
+  Widget _buildMisCodigosSection({
+    Color textColor = Colors.white,
+    bool isDark = true,
+    required ScrollController scrollController,
+  }) {
+    return StreamBuilder<TransaccionQrDebitoStatus>(
+      stream: transaccionQrDebitoBloc.statusStream,
+      initialData: transaccionQrDebitoBloc.status,
+      builder: (context, statusSnapshot) {
+        final status = statusSnapshot.data ?? TransaccionQrDebitoStatus.initial;
+        return StreamBuilder<List<TransaccionModel>>(
+          stream: transaccionQrDebitoBloc.dataStream,
+          initialData: transaccionQrDebitoBloc.transacciones,
+          builder: (context, dataSnapshot) {
+            final transacciones = dataSnapshot.data ?? [];
+            return StreamBuilder<String?>(
+              stream: transaccionQrDebitoBloc.errorStream,
+              initialData: transaccionQrDebitoBloc.errorMessage,
+              builder: (context, errorSnapshot) {
+                final error = errorSnapshot.data;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Mis códigos",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // List of QR codes - dinámico
-        if (codigos.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              "No hay códigos QR generados",
-              style: TextStyle(
-                color: textColor,
-                fontSize: 14,
-              ),
-            ),
-          )
-        else
-          ...codigos.asMap().entries.map((entry) {
-            final index = entry.key;
-            final codigo = entry.value;
-            return Padding(
-              padding:
-                  EdgeInsets.only(bottom: index < codigos.length - 1 ? 12 : 0),
-              child: _buildCodigoItem(
-                code: codigo.code,
-                date: codigo.date,
-                amount: codigo.amount,
-                type: codigo.type,
-                textColor: textColor,
-                isDark: isDark,
-              ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Mis códigos",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (status == TransaccionQrDebitoStatus.loading &&
+                        transacciones.isEmpty)
+                      _buildMisCodigosLoading(textColor: textColor)
+                    else if (error != null && transacciones.isEmpty) ...[
+                      if (!_qrErrorAlertShown)
+                        Builder(
+                          builder: (ctx) {
+                            _qrErrorAlertShown = true;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                QuickAlert.show(
+                                  context: ctx,
+                                  type: QuickAlertType.error,
+                                  title: 'Error al obtener transacciones QR',
+                                  text: error,
+                                  confirmBtnText: 'Aceptar',
+                                  confirmBtnColor: const Color(0xFF205AA8),
+                                );
+                              }
+                            });
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      _buildMisCodigosError(
+                        error: error,
+                        textColor: textColor,
+                      ),
+                    ]
+                    else if (transacciones.isEmpty)
+                      _buildMisCodigosEmpty(textColor: textColor)
+                    else
+                      _buildMisCodigosLista(
+                        transacciones: transacciones,
+                        textColor: textColor,
+                        isDark: isDark,
+                        scrollController: scrollController,
+                      ),
+                  ],
+                );
+              },
             );
-          }).toList(),
-      ],
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMisCodigosLoading({required Color textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      child: Center(
+        child: Column(
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF205AA8)),
+            const SizedBox(height: 16),
+            Text(
+              'Cargando transacciones QR...',
+              style: TextStyle(color: textColor, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMisCodigosError({
+    required String error,
+    required Color textColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24.0),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Error al cargar transacciones QR',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error,
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              _qrErrorAlertShown = false;
+              transaccionQrDebitoBloc.limpiarError();
+              transaccionQrDebitoBloc.cargar();
+            },
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF205AA8)),
+            child: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMisCodigosEmpty({required Color textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      child: Column(
+        children: [
+          Icon(Icons.receipt_long_outlined,
+              color: Colors.grey[400], size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'No hay transacciones débito QR hoy',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Las transacciones realizadas con código QR aparecerán aquí',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMisCodigosLista({
+    required List<TransaccionModel> transacciones,
+    required Color textColor,
+    required bool isDark,
+    required ScrollController scrollController,
+  }) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo is ScrollEndNotification &&
+            scrollController.hasClients &&
+            scrollController.position.pixels >=
+                scrollController.position.maxScrollExtent - 200) {
+          if (transaccionQrDebitoBloc.hasMorePages &&
+              !transaccionQrDebitoBloc.isLoadingMore) {
+            transaccionQrDebitoBloc.cargarMas();
+          }
+        }
+        return false;
+      },
+      child: Column(
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: transacciones.length +
+                (transaccionQrDebitoBloc.hasMorePages ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= transacciones.length) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(
+                    child: transaccionQrDebitoBloc.isLoadingMore
+                        ? const CircularProgressIndicator(
+                            color: Color(0xFF205AA8))
+                        : const SizedBox.shrink(),
+                  ),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _buildCodigoItemFromTransaccion(
+                  transaccion: transacciones[index],
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// * Un ítem del listado Mis códigos: numeroSerieMonedero, fhRegistro, tipoTransaccion, monto.
+  /// ? INFO: fhRegistro viene en UTC (ej. 2026-02-04T13:53:08.000Z); se muestra en UTC (13:53 → 1:53 PM).
+  Widget _buildCodigoItemFromTransaccion({
+    required TransaccionModel transaccion,
+    Color textColor = Colors.white,
+    bool isDark = true,
+  }) {
+    String fechaHoraTexto = 'N/A';
+    if (transaccion.fechaHora != null) {
+      final fecha = transaccion.fechaHora!;
+      final utc = fecha.isUtc ? fecha : fecha.toUtc();
+      final hour = utc.hour;
+      final minute = utc.minute;
+      final hora12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      final amPm = hour >= 12 ? 'PM' : 'AM';
+      fechaHoraTexto =
+          '${utc.day.toString().padLeft(2, '0')}-${utc.month.toString().padLeft(2, '0')}-${utc.year} ${hora12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $amPm';
+    }
+    String montoTexto = 'N/A';
+    if (transaccion.monto != null) {
+      final formatter =
+          NumberFormat.currency(locale: 'es_MX', symbol: '\$');
+      montoTexto = '-${formatter.format(transaccion.monto)}';
+    }
+    final code = transaccion.numeroSerieMonedero ?? 'N/A';
+    final type = transaccion.tipoTransaccion ?? 'Débito';
+    return _buildCodigoItem(
+      code: code,
+      date: fechaHoraTexto,
+      amount: montoTexto,
+      type: type,
+      textColor: textColor,
+      isDark: isDark,
     );
   }
 
@@ -1844,18 +2087,17 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
       ),
       child: Row(
         children: [
-          // QR icon
+          // QR icon (mismo azul que Registros: 0xFF205AA8)
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFFDB462)
-                  .withOpacity(0.2), // Orange with opacity
+              color: const Color(0xFF205AA8).withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.qr_code,
-              color: Color(0xFFFDB462), // Orange
+              color: Color(0xFF205AA8),
               size: 28,
             ),
           ),
@@ -1884,14 +2126,14 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
               ],
             ),
           ),
-          // Amount and type
+          // Amount and type (monto en azul 0xFF205AA8 como en Registros)
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 amount,
                 style: TextStyle(
-                  color: textColor,
+                  color: const Color(0xFF205AA8),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2121,7 +2363,7 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
       iconData = Icons.attach_money;
       iconColor = const Color(0xFFA6CE39); // Green para recargas
     } else {
-      // Débito: usar icono QR si es un débito por QR, sino bus
+      // Débito: icono QR, color rojo en sección Registros
       iconData = Icons.qr_code;
       iconColor = const Color(0xFF205AA8); // Blue para débitos
     }
@@ -2229,7 +2471,7 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
                 style: TextStyle(
                   color: isRecarga
                       ? const Color(0xFFA6CE39) // Verde para recargas
-                      : Colors.red, // Rojo para débitos
+                      : const Color(0xFF205AA8),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),

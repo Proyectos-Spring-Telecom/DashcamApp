@@ -174,60 +174,52 @@ class _TransportePageState extends State<TransportePage> {
     }
   }
   
-  /// * Obtiene la ubicación actual del dispositivo
+  /// * Obtiene la ubicación actual del dispositivo (web y móvil; en web usa la API de geolocalización del navegador)
   Future<void> _obtenerUbicacionActual() async {
     // * Verificar que el widget esté montado antes de cualquier setState
     if (!mounted) return;
-    
-    if (kIsWeb) {
-      // * En web, usar la posición por defecto
-      debugPrint('🌐 Web: Usando posición por defecto');
-      if (!mounted) return;
-      setState(() {
-        _initialPosition = _defaultPosition;
-        _currentLocation = _defaultPosition;
-        _isLoadingLocation = false;
-      });
-      return;
-    }
-    
-    // * Verificar que el widget siga montado antes de actualizar el estado
-    if (!mounted) return;
+
     setState(() {
       _isLoadingLocation = true;
     });
-    
+
     try {
-      // * Verificar si los servicios de ubicación están habilitados
-      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
-      
-      // * Verificar que el widget siga montado después de la operación asíncrona
+      // * En móvil: verificar si los servicios de ubicación están habilitados. En web se omite (el navegador gestiona).
+      if (!kIsWeb) {
+        bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+        if (!mounted) return;
+        if (!serviceEnabled) {
+          debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
+          _usarPosicionPorDefecto();
+          return;
+        }
+      }
+
+      // * Verificar permisos de ubicación (web: el navegador solicita; móvil: ya pueden estar otorgados desde el login)
+      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
       if (!mounted) return;
-      
-      if (!serviceEnabled) {
-        debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
+
+      if (permission == geo.LocationPermission.denied) {
+        permission = await geo.Geolocator.requestPermission();
+        if (!mounted) return;
+      }
+      if (permission == geo.LocationPermission.deniedForever) {
+        debugPrint('⚠️ Permisos de ubicación denegados permanentemente');
         _usarPosicionPorDefecto();
         return;
       }
-
-      // * Verificar permisos de ubicación (ya deberían estar otorgados desde el login)
-      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
-      
-      // * Verificar que el widget siga montado después de la operación asíncrona
-      if (!mounted) return;
-      
-      if (permission != geo.LocationPermission.whileInUse && 
+      if (permission != geo.LocationPermission.whileInUse &&
           permission != geo.LocationPermission.always) {
         debugPrint('⚠️ Permisos de ubicación no otorgados');
         _usarPosicionPorDefecto();
         return;
       }
 
-      // * Obtener la ubicación actual
-      debugPrint('📍 Obteniendo ubicación actual...');
+      // * Obtener la ubicación actual (web: usa navigator.geolocation del navegador)
+      debugPrint(kIsWeb ? '🌐 Web: Obteniendo ubicación del navegador...' : '📍 Obteniendo ubicación actual...');
       geo.Position position = await geo.Geolocator.getCurrentPosition(
         desiredAccuracy: geo.LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 15),
       );
 
       // * Verificar que el widget siga montado después de obtener la ubicación
@@ -493,15 +485,17 @@ class _TransportePageState extends State<TransportePage> {
     gmaps.BitmapDescriptor? finIcon;
     try {
       final markerSize = kIsWeb ? 96 : 130;
+      // * Mismo tamaño que "mi posición" (60% del base) para homogeneidad
+      final int routeMarkerSize = (markerSize * 0.6).round();
       final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
       final bytesInicio = dataInicio.buffer.asUint8List();
       inicioIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(bytesInicio, markerSize),
+        await _resizeMarkerImage(bytesInicio, routeMarkerSize),
       );
       final dataFin = await rootBundle.load('assets/images/marker_fin.png');
       final bytesFin = dataFin.buffer.asUint8List();
       finIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(bytesFin, markerSize),
+        await _resizeMarkerImage(bytesFin, routeMarkerSize),
       );
     } catch (e) {
       debugPrint(
@@ -691,16 +685,17 @@ class _TransportePageState extends State<TransportePage> {
       return;
     }
 
-    // * Cargar iconos: estaciones (marker_variante 30/50), inicio (marker_inicio), fin (marker_fin)
+    // * Icono variante (estaciones): 30% del base; inicio y fin: 60% del base (homogéneo con "mi posición")
     gmaps.BitmapDescriptor? varianteIcon;
     gmaps.BitmapDescriptor? inicioIcon;
     gmaps.BitmapDescriptor? finIcon;
     final int markerSize = kIsWeb ? 96 : 130;
-    final int varianteMarkerSize = kIsWeb ? 30 : 30; // * marker_variante: 30 móvil, 50 web
+    final int variantMarkerSize = (markerSize * 0.3).round(); // * Solo para marker_variante (estaciones)
+    final int variantInicioFinSize = (markerSize * 0.6).round();
     try {
       final dataVar = await rootBundle.load('assets/images/marker_variante.png');
       varianteIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataVar.buffer.asUint8List(), varianteMarkerSize),
+        await _resizeMarkerImage(dataVar.buffer.asUint8List(), variantMarkerSize),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_variante.png: $e');
@@ -708,7 +703,7 @@ class _TransportePageState extends State<TransportePage> {
     try {
       final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
       inicioIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataInicio.buffer.asUint8List(), markerSize),
+        await _resizeMarkerImage(dataInicio.buffer.asUint8List(), variantInicioFinSize),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_inicio.png: $e');
@@ -716,7 +711,7 @@ class _TransportePageState extends State<TransportePage> {
     try {
       final dataFin = await rootBundle.load('assets/images/marker_fin.png');
       finIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataFin.buffer.asUint8List(), markerSize),
+        await _resizeMarkerImage(dataFin.buffer.asUint8List(), variantInicioFinSize),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_fin.png: $e');
@@ -945,13 +940,15 @@ class _TransportePageState extends State<TransportePage> {
       final ByteData data = await rootBundle.load('assets/images/marker_dash.png');
       final Uint8List originalBytes = data.buffer.asUint8List();
       final int markerSize = kIsWeb ? 96 : 130;
-      final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, markerSize);
+      // * Marcador de "mi posición" 20% más pequeño que el tamaño base
+      final int userMarkerSize = (markerSize * 0.6).round();
+      final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, userMarkerSize);
       final customIcon = gmaps.BitmapDescriptor.fromBytes(resizedBytes);
 
       try {
         final ByteData busData = await rootBundle.load('assets/images/marker_bus.png');
         final Uint8List busOriginalBytes = busData.buffer.asUint8List();
-        final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, markerSize);
+        final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, userMarkerSize);
         busIcon = gmaps.BitmapDescriptor.fromBytes(busResizedBytes);
       } catch (e) {
         debugPrint('⚠️ No se pudo cargar marker_bus.png, usando marcador por defecto: $e');

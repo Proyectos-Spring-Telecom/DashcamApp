@@ -1234,26 +1234,28 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
     if (isNuBank) {
       // * Degradado morado para NuBank (similar a la imagen)
       gradientColors = [
-        const Color(0xFF8B4EB8), // * Morado vibrante claro
-        const Color(0xFF6B2C91), // * Morado oscuro
-        const Color(0xFF5A1F7A), // * Morado más oscuro
+        const Color(0xFF7b4cd6), // * Morado más oscuro
+        const Color(0xFF9e7ae8), // * Morado medio
+        const Color(0xFFc1a6f8), // * Morado vibrante claro
       ];
       useGradient = true;
     } else {
       switch (card.brand.toLowerCase()) {
         case 'visa':
-          // * Degradado azul profundo y vibrante para VISA (más claro arriba, más oscuro abajo)
+          // * Degradado azul profundo y vibrante para VISA (más claro oscuro, más claro abajo)
           gradientColors = [
-            const Color(0xFF2E4C8F), // * Azul más claro en la parte superior
-            const Color(0xFF1A3570), // * Azul medio
-            const Color(0xFF0F2449), // * Azul profundo y oscuro en la parte inferior
+            const Color(0xFF205d9e), // * Azul profundo y oscuro en la parte superior. 
+            const Color(0xFF3874b9), // * Azul medio
+            const Color(0xFF5597db), // * Azul más claro en la parte inferior.
           ];
           useGradient = true;
           break;
         case 'mastercard':
+        // * Degradado rojo profundo y vibrante para MASTERCARD (más oscuro arriba, más claro abajo)
           gradientColors = [
-            const Color(0xFFEB001B),
-            const Color(0xFFF79E1B),
+            const Color(0xFF48030a),
+            const Color(0xFFfe3846),
+            const Color(0xFFd90f18),
           ];
           useGradient = true;
           break;
@@ -1267,7 +1269,7 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
       }
     }
 
-    final cardNumberMasked = '**** **** **** ${card.lastFourDigits}';
+    final cardNumberMasked = '•••• •••• •••• ${card.lastFourDigits}';
     final expirationDate = card.expirationFormatted;
     final cardType = card.typeFormatted;
     
