@@ -1212,6 +1212,235 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
     );
   }
 
+  /// Tarjeta estilo BANSEFI / Banco del Bienestar: fondo blanco y franja inferior #7c1735.
+  Widget _buildBansefiCard({
+    required CardModel card,
+    required String cardNumberMasked,
+    required String expirationDate,
+    required String cardType,
+    required String bankName,
+    bool isActiveCard = false,
+  }) {
+    const Color stripeColor = Color(0xFF7c1735);
+    const double stripeHeight = 50.0; // Deja ~72px para contenido blanco (homólogo al resto de tarjetas)
+
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Zona blanca/gris claro (contenido principal) — mismos paddings y tamaños de fuente que el resto de tarjetas
+            Expanded(
+              child: Container(
+                color: Color(0xFFe6e4e0),
+                child: Stack(
+                  children: [
+                    if (isActiveCard)
+                      Positioned(
+                        top: 20,
+                        left: 40, // Alineado con el contenido (mismo margen que el resto de tarjetas)
+                        child: _buildCardChipWithNfc(),
+                      ),
+                    // Logo Banco del Bienestar (esquina superior derecha, como Visa/Mastercard en el resto de tarjetas)
+                    Positioned(
+                      top: 12,
+                      right: 40,
+                      child: Image.asset(
+                        'assets/images/bienestar.png',
+                        width: 100,
+                        height: 60,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox(width: 52, height: 28);
+                        },
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Padding(
+                        // Padding bottom 14 evita overflow de 2px en web; mismo aspecto visual
+                        padding: const EdgeInsets.only(top: 62, bottom: 14, left: 40, right: 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                cardNumberMasked,
+                                style: const TextStyle(
+                                  color: Color(0xFF2D2D2D),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 3,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'BANCO',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          bankName,
+                                          style: const TextStyle(
+                                            color: Color(0xFF2D2D2D),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.2,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'VÁLIDA HASTA',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          expirationDate,
+                                          style: const TextStyle(
+                                            color: Color(0xFF2D2D2D),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'TIPO',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          cardType,
+                                          style: const TextStyle(
+                                            color: Color(0xFF2D2D2D),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Franja inferior #7c1735 con ligero degradado (efecto textura)
+            Container(
+              height: stripeHeight,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    stripeColor,
+                    Color.lerp(stripeColor, const Color(0xFF5a1028), 0.15)!,
+                  ],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Logo Visa o Mastercard en la franja (alineado con el resto de tarjetas: right 40)
+                  if (card.brand.toLowerCase() == 'visa' || card.brand.toLowerCase() == 'mastercard')
+                    Positioned(
+                      bottom: 8,
+                      right: 40,
+                      child: Image.asset(
+                        card.brand.toLowerCase() == 'visa'
+                            ? 'assets/images/visa_white.png'
+                            : 'assets/images/mastercard.png',
+                        width: 44,
+                        height: 28,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 44,
+                            height: 28,
+                            alignment: Alignment.center,
+                            child: Text(
+                              card.brand.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNetPayCard({
     required CardModel card,
     required bool isDefault,
@@ -1221,6 +1450,11 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
   }) {
     final bankName = card.bank ?? '--';
     final bankNameLower = bankName.toLowerCase();
+    
+    // * Verificar si es BANSEFI / Banco del Bienestar → diseño blanco con franja #7c1735
+    final isBansefi = bankNameLower.contains('bansefi') ||
+                     bankNameLower.contains('banco del bienestar') ||
+                     bankNameLower.contains('bienestar');
     
     // * Verificar si es NuBank
     final isNuBank = bankNameLower.contains('nubank') || 
@@ -1272,6 +1506,17 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
     final cardNumberMasked = '•••• •••• •••• ${card.lastFourDigits}';
     final expirationDate = card.expirationFormatted;
     final cardType = card.typeFormatted;
+
+    if (isBansefi) {
+      return _buildBansefiCard(
+        card: card,
+        cardNumberMasked: cardNumberMasked,
+        expirationDate: expirationDate,
+        cardType: cardType,
+        bankName: bankName,
+        isActiveCard: isActiveCard,
+      );
+    }
     
     return Container(
       width: double.infinity,
@@ -1309,7 +1554,7 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
               right: 20,
               child: Image.asset(
                 card.brand.toLowerCase() == 'visa'
-                    ? 'assets/images/visa.png'
+                    ? 'assets/images/visa_white.png'
                     : 'assets/images/mastercard.png',
                 width: 50,
                 height: 30,
@@ -1540,17 +1785,21 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
     );
   }
 
+  /// Logo Visa o Mastercard con mismo tamaño (60x40) para consistencia visual.
   Widget _buildCardLogo(String cardType) {
+    const double logoWidth = 60.0;
+    const double logoHeight = 40.0;
     if (cardType == 'mastercard') {
-      // MasterCard logo from assets - tamaño original
       return Image.asset(
         'assets/images/mastercard.png',
+        width: logoWidth,
+        height: logoHeight,
+        fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          // Mostrar un placeholder si hay error
           debugPrint('Error loading mastercard.png: $error');
           return Container(
-            width: 60,
-            height: 40,
+            width: logoWidth,
+            height: logoHeight,
             color: Colors.white.withOpacity(0.2),
             child:
                 const Icon(Icons.credit_card, color: Colors.white, size: 24),
@@ -1558,15 +1807,16 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
         },
       );
     } else if (cardType == 'visa') {
-      // Visa logo from assets - tamaño original
       return Image.asset(
-        'assets/images/visa.png',
+        'assets/images/visa_white.png',
+        width: logoWidth,
+        height: logoHeight,
+        fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          // Mostrar un placeholder si hay error
-          debugPrint('Error loading visa.png: $error');
+          debugPrint('Error loading visa_white.png: $error');
           return Container(
-            width: 40,
-            height: 20,
+            width: logoWidth,
+            height: logoHeight,
             color: Colors.white.withOpacity(0.2),
             child:
                 const Icon(Icons.credit_card, color: Colors.white, size: 24),

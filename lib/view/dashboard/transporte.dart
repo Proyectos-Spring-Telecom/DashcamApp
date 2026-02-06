@@ -80,6 +80,14 @@ class _TransportePageState extends State<TransportePage> {
   /// ⚠️ WARNING: No sobrescribir un set al agregar otro tipo de objeto.
   Set<gmaps.Polyline> get _allPolylines => {..._routePolylines, ..._variantPolylines};
 
+  /// * Estilo del mapa: oculta comercios y puntos de interés (POI) en el mapa.
+  static const String _mapStyleNoPoi = '''
+[
+  {"featureType": "poi", "stylers": [{"visibility": "off"}]},
+  {"featureType": "poi.business", "stylers": [{"visibility": "off"}]}
+]
+''';
+
   gmaps.MapType _currentMapType = gmaps.MapType.normal;
   bool _isMapReady = false;
   bool _hasAuthError = false;
@@ -484,18 +492,21 @@ class _TransportePageState extends State<TransportePage> {
     gmaps.BitmapDescriptor? inicioIcon;
     gmaps.BitmapDescriptor? finIcon;
     try {
-      final markerSize = kIsWeb ? 96 : 130;
+      final double dpr = mounted ? MediaQuery.devicePixelRatioOf(context) : 1.0;
+      final double width = mounted ? MediaQuery.sizeOf(context).width : 600;
+      // Web: tamaño proporcional (48 - 10% = 43). Móvil nativo: más pequeños si pantalla estrecha.
+      final int markerSize = kIsWeb ? 30 : (width < 600 ? 72 : 130);
       // * Mismo tamaño que "mi posición" (60% del base) para homogeneidad
       final int routeMarkerSize = (markerSize * 0.6).round();
       final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
       final bytesInicio = dataInicio.buffer.asUint8List();
       inicioIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(bytesInicio, routeMarkerSize),
+        await _resizeMarkerImage(bytesInicio, routeMarkerSize, pixelRatio: dpr),
       );
       final dataFin = await rootBundle.load('assets/images/marker_fin.png');
       final bytesFin = dataFin.buffer.asUint8List();
       finIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(bytesFin, routeMarkerSize),
+        await _resizeMarkerImage(bytesFin, routeMarkerSize, pixelRatio: dpr),
       );
     } catch (e) {
       debugPrint(
@@ -689,13 +700,16 @@ class _TransportePageState extends State<TransportePage> {
     gmaps.BitmapDescriptor? varianteIcon;
     gmaps.BitmapDescriptor? inicioIcon;
     gmaps.BitmapDescriptor? finIcon;
-    final int markerSize = kIsWeb ? 96 : 130;
+    final double dpr = mounted ? MediaQuery.devicePixelRatioOf(context) : 1.0;
+    final double width = mounted ? MediaQuery.sizeOf(context).width : 600;
+    // Web: tamaño proporcional (48 - 10% = 43). Móvil nativo: más pequeños si pantalla estrecha.
+    final int markerSize = kIsWeb ? 30 : (width < 600 ? 72 : 130);
     final int variantMarkerSize = (markerSize * 0.3).round(); // * Solo para marker_variante (estaciones)
     final int variantInicioFinSize = (markerSize * 0.6).round();
     try {
       final dataVar = await rootBundle.load('assets/images/marker_variante.png');
       varianteIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataVar.buffer.asUint8List(), variantMarkerSize),
+        await _resizeMarkerImage(dataVar.buffer.asUint8List(), variantMarkerSize, pixelRatio: dpr),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_variante.png: $e');
@@ -703,7 +717,7 @@ class _TransportePageState extends State<TransportePage> {
     try {
       final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
       inicioIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataInicio.buffer.asUint8List(), variantInicioFinSize),
+        await _resizeMarkerImage(dataInicio.buffer.asUint8List(), variantInicioFinSize, pixelRatio: dpr),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_inicio.png: $e');
@@ -711,7 +725,7 @@ class _TransportePageState extends State<TransportePage> {
     try {
       final dataFin = await rootBundle.load('assets/images/marker_fin.png');
       finIcon = gmaps.BitmapDescriptor.fromBytes(
-        await _resizeMarkerImage(dataFin.buffer.asUint8List(), variantInicioFinSize),
+        await _resizeMarkerImage(dataFin.buffer.asUint8List(), variantInicioFinSize, pixelRatio: dpr),
       );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar marker_fin.png: $e');
@@ -898,15 +912,23 @@ class _TransportePageState extends State<TransportePage> {
     );
   }
 
-  /// Redimensiona la imagen del marcador según la plataforma
-  Future<Uint8List> _resizeMarkerImage(Uint8List imageBytes, int targetSize) async {
-    final codec = await ui.instantiateImageCodec(imageBytes, targetWidth: targetSize);
+  /// Redimensiona la imagen del marcador.
+  /// [targetSize] = tamaño lógico deseado (px).
+  /// [pixelRatio] = device pixel ratio (ej. 2 en móvil) para generar imagen nítida en pantallas alta densidad.
+  /// Se genera la imagen a targetSize * pixelRatio (máx 256) para evitar pixelado en web/móvil.
+  Future<Uint8List> _resizeMarkerImage(
+    Uint8List imageBytes,
+    int targetSize, {
+    double pixelRatio = 1.0,
+  }) async {
+    final int renderSize = (targetSize * pixelRatio).round().clamp(targetSize, 256);
+    final codec = await ui.instantiateImageCodec(imageBytes, targetWidth: renderSize);
     final frame = await codec.getNextFrame();
     final resizedImage = frame.image;
-    
+
     final byteData = await resizedImage.toByteData(format: ui.ImageByteFormat.png);
     resizedImage.dispose();
-    
+
     return byteData!.buffer.asUint8List();
   }
 
@@ -937,18 +959,21 @@ class _TransportePageState extends State<TransportePage> {
     gmaps.BitmapDescriptor? busIcon;
 
     try {
+      final double dpr = MediaQuery.devicePixelRatioOf(context);
+      final double width = MediaQuery.sizeOf(context).width;
+      // Web: tamaño proporcional (48 - 10% = 43). Móvil nativo: más pequeños si pantalla estrecha.
+      final int markerSize = kIsWeb ? 30 : (width < 600 ? 72 : 130);
       final ByteData data = await rootBundle.load('assets/images/marker_dash.png');
       final Uint8List originalBytes = data.buffer.asUint8List();
-      final int markerSize = kIsWeb ? 96 : 130;
-      // * Marcador de "mi posición" 20% más pequeño que el tamaño base
+      // * Marcador de "mi posición" 60% del tamaño base
       final int userMarkerSize = (markerSize * 0.6).round();
-      final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, userMarkerSize);
+      final Uint8List resizedBytes = await _resizeMarkerImage(originalBytes, userMarkerSize, pixelRatio: dpr);
       final customIcon = gmaps.BitmapDescriptor.fromBytes(resizedBytes);
 
       try {
         final ByteData busData = await rootBundle.load('assets/images/marker_bus.png');
         final Uint8List busOriginalBytes = busData.buffer.asUint8List();
-        final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, userMarkerSize);
+        final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, userMarkerSize, pixelRatio: dpr);
         busIcon = gmaps.BitmapDescriptor.fromBytes(busResizedBytes);
       } catch (e) {
         debugPrint('⚠️ No se pudo cargar marker_bus.png, usando marcador por defecto: $e');
@@ -1056,13 +1081,11 @@ class _TransportePageState extends State<TransportePage> {
         debugPrint('🗺️ Tipo de mapa: $_currentMapType');
         debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
         
-        // En web, no intentar aplicar estilo del mapa ya que puede causar problemas
-        if (!kIsWeb) {
-          try {
-            await controller.setMapStyle(null);
-          } catch (e) {
-            debugPrint('⚠️ Error al aplicar estilo del mapa: $e');
-          }
+        // Aplicar estilo para ocultar comercios/POI en el mapa (web y móvil)
+        try {
+          await controller.setMapStyle(_mapStyleNoPoi);
+        } catch (e) {
+          debugPrint('⚠️ Error al aplicar estilo del mapa (ocultar POI): $e');
         }
         
         // Timeout para web: si después de 5 segundos no se carga, marcar como listo
@@ -1339,11 +1362,11 @@ class _TransportePageState extends State<TransportePage> {
           ),
           const SizedBox(width: 8), // Espacio entre menú y texto
 
-          // Title centrado - Transporte
+          // Title centrado - Movilidad Inteligente
           Expanded(
             child: Center(
               child: Text(
-                "Transporte",
+                "Movilidad Inteligente",
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
                   fontSize: 18,
@@ -2215,7 +2238,7 @@ class _TransportePageState extends State<TransportePage> {
                         ListTile(
                           leading: Icon(Icons.directions_bus, color: textColor),
                           title: Text(
-                            "Transporte",
+                            "Movilidad Inteligente",
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,

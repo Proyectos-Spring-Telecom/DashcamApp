@@ -574,7 +574,7 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
                         ListTile(
                           leading: Icon(Icons.directions_bus, color: textColor),
                           title: Text(
-                            "Transporte",
+                            "Movilidad Inteligente",
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,

@@ -116,10 +116,12 @@ class _DashboardState extends State<Dashboard> {
             // Header
             _buildHeader(context, isDark: isDark),
 
-            // Content
+            // Content - padding horizontal responsive en pantallas pequeñas
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.sizeOf(context).width < 200 ? 8.0 : (MediaQuery.sizeOf(context).width < 320 ? 12.0 : 24.0),
+                vertical: 12.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -133,7 +135,7 @@ class _DashboardState extends State<Dashboard> {
                       Expanded(
                         child: _buildExpenseCard(isDark: isDark),
                       ),
-                      const SizedBox(width: 16.0),
+                      SizedBox(width: MediaQuery.sizeOf(context).width < 200 ? 8.0 : 16.0),
                       Expanded(
                         child: _buildRechargeCard(isDark: isDark),
                       ),
@@ -147,7 +149,7 @@ class _DashboardState extends State<Dashboard> {
                       Expanded(
                         child: _buildFacturarButton(context),
                       ),
-                      const SizedBox(width: 16.0),
+                      SizedBox(width: MediaQuery.sizeOf(context).width < 200 ? 8.0 : 16.0),
                       Expanded(
                         child: _buildRecargarButton(context),
                       ),
@@ -234,10 +236,13 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _buildHeader(BuildContext context, {bool isDark = true}) {
     final paddingTop = MediaQuery.of(context).padding.top;
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = width < 200 ? 8.0 : (width < 320 ? 12.0 : 16.0);
+    final rightPadding = width < 200 ? 8.0 : (width < 320 ? 16.0 : 24.0);
     return Container(
       padding: EdgeInsets.only(
-        left: 16.0,
-        right: 24.0,
+        left: horizontalPadding,
+        right: rightPadding,
         top: paddingTop + 8.0,
         bottom: 8.0,
       ),
@@ -258,26 +263,29 @@ class _DashboardState extends State<Dashboard> {
           ),
           const SizedBox(width: 8), // Espacio entre menú y texto
 
-          // Title dinámico - alineado con Monedero
-          StreamBuilder<User?>(
-            stream: authBloc.userStream,
-            builder: (context, userSnapshot) {
-              final user = userSnapshot.data ?? authBloc.currentUser;
-              final nombreUsuario = user?.nombre ?? 'Usuario';
+          // Title dinámico - flexible en pantallas pequeñas para evitar overflow
+          Expanded(
+            child: StreamBuilder<User?>(
+              stream: authBloc.userStream,
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data ?? authBloc.currentUser;
+                final nombreUsuario = user?.nombre ?? 'Usuario';
 
-              return Text(
-                "¡Hola, $nombreUsuario!",
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              );
-            },
+                return Text(
+                  "¡Hola, $nombreUsuario!",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                );
+              },
+            ),
           ),
 
-          // Spacer to push avatar to the right
-          Spacer(),
+          const SizedBox(width: 8),
 
           // Profile avatar
           GestureDetector(
@@ -331,16 +339,22 @@ class _DashboardState extends State<Dashboard> {
               ),
             ),
             const Spacer(),
-            GestureDetector(
-              onTap: () {
-                _mostrarModalExtravio(context, isDark);
-              },
-              child: Text(
-                "Extravío de monedero",
-                style: TextStyle(
-                  color: const Color(0xFFA6A4A4),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    _mostrarModalExtravio(context, isDark);
+                  },
+                  child: Text(
+                    "Extravío de monedero",
+                    style: TextStyle(
+                      color: const Color(0xFFA6A4A4),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -728,15 +742,20 @@ class _DashboardState extends State<Dashboard> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.receipt, color: Colors.white, size: 20),
           const SizedBox(width: 8),
-          Text(
-            "Facturar",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+          Flexible(
+            child: Text(
+              "Facturar",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -758,15 +777,20 @@ class _DashboardState extends State<Dashboard> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.attach_money, color: Colors.white, size: 20),
           const SizedBox(width: 8),
-          Text(
-            "Recargar",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+          Flexible(
+            child: Text(
+              "Recargar",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -914,7 +938,14 @@ class _DashboardState extends State<Dashboard> {
                     size: 28,
                   ),
                 ),
-                if (badgeWidget != null) badgeWidget,
+                if (badgeWidget != null)
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: badgeWidget,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -925,6 +956,8 @@ class _DashboardState extends State<Dashboard> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -990,22 +1023,27 @@ class _DashboardState extends State<Dashboard> {
                     size: 28,
                   ),
                 ),
-                // StreamBuilder para mostrar el número dinámico de tarjetas
-                StreamBuilder<NetPayCustomerModel?>(
-                  stream: netPayBloc.customerStream,
-                  initialData: netPayBloc.currentCustomer,
-                  builder: (context, snapshot) {
-                    final customer = snapshot.data;
-                    final cantidadTarjetas = customer?.paymentSources.length ?? 0;
-                    return Text(
-                      cantidadTarjetas.toString(),
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    );
-                  },
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: StreamBuilder<NetPayCustomerModel?>(
+                      stream: netPayBloc.customerStream,
+                      initialData: netPayBloc.currentCustomer,
+                      builder: (context, snapshot) {
+                        final customer = snapshot.data;
+                        final cantidadTarjetas = customer?.paymentSources.length ?? 0;
+                        return Text(
+                          cantidadTarjetas.toString(),
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1017,6 +1055,8 @@ class _DashboardState extends State<Dashboard> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1068,6 +1108,9 @@ class _DashboardState extends State<Dashboard> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       // Status
@@ -1140,7 +1183,7 @@ class _DashboardState extends State<Dashboard> {
                         ListTile(
                           leading: Icon(Icons.directions_bus, color: textColor),
                           title: Text(
-                            "Transporte",
+                            "Movilidad Inteligente",
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,
@@ -2363,8 +2406,8 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
       iconData = Icons.attach_money;
       iconColor = const Color(0xFFA6CE39); // Green para recargas
     } else {
-      // Débito: icono QR, color rojo en sección Registros
-      iconData = Icons.qr_code;
+      // Débito: esQR == 0 → tarjeta física, sino → código QR
+      iconData = transaccion.esQR == 0 ? Icons.credit_card : Icons.qr_code;
       iconColor = const Color(0xFF205AA8); // Blue para débitos
     }
 
@@ -4091,9 +4134,9 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
   bool _isFormValid() {
     if (_esFamiliar == null) return false;
     if (_esFamiliar == true) {
-      // * UPDATE: Si es familiar, debe tener número de pasajes válido
+      // Viaje familiar: número de pasajes debe ser >= 2
       final numero = int.tryParse(_numeroPasajesController.text.trim());
-      return numero != null && numero >= 1;
+      return numero != null && numero >= 2;
     }
     // Si no es familiar, solo necesita estar seleccionado (será 1 pasaje por defecto)
     return true;
@@ -4223,6 +4266,10 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                     if (numero == null || numero < 1) {
                       return 'Debe ser al menos 1';
                     }
+                    // Viaje familiar: mínimo 2 pasajeros
+                    if (numero < 2) {
+                      return 'Para viaje familiar debe ser 2 o más';
+                    }
                     return null;
                   },
                   onChanged: (value) {
@@ -4268,18 +4315,28 @@ class _TipoViajeDialogState extends State<TipoViajeDialog> {
                   // Botón de acción (Pago Familiar o Pago individual)
                   Expanded(
                     child: FilledButton(
-                      onPressed: _isFormValid()
-                          ? () {
-                              if (_formKey.currentState!.validate()) {
-                                // * UPDATE: Determinar numeroPasajes
-                                // Si es familiar, usar el valor ingresado; si no, usar 1 (pago individual)
-                                final numeroPasajes = _esFamiliar == true
-                                    ? int.tryParse(_numeroPasajesController.text.trim()) ?? 1
-                                    : 1; // * IMPORTANT: Pago individual siempre es 1 pasaje
-                                widget.onContinue(_esFamiliar == true, numeroPasajes);
-                              }
-                            }
-                          : null,
+                      onPressed: () {
+                        if (_esFamiliar == true) {
+                          final numeroPasajes = int.tryParse(_numeroPasajesController.text.trim()) ?? 0;
+                          if (numeroPasajes < 2) {
+                            QuickAlert.show(
+                              context: context,
+                              type: QuickAlertType.warning,
+                              title: 'Viaje familiar',
+                              text: 'Para disfrutar del viaje familiar, el número de pasajeros debe ser para 2 personas o más. Ajusta el número para continuar.',
+                              confirmBtnText: 'Entendido',
+                              confirmBtnColor: const Color(0xFF205AA8),
+                            );
+                            return;
+                          }
+                        }
+                        if (_isFormValid() && _formKey.currentState!.validate()) {
+                          final numeroPasajes = _esFamiliar == true
+                              ? int.tryParse(_numeroPasajesController.text.trim()) ?? 2
+                              : 1;
+                          widget.onContinue(_esFamiliar == true, numeroPasajes);
+                        }
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF205AA8),
                         padding: const EdgeInsets.symmetric(vertical: 14),

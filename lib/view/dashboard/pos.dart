@@ -1226,7 +1226,7 @@ class _POSPageState extends State<POSPage> {
                         ListTile(
                           leading: Icon(Icons.directions_bus, color: textColor),
                           title: Text(
-                            "Transporte",
+                            "Movilidad Inteligente",
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,

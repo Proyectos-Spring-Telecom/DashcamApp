@@ -12,6 +12,8 @@ class TransaccionModel {
   final DateTime? fechaHora;
   final String? tipoTransaccion;
   final double? monto;
+  /// 0 = cobro con tarjeta física, distinto de 0 = cobro con código QR (GET /transacciones/paginado).
+  final int? esQR;
 
   TransaccionModel({
     required this.id,
@@ -24,6 +26,7 @@ class TransaccionModel {
     this.fechaHora,
     this.tipoTransaccion,
     this.monto,
+    this.esQR,
   });
 
   factory TransaccionModel.fromJson(Map<String, dynamic> json) {
@@ -98,6 +101,9 @@ class TransaccionModel {
         fechaHora: fechaHora,
         tipoTransaccion: json['tipoTransaccion']?.toString(),
         monto: json['monto'] != null ? (json['monto'] as num).toDouble() : null,
+        esQR: json['esQR'] != null
+            ? (json['esQR'] is num ? (json['esQR'] as num).toInt() : int.tryParse(json['esQR'].toString()))
+            : null,
       );
     } catch (e) {
       // Si hay un error al parsear, loguearlo pero continuar con valores por defecto
@@ -119,6 +125,7 @@ class TransaccionModel {
       'fechaHora': fechaHora?.toIso8601String(),
       'tipoTransaccion': tipoTransaccion,
       'monto': monto,
+      'esQR': esQR,
     };
   }
 
