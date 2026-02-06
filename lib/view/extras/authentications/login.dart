@@ -146,74 +146,77 @@ class _LoginState extends State<Login> {
     final textColor = isDark ? Colors.white : Colors.black;
 
     return SingleChildScrollView(
-      child: Container(
-        height: screenHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Logo section - Top left
-              _buildLogo(isDark: isDark),
-              const Spacer(),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: screenHeight),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo section - Top left
+                _buildLogo(isDark: isDark),
+                const SizedBox(height: 32.0),
 
-              // Title - Left aligned
-              Text(
-                "Inicio de Sesión",
-                style: TextStyle(
-                  fontSize: 32.0,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 50.0),
-
-              // Error message
-              if (error != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                // Title - Left aligned
+                Text(
+                  "Inicio de Sesión",
+                  style: TextStyle(
+                    fontSize: 32.0,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          error,
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
+                ),
+                const SizedBox(height: 50.0),
+
+                // Error message
+                if (error != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            error,
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16.0),
+                  const SizedBox(height: 16.0),
+                ],
+
+                // Email field
+                _buildEmailField(isDark: isDark, textColor: textColor),
+                const SizedBox(height: 30.0),
+
+                // Password field
+                _buildPasswordField(isDark: isDark, textColor: textColor),
+                const SizedBox(height: 40.0),
+
+                // Login button
+                _buildLoginButton(context),
+                const SizedBox(height: 30.0),
+
+                // Links at the bottom
+                _buildBottomLinks(context, textColor: textColor),
+                const SizedBox(height: 32.0),
               ],
-
-              // Email field
-              _buildEmailField(isDark: isDark, textColor: textColor),
-              const SizedBox(height: 30.0),
-
-              // Password field
-              _buildPasswordField(isDark: isDark, textColor: textColor),
-              const SizedBox(height: 40.0),
-
-              // Login button
-              _buildLoginButton(context),
-              const SizedBox(height: 30.0),
-
-              // Links at the bottom
-              _buildBottomLinks(context, textColor: textColor),
-              const SizedBox(height: 40.0),
-            ],
+            ),
           ),
         ),
       ),
@@ -507,6 +510,7 @@ class _LoginState extends State<Login> {
     final linkColor = textColor ?? Colors.white;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Center(
           child: TextButton(
@@ -542,11 +546,13 @@ class _LoginState extends State<Login> {
           child: TextButton(
             onPressed: () => GoRouter.of(context).go(RoutesName.register),
             child: Text(
-              "¿Necesitas una cuenta? Regístrate",
+              "¿Necesitas una cuenta? Regístrate.",
               style: TextStyle(
                 color: linkColor,
                 fontSize: 14,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),

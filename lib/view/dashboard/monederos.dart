@@ -1182,7 +1182,7 @@ class _MonederosPageState extends State<MonederosPage> {
                         ListTile(
                           leading: Icon(Icons.directions_bus, color: textColor),
                           title: Text(
-                            "Transporte",
+                            "Movilidad Inteligente",
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,
