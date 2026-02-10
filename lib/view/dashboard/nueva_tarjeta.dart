@@ -1,5 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/utils/solo_letras_input.dart';
+import 'package:dashboardpro/utils/email_validation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:quickalert/quickalert.dart';
@@ -434,6 +436,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
         TextField(
           controller: _nombresController,
           style: TextStyle(color: textColor),
+          inputFormatters: soloLetrasInputFormatters,
           decoration: InputDecoration(
             filled: true,
             fillColor: fillColor,
@@ -469,6 +472,7 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
         TextField(
           controller: _apellidosController,
           style: TextStyle(color: textColor),
+          inputFormatters: soloLetrasInputFormatters,
           decoration: InputDecoration(
             filled: true,
             fillColor: fillColor,
@@ -1375,16 +1379,28 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
       _showError('Por favor ingresa tu nombre');
       return false;
     }
+    if (!isSoloLetras(_nombresController.text.trim())) {
+      _showError('El nombre solo puede contener letras (sin números ni caracteres especiales)');
+      return false;
+    }
 
     // Validar apellidos
     if (_apellidosController.text.trim().isEmpty) {
       _showError('Por favor ingresa tus apellidos');
       return false;
     }
+    if (!isSoloLetras(_apellidosController.text.trim())) {
+      _showError('Los apellidos solo pueden contener letras (sin números ni caracteres especiales)');
+      return false;
+    }
 
     // Validar correo
     if (_correoController.text.trim().isEmpty) {
       _showError('Por favor ingresa tu correo electrónico');
+      return false;
+    }
+    if (!isValidEmail(_correoController.text.trim())) {
+      _showError('Por favor ingresa un correo electrónico válido');
       return false;
     }
 
