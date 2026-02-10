@@ -64,6 +64,8 @@ dependencies:
   image_picker: ^1.0.7
   google_maps_flutter: ^2.6.0
   quickalert: ^1.0.0
+  calendar_date_picker2: ^2.0.1
+  email_validator: ^3.0.0
   webview_flutter: ^4.4.2
   flutter_nfc_kit: ^3.6.1
   geolocator: ^13.0.1

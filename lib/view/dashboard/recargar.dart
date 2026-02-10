@@ -11,11 +11,13 @@ class RecargarPage extends StatefulWidget {
 
 class _RecargarPageState extends State<RecargarPage> {
   final TextEditingController _amountController = TextEditingController();
+  late final FocusNode _amountFocusNode;
   bool _isButtonEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _amountFocusNode = FocusNode();
     _amountController.addListener(_validateAmount);
     // Cargar el wallet y monederos cuando se inicializa la página
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -35,6 +37,7 @@ class _RecargarPageState extends State<RecargarPage> {
   void dispose() {
     _amountController.removeListener(_validateAmount);
     _amountController.dispose();
+    _amountFocusNode.dispose();
     super.dispose();
   }
 
@@ -112,6 +115,14 @@ class _RecargarPageState extends State<RecargarPage> {
                     color: textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6.0),
+                Text(
+                  "💳 El monto de recarga debe ser mayor a \$10 pesos para continuar con el proceso.",
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 16.0),
@@ -218,6 +229,14 @@ class _RecargarPageState extends State<RecargarPage> {
                       color: textColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+                  Text(
+                    "💳 El monto de recarga debe ser mayor a \$10 pesos para continuar con el proceso.",
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 16.0),
@@ -439,64 +458,78 @@ class _RecargarPageState extends State<RecargarPage> {
     );
   }
 
+  /// * Campo de monto para recarga. Toda el área del contenedor es tappable:
+  /// al tocar cualquier parte se da foco al [TextField] y se abre el teclado.
   Widget _buildAmountField(
       {required bool isDark, required TextEditingController controller}) {
     final fieldColor = isDark ? Colors.grey[800] : Colors.grey[100];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
-      decoration: BoxDecoration(
-        color: fieldColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white,
-          width: 1.0,
+    // ! FIX: Área táctil completa. El Row interno tiene ancho mínimo, por lo que
+    // el hit area del TextField sería pequeña. Envolvemos con GestureDetector
+    // para que todo el contenedor reciba el tap y solicite foco al campo.
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        if (_amountFocusNode.canRequestFocus) {
+          FocusScope.of(context).requestFocus(_amountFocusNode);
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
+        decoration: BoxDecoration(
+          color: fieldColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white,
+            width: 1.0,
+          ),
         ),
-      ),
-      child: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '\$',
-              style: TextStyle(
-                color: Color(0xFFA6CE39), // Light green
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 4),
-            IntrinsicWidth(
-              child: TextField(
-                controller: controller,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
-                textAlign: TextAlign.center,
-                style: const TextStyle(
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '\$',
+                style: TextStyle(
                   color: Color(0xFFA6CE39), // Light green
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
                 ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: '0',
-                  hintStyle: TextStyle(
-                    color: Color(0xFFA6CE39),
+              ),
+              const SizedBox(width: 4),
+              IntrinsicWidth(
+                child: TextField(
+                  controller: controller,
+                  focusNode: _amountFocusNode,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFA6CE39), // Light green
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                   ),
-                  contentPadding: EdgeInsets.zero,
-                  isDense: true,
-                  constraints: BoxConstraints(minWidth: 30),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '0',
+                    hintStyle: TextStyle(
+                      color: Color(0xFFA6CE39),
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                    isDense: true,
+                    constraints: BoxConstraints(minWidth: 30),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

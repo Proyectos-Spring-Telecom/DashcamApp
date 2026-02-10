@@ -6,6 +6,9 @@ import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/controller/cliente_bloc.dart';
 import 'package:dashboardpro/domain/entities/cliente_entity.dart';
 import 'package:quickalert/quickalert.dart';
+import 'package:calendar_date_picker2/calendar_date_picker2.dart';
+import 'package:dashboardpro/utils/solo_letras_input.dart';
+import 'package:dashboardpro/utils/email_validation.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -19,7 +22,8 @@ class _RegisterState extends State<Register> {
   final _nombreController = TextEditingController();
   final _apellidoPaternoController = TextEditingController();
   final _apellidoMaternoController = TextEditingController();
-  final _fechaNacimientoController = TextEditingController();
+  /// Fecha de nacimiento seleccionada en el calendario (CalendarDatePicker2).
+  DateTime? _fechaNacimiento;
   final _telefonoController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -57,7 +61,6 @@ class _RegisterState extends State<Register> {
     _nombreController.dispose();
     _apellidoPaternoController.dispose();
     _apellidoMaternoController.dispose();
-    _fechaNacimientoController.dispose();
     _telefonoController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -225,6 +228,7 @@ class _RegisterState extends State<Register> {
               isDark: isDark,
               textColor: textColor,
               placeholder: "Nombre",
+              soloLetras: true,
             ),
             const SizedBox(height: 20.0),
 
@@ -235,6 +239,7 @@ class _RegisterState extends State<Register> {
               isDark: isDark,
               textColor: textColor,
               placeholder: "Apellido Paterno",
+              soloLetras: true,
             ),
             const SizedBox(height: 20.0),
 
@@ -246,16 +251,12 @@ class _RegisterState extends State<Register> {
               textColor: textColor,
               placeholder: "Apellido Materno",
               isRequired: false,
+              soloLetras: true,
             ),
             const SizedBox(height: 20.0),
 
-            // Fecha Nacimiento
-            _buildDateField(
-              label: "Fecha Nacimiento",
-              controller: _fechaNacimientoController,
-              isDark: isDark,
-              textColor: textColor,
-            ),
+            // Fecha Nacimiento (CalendarDatePicker2)
+            _buildFechaNacimientoCalendar(isDark: isDark, textColor: textColor),
             const SizedBox(height: 20.0),
 
             // Teléfono
@@ -368,6 +369,7 @@ class _RegisterState extends State<Register> {
                   isDark: isDark,
                   textColor: textColor,
                   placeholder: "Nombre",
+                  soloLetras: true,
                 ),
                 const SizedBox(height: 20.0),
 
@@ -378,6 +380,7 @@ class _RegisterState extends State<Register> {
                   isDark: isDark,
                   textColor: textColor,
                   placeholder: "Apellido Paterno",
+                  soloLetras: true,
                 ),
                 const SizedBox(height: 20.0),
 
@@ -389,16 +392,12 @@ class _RegisterState extends State<Register> {
                   textColor: textColor,
                   placeholder: "Apellido Materno",
                   isRequired: false,
+                  soloLetras: true,
                 ),
                 const SizedBox(height: 20.0),
 
-                // Fecha Nacimiento
-                _buildDateField(
-                  label: "Fecha Nacimiento",
-                  controller: _fechaNacimientoController,
-                  isDark: isDark,
-                  textColor: textColor,
-                ),
+                // Fecha Nacimiento (CalendarDatePicker2)
+                _buildFechaNacimientoCalendar(isDark: isDark, textColor: textColor),
                 const SizedBox(height: 20.0),
 
                 // Teléfono
@@ -492,6 +491,7 @@ class _RegisterState extends State<Register> {
     String? placeholder,
     bool isRequired = true,
     VoidCallback? onChanged,
+    bool soloLetras = false,
   }) {
     final labelTextColor = textColor;
     final fieldTextColor = textColor;
@@ -513,6 +513,7 @@ class _RegisterState extends State<Register> {
         TextFormField(
           controller: controller,
           style: TextStyle(color: fieldTextColor),
+          inputFormatters: soloLetras ? soloLetrasInputFormatters : null,
           onChanged: (value) {
             if (onChanged != null) {
               onChanged();
@@ -524,14 +525,15 @@ class _RegisterState extends State<Register> {
               }
             });
           },
-          validator: isRequired
-              ? (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Este campo es obligatorio';
-                  }
-                  return null;
-                }
-              : null,
+          validator: (value) {
+            if (isRequired && (value == null || value.isEmpty)) {
+              return 'Este campo es obligatorio';
+            }
+            if (soloLetras && value != null && value.isNotEmpty && !soloLetrasRegex.hasMatch(value)) {
+              return 'Solo se permiten letras (sin números ni caracteres especiales)';
+            }
+            return null;
+          },
           decoration: InputDecoration(
             hintText: placeholder ?? "",
             hintStyle: TextStyle(color: hintTextColor),
@@ -567,102 +569,122 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget _buildDateField({
-    required String label,
-    required TextEditingController controller,
+  /// Campo de fecha de nacimiento: al tocar se abre el calendario en diálogo (mismo estilo que el resto del formulario).
+  Widget _buildFechaNacimientoCalendar({
     required bool isDark,
     required Color textColor,
   }) {
-    final labelTextColor = textColor;
-    final fieldTextColor = textColor;
+    const colorSeleccion = Color(0xFFafcd3a);
     final fieldBgColor = isDark ? Colors.grey[800] : Colors.grey[100];
     final hintTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
-    
+
+    String fechaTexto;
+    if (_fechaNacimiento != null) {
+      final d = _fechaNacimiento!;
+      fechaTexto = '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    } else {
+      fechaTexto = '';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          "Fecha Nacimiento",
           style: TextStyle(
-            color: labelTextColor,
+            color: textColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          style: TextStyle(color: fieldTextColor),
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9/]')),
-            LengthLimitingTextInputFormatter(10),
-            _DateInputFormatter(),
-          ],
-          onChanged: (value) {
-            setState(() {}); // Actualizar para habilitar/deshabilitar botón
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor ingresa la fecha de nacimiento';
-            }
-            // Validar formato dd/mm/aaaa
-            final dateRegex = RegExp(r'^\d{2}/\d{2}/\d{4}$');
-            if (!dateRegex.hasMatch(value)) {
-              return 'Formato inválido. Use dd/mm/aaaa';
-            }
-            // Validar que la fecha sea válida
-            try {
-              final parts = value.split('/');
-              final day = int.parse(parts[0]);
-              final month = int.parse(parts[1]);
-              final year = int.parse(parts[2]);
-              final date = DateTime(year, month, day);
-              if (date.year != year || date.month != month || date.day != day) {
-                return 'Fecha inválida';
-              }
-              // Validar que no sea una fecha futura
-              if (date.isAfter(DateTime.now())) {
-                return 'La fecha no puede ser futura';
-              }
-            } catch (e) {
-              return 'Fecha inválida';
-            }
-            return null;
-          },
-          decoration: InputDecoration(
-            hintText: "dd/mm/aaaa",
-            hintStyle: TextStyle(color: hintTextColor),
-            filled: true,
-            fillColor: fieldBgColor,
-            border: OutlineInputBorder(
+        GestureDetector(
+          onTap: () => _abrirDialogFechaNacimiento(context, isDark: isDark, textColor: textColor),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: fieldBgColor,
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white, width: 1.0),
+              border: Border.all(color: Colors.white, width: 1.0),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white, width: 1.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white, width: 2.0),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 1.0),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white, width: 1.0),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    fechaTexto.isEmpty ? 'dd/mm/aaaa' : fechaTexto,
+                    style: TextStyle(
+                      color: fechaTexto.isEmpty ? hintTextColor : textColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Icon(Icons.calendar_today, color: colorSeleccion, size: 22),
+              ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  /// Abre el diálogo del calendario para seleccionar fecha de nacimiento.
+  Future<void> _abrirDialogFechaNacimiento(BuildContext context, {required bool isDark, required Color textColor}) async {
+    const colorSeleccion = Color(0xFFafcd3a);
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year - 120, 1, 1);
+    final lastDate = now;
+
+    const mesesEspanol = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    const mesesEspanolAbr = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    ];
+
+    final config = CalendarDatePicker2WithActionButtonsConfig(
+      firstDate: firstDate,
+      lastDate: lastDate,
+      currentDate: now,
+      selectedDayHighlightColor: colorSeleccion,
+      weekdayLabels: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+      firstDayOfWeek: 1,
+      weekdayLabelTextStyle: TextStyle(
+        color: textColor.withOpacity(0.7),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      dayTextStyle: TextStyle(color: textColor, fontSize: 14),
+      selectedDayTextStyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+      controlsTextStyle: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
+      yearTextStyle: TextStyle(color: textColor, fontSize: 14),
+      selectedYearTextStyle: TextStyle(color: colorSeleccion, fontWeight: FontWeight.bold, fontSize: 14),
+      monthTextStyle: TextStyle(color: textColor, fontSize: 14),
+      selectedMonthTextStyle: TextStyle(color: colorSeleccion, fontWeight: FontWeight.bold, fontSize: 14),
+      modePickerTextHandler: ({required DateTime monthDate, bool? isMonthPicker}) {
+        if (isMonthPicker == true) return mesesEspanol[monthDate.month - 1];
+        return '${mesesEspanolAbr[monthDate.month - 1]} ${monthDate.year}';
+      },
+      selectableDayPredicate: (day) {
+        return !day.isAfter(lastDate) && !day.isBefore(firstDate);
+      },
+    );
+
+    final result = await showCalendarDatePicker2Dialog(
+      context: context,
+      config: config,
+      dialogSize: const Size(340, 420),
+      value: _fechaNacimiento != null ? [_fechaNacimiento] : [],
+      borderRadius: BorderRadius.circular(15),
+      dialogBackgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+    );
+
+    if (!mounted) return;
+    if (result != null && result.isNotEmpty && result.first != null) {
+      setState(() => _fechaNacimiento = result.first);
+    }
   }
 
   Widget _buildEmailField({
@@ -699,9 +721,7 @@ class _RegisterState extends State<Register> {
             if (value == null || value.isEmpty) {
               return 'Por favor ingresa tu correo electrónico';
             }
-            // Validar formato de correo electrónico
-            final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-            if (!emailRegex.hasMatch(value)) {
+            if (!isValidEmail(value)) {
               return 'Correo electrónico inválido';
             }
             return null;
@@ -1157,7 +1177,7 @@ class _RegisterState extends State<Register> {
     if (_nombreController.text.trim().isEmpty) return false;
     if (_apellidoPaternoController.text.trim().isEmpty) return false;
     // Apellido Materno es opcional, no se valida
-    if (_fechaNacimientoController.text.trim().isEmpty) return false;
+    if (_fechaNacimiento == null) return false;
     if (_telefonoController.text.trim().isEmpty) return false;
     if (_emailController.text.trim().isEmpty) return false;
     
@@ -1183,22 +1203,24 @@ class _RegisterState extends State<Register> {
       _successMessage = null;
     });
 
-    // Convertir fecha de formato dd/mm/aaaa a aaaa-mm-dd
-    String fechaNacimientoFormatted = '';
-    try {
-      final fechaParts = _fechaNacimientoController.text.split('/');
-      if (fechaParts.length == 3) {
-        fechaNacimientoFormatted = '${fechaParts[2]}-${fechaParts[1]}-${fechaParts[0]}';
-      } else {
-        throw Exception('Formato de fecha inválido');
-      }
-    } catch (e) {
+    // Validar y formatear fecha de nacimiento (yyyy-MM-dd)
+    if (_fechaNacimiento == null) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al formatear la fecha de nacimiento';
+        _errorMessage = 'Por favor selecciona tu fecha de nacimiento';
       });
+      if (mounted) {
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.warning,
+          title: 'Fecha requerida',
+          text: 'Por favor selecciona tu fecha de nacimiento en el calendario',
+        );
+      }
       return;
     }
+    final fechaNacimientoFormatted =
+        '${_fechaNacimiento!.year}-${_fechaNacimiento!.month.toString().padLeft(2, '0')}-${_fechaNacimiento!.day.toString().padLeft(2, '0')}';
 
     // Obtener el número de serie del monedero si fue proporcionado
     final numeroSerieMonedero = _monederoController.text.trim();
@@ -1403,44 +1425,6 @@ class _RegisterState extends State<Register> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// Formatter para fecha de nacimiento (dd/mm/aaaa)
-class _DateInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    
-    // Si está vacío, permitir
-    if (text.isEmpty) {
-      return newValue;
-    }
-    
-    // Eliminar todo excepto números
-    final digitsOnly = text.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    // Si no hay dígitos, retornar vacío
-    if (digitsOnly.isEmpty) {
-      return const TextEditingValue(text: '');
-    }
-    
-    // Construir el formato con barras
-    String formatted = '';
-    for (int i = 0; i < digitsOnly.length && i < 8; i++) {
-      if (i == 2 || i == 4) {
-        formatted += '/';
-      }
-      formatted += digitsOnly[i];
-    }
-    
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
