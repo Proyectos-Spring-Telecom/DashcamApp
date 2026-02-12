@@ -1,9 +1,9 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/utils/device_info_helper.dart';
+import 'package:dashboardpro/utils/location_helper.dart';
 import 'package:flutter/services.dart';
 import 'package:quickalert/quickalert.dart';
-import 'package:geolocator/geolocator.dart' as geo;
 
 class ResumenPage extends StatefulWidget {
   final String? amount;
@@ -135,48 +135,6 @@ class _ResumenPageState extends State<ResumenPage> {
     }
   }
 
-  /// Obtiene la ubicación actual del dispositivo
-  /// Retorna un Map con 'latitud' y 'longitud', o null si hay error
-  /// Nota: Los permisos ya fueron solicitados al iniciar sesión
-  Future<Map<String, double>?> _obtenerUbicacion() async {
-    try {
-      // Verificar si los servicios de ubicación están habilitados
-      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
-        return null;
-      }
-
-      // Verificar permisos de ubicación (ya deberían estar otorgados desde el login)
-      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
-      
-      if (permission != geo.LocationPermission.whileInUse && 
-          permission != geo.LocationPermission.always) {
-        debugPrint('⚠️ Permisos de ubicación no otorgados');
-        return null;
-      }
-
-      // Obtener la ubicación actual
-      debugPrint('📍 Obteniendo ubicación actual...');
-      geo.Position position = await geo.Geolocator.getCurrentPosition(
-        desiredAccuracy: geo.LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      debugPrint('✅ Ubicación obtenida: lat=${position.latitude}, lng=${position.longitude}');
-
-      return {
-        'latitud': position.latitude,
-        'longitud': position.longitude,
-      };
-    } catch (e) {
-      debugPrint('❌ Error al obtener ubicación: $e');
-      // No mostrar diálogos aquí, solo retornar null
-      // Los permisos ya fueron solicitados al iniciar sesión
-      return null;
-    }
-  }
-
   /// Procesa la recarga
   Future<void> _procesarRecarga(BuildContext context) async {
     if (_isLoading) return;
@@ -294,17 +252,33 @@ class _ResumenPageState extends State<ResumenPage> {
       // Obtener información del dispositivo
       final deviceInformation = await DeviceInfoHelper.getDeviceInformation(context);
 
-      // Obtener ubicación actual
-      final ubicacion = await _obtenerUbicacion();
+      // Obtener ubicación actual con helper robusto (PWA iOS: solicita permisos si hace falta)
+      debugPrint('📍 [Resumen] Solicitando coordenadas antes de recarga (requestPermissionIfNeeded=true)...');
+      final ubicacion = await LocationHelper.getValidCoordinatesMap(
+        requestPermissionIfNeeded: true,
+      );
+
       double? latitudInicial;
       double? longitudInicial;
-      
-      if (ubicacion != null) {
+      if (ubicacion != null &&
+          LocationHelper.isValidCoordinate(ubicacion['latitud']) &&
+          LocationHelper.isValidCoordinate(ubicacion['longitud'])) {
         latitudInicial = ubicacion['latitud'];
         longitudInicial = ubicacion['longitud'];
-        debugPrint('📍 Coordenadas obtenidas: lat=$latitudInicial, lng=$longitudInicial');
+        debugPrint('📍 [Resumen] Coordenadas válidas para recarga: lat=$latitudInicial, lng=$longitudInicial');
       } else {
-        debugPrint('⚠️ No se pudieron obtener las coordenadas, se enviarán como null');
+        debugPrint('⚠️ [Resumen] No se obtuvieron coordenadas válidas. ubicacion=$ubicacion');
+        if (!mounted) return;
+        QuickAlert.show(
+          context: context,
+          type: QuickAlertType.warning,
+          title: 'Ubicación requerida',
+          text:
+              'Para realizar la recarga necesitamos tu ubicación. Por favor, permite el acceso a la ubicación en la configuración del navegador o de la app e intenta de nuevo.',
+          confirmBtnText: 'Aceptar',
+          confirmBtnColor: const Color(0xFF205AA8),
+        );
+        return;
       }
 
       // Mostrar loading
@@ -312,10 +286,7 @@ class _ResumenPageState extends State<ResumenPage> {
         _isLoading = true;
       });
 
-      // Realizar la recarga con todos los campos necesarios
-      // numeroSerieValidador se envía como null según requerimientos
-      // idDireccion se obtiene de la tarjeta seleccionada del servicio /netpay/customers
-      // latitudInicial y longitudInicial se obtienen de la ubicación actual del dispositivo
+      // Realizar la recarga con todos los campos necesarios (coordenadas ya validadas)
       final response = await monederoBloc.realizarRecarga(
         numeroSerieMonedero: numeroSerieMonedero,
         monto: amount,
