@@ -13,6 +13,7 @@ import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
 import 'package:dashboardpro/model/transaccion/paginacion_model.dart';
 import 'package:dashboardpro/model/transaccion/recarga_request.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/utils/location_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 
@@ -361,14 +362,19 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
+      // Validar coordenadas: solo enviar double válidos (evita null/NaN/String en backend)
+      final double? latValid = LocationHelper.toValidDouble(latitudInicial);
+      final double? lngValid = LocationHelper.toValidDouble(longitudInicial);
       debugPrint('📤 Realizando recarga: numeroSerieMonedero=$numeroSerieMonedero, monto=$monto, idMetodoPago=$idMetodoPago');
+      debugPrint('📤 Coordenadas recibidas: latitudInicial=$latitudInicial (válido=$latValid), longitudInicial=$longitudInicial (válido=$lngValid)');
+      debugPrint('📤 Coordenadas que se enviarán al backend: lat=${latValid ?? "no enviada"}, lng=${lngValid ?? "no enviada"}');
 
-      // Crear el request de recarga
+      // Crear el request de recarga (solo pasamos coordenadas válidas)
       final request = RecargaRequest(
         idTipoTransaccion: 1, // ID para tipo de transacción RECARGA
         monto: monto,
-        latitudInicial: latitudInicial,
-        longitudInicial: longitudInicial,
+        latitudInicial: latValid,
+        longitudInicial: lngValid,
         numeroSerieMonedero: numeroSerieMonedero,
         numeroSerieValidador: numeroSerieValidador,
         idMetodoPago: idMetodoPago,

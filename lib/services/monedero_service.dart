@@ -306,9 +306,10 @@ class MonederoService {
       debugPrint('📤 Método: POST');
       debugPrint('📤 Request Body (JSON): $jsonBodyString');
 
+      // Enviar el body como string JSON para que el backend reciba números y no strings (evita "must be a number")
       final response = await _dio.post(
         '/transacciones/recarga',
-        data: requestBody,
+        data: jsonBodyString,
         options: options,
       );
 

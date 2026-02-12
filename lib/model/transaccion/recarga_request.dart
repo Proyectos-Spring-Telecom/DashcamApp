@@ -41,11 +41,16 @@ class RecargaRequest {
       'idMetodoPago': idMetodoPago,
     };
 
-    if (latitudInicial != null) {
-      json['latitudInicial'] = latitudInicial;
+    // Solo enviar coordenadas si son double válidos; redondeo a 6 decimales para evitar rechazo del backend (NestJS/class-validator)
+    if (latitudInicial != null &&
+        latitudInicial!.isFinite &&
+        !latitudInicial!.isNaN) {
+      json['latitudInicial'] = double.parse(latitudInicial!.toStringAsFixed(6));
     }
-    if (longitudInicial != null) {
-      json['longitudInicial'] = longitudInicial;
+    if (longitudInicial != null &&
+        longitudInicial!.isFinite &&
+        !longitudInicial!.isNaN) {
+      json['longitudInicial'] = double.parse(longitudInicial!.toStringAsFixed(6));
     }
     // numeroSerieValidador se envía como null explícitamente según requerimientos
     json['numeroSerieValidador'] = numeroSerieValidador;
