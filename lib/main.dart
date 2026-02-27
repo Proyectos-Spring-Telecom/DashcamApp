@@ -1,12 +1,20 @@
-
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Cargar variables de entorno ANTES de cualquier servicio (no commitear .env)
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // .env no existe (ej. primer clone): copia .env.example a .env y rellena valores
+    debugPrint('⚠️ No se encontró .env. Copia .env.example a .env y configura las variables.');
+  }
+
   // Inicializar Firebase
   try {
     await Firebase.initializeApp();

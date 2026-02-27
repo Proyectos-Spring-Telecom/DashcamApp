@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/direccion/codigo_postal_model.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
@@ -6,7 +7,7 @@ import 'package:flutter/foundation.dart';
 
 class DireccionService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   DireccionService({Dio? dio})
       : _dio = dio ??

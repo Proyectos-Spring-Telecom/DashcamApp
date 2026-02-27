@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dashboardpro/model/netpay/card_token_request.dart';
 import 'package:dashboardpro/model/netpay/card_token_response.dart';
 import 'package:flutter/foundation.dart';
@@ -14,22 +15,22 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// - Los datos se limpian inmediatamente después de usar
 /// - No se imprimen datos sensibles en logs
 /// - Usa HTTPS obligatoriamente
+/// - La API key de NetPay viene de .env (EnvConfig.netpayPublicApiKey)
 class NetPayWebViewService {
-  // Llave pública de NetPay (para tokenización desde el cliente)
-  static const String _publicApiKey = 'pk_netpay_JGFtQNUFIENMlhkoBXdgiozmQ';
-  
   final bool _useSandbox;
-  final String? _apiKey;
-  
-  WebViewController? _webViewController;
-  final _completerController = <String, Completer<CardTokenResponse>>{};
-  String? _currentRequestId;
+  final String _apiKey;
 
   NetPayWebViewService({
     bool useSandbox = true,
     String? apiKey,
   })  : _useSandbox = useSandbox,
-        _apiKey = apiKey ?? _publicApiKey;
+        _apiKey = apiKey?.trim().isNotEmpty == true
+            ? apiKey!
+            : EnvConfig.netpayPublicApiKey;
+
+  WebViewController? _webViewController;
+  final _completerController = <String, Completer<CardTokenResponse>>{};
+  String? _currentRequestId;
 
   /// Inicializa el WebView y carga el HTML de NetPay
   Future<void> initializeWebView() async {
