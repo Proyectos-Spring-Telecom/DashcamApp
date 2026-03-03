@@ -1,12 +1,32 @@
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/services/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Inyectar script de Google Maps en web con la clave desde --dart-define (valor de android/local.properties)
+  if (kIsWeb) {
+    const key = String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
+    if (key.isNotEmpty) {
+      final script = html.ScriptElement()
+        ..src =
+            'https://maps.googleapis.com/maps/api/js?key=$key&libraries=places&loading=async'
+        ..setAttribute('async', '')
+        ..setAttribute('defer', '');
+      script.onError.listen((_) {
+        // ignore: avoid_print
+        print('Error al cargar Google Maps JavaScript API');
+      });
+      html.document.head?.append(script);
+    }
+  }
+
   // Inicializar Firebase
   try {
     await Firebase.initializeApp();
