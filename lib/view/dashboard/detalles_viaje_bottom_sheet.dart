@@ -1,8 +1,14 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
+import 'package:dashboardpro/utils/date_formatter.dart';
 
 class DetallesViajeBottomSheet extends StatelessWidget {
-  const DetallesViajeBottomSheet({super.key});
+  /// Si se proporciona, se muestran los datos del viaje (monto, fecha, método de pago, ubicación).
+  /// Si es null, se muestra contenido estático (comportamiento anterior).
+  const DetallesViajeBottomSheet({super.key, this.transaccion});
+
+  final TransaccionModel? transaccion;
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +69,14 @@ class DetallesViajeBottomSheet extends StatelessWidget {
                             ),
                             const SizedBox(height: 20.0),
 
-                            // Detalles del viaje section
+                            // Detalles del viaje section (usa datos reales si [transaccion] no es null)
                             _buildDetallesViajeSection(
                               context: sheetContext,
                               parentContext: context,
                               textColor: textColor,
                               isDark: isDark,
                               cardColor: cardColor,
+                              transaccion: transaccion,
                             ),
                           ],
                         ),
@@ -91,7 +98,25 @@ class DetallesViajeBottomSheet extends StatelessWidget {
     required Color textColor,
     required bool isDark,
     required Color cardColor,
+    TransaccionModel? transaccion,
   }) {
+    final bool hasRealData = transaccion != null;
+    final String montoStr = hasRealData && transaccion!.monto != null
+        ? '\$${transaccion.monto!.toStringAsFixed(2)}'
+        : '\$84.14';
+    final String fechaStr = hasRealData && transaccion.fechaHora != null
+        ? DateFormatter.formatDateTimeFromDateTime(transaccion.fechaHora)
+        : '27 Nov 2025 - 12:44 pm';
+    final String metodoPago = hasRealData && transaccion.nombreMetodoPago != null
+        ? transaccion.nombreMetodoPago!
+        : '—';
+    final String inicioTexto = hasRealData && transaccion!.latitudFinal != null
+        ? transaccion.latitudFinal!.toString()
+        : '—';
+    final String finTexto = hasRealData && transaccion.longitudFinal != null
+        ? transaccion.longitudFinal!.toString()
+        : '—';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,7 +129,7 @@ class DetallesViajeBottomSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Viaje Dashcam: Diamante - Temixco",
+                    hasRealData ? 'Detalle del viaje' : "Viaje Dashcam: Diamante - Temixco",
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,
@@ -113,7 +138,7 @@ class DetallesViajeBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "27 Nov 2025 - 12:44 pm",
+                    fechaStr,
                     style: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 12,
@@ -121,29 +146,38 @@ class DetallesViajeBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "\$84.14",
+                    montoStr,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (hasRealData) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Método de pago: $metodoPago',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 16),
-            // Green car icon with checkmark
             Container(
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFFA6CE39), // Green
+                color: const Color(0xFFA6CE39),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.directions_car,
                     color: Colors.white,
                     size: 32,
@@ -154,13 +188,13 @@ class DetallesViajeBottomSheet extends StatelessWidget {
                     child: Container(
                       width: 16,
                       height: 16,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.check,
-                        color: const Color(0xFFA6CE39),
+                        color: Color(0xFFA6CE39),
                         size: 12,
                       ),
                     ),
@@ -172,97 +206,169 @@ class DetallesViajeBottomSheet extends StatelessWidget {
         ),
         const SizedBox(height: 24),
 
-        // Inicio section
-        Text(
-          "Inicio:",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Colors.white,
-              width: 1.0,
+        // Inicio (latitudFinal) y Fin (longitudFinal) cuando hay datos reales
+        if (hasRealData) ...[
+          Text(
+            "Inicio:",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  "Calle Prolongación geranios 22, Lomas del Carril, Temixco Morelos 62583",
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 12,
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white,
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    inicioTexto,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "12:46 PM",
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Destino section
-        Text(
-          "Destino:",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Colors.white,
-              width: 1.0,
+              ],
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  "Av. Domingo Diez 15021, San Cristobal, 62230 Cuernavaca, Mor., México",
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 12,
+          const SizedBox(height: 16),
+          Text(
+            "Fin:",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white,
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    finTexto,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "12:54 PM",
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
+          const SizedBox(height: 24),
+        ] else ...[
+          // Inicio section (contenido estático cuando no hay transaccion)
+          Text(
+            "Inicio:",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white,
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    "Calle Prolongación geranios 22, Lomas del Carril, Temixco Morelos 62583",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "12:46 PM",
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Destino:",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white,
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    "Av. Domingo Diez 15021, San Cristobal, 62230 Cuernavaca, Mor., México",
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "12:54 PM",
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
 
         // Action buttons
         Row(

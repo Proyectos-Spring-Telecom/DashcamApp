@@ -1,5 +1,8 @@
 // Project imports:
+import 'package:dashboardpro/controller/transacciones_controller.dart';
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
+import 'package:dashboardpro/utils/date_formatter.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -20,6 +23,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
   int _selectedTabIndex = 0;
   bool _transaccionesLoaded = false;
   bool _qrTransaccionesLoaded = false;
+  bool _viajesLoaded = false;
   bool _qrErrorAlertShown = false;
   ScrollController? _registrosScrollController;
   late ScrollController _scrollControllerQr;
@@ -49,6 +53,13 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
         transaccionQrDebitoBloc.cargar();
       } else if (_selectedTabIndex != 1) {
         _qrTransaccionesLoaded = false;
+      }
+
+      if (_selectedTabIndex == 2 && !_viajesLoaded) {
+        _viajesLoaded = true;
+        transaccionesController.cargarViajesDelDia();
+      } else if (_selectedTabIndex != 2) {
+        _viajesLoaded = false;
       }
     }
   }
@@ -761,36 +772,97 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
   Widget _buildGoalsTab({Color textColor = Colors.white, bool isDark = true}) {
     final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Último Viaje section
-            _buildUltimoViajeSection(
-              textColor: textColor,
-              isDark: isDark,
-              cardColor: cardColor,
-            ),
-            const SizedBox(height: 24.0),
+    return ListenableBuilder(
+      listenable: transaccionesController,
+      builder: (context, _) {
+        final viajes = _viajesConUbicacion(transaccionesController.viajes);
 
-            // Actividad section
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildUltimoViajeSection(
+                  textColor: textColor,
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  ultimoViaje: viajes.isNotEmpty ? viajes.first : null,
+                ),
+                const SizedBox(height: 24.0),
+                Text(
+                  "Actividad",
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16.0),
+                if (transaccionesController.isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (viajes.isEmpty)
+                  _buildNoHayViajesHoy(textColor: textColor)
+                else
+                  _buildActivityGrid(
+                    viajes: viajes,
+                    textColor: textColor,
+                    isDark: isDark,
+                    cardColor: cardColor,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<TransaccionModel> _viajesConUbicacion(List<TransaccionModel> lista) {
+    final conUbicacion = lista
+        .where((t) =>
+            t.esDebito &&
+            t.latitudFinal != null &&
+            t.longitudFinal != null)
+        .toList();
+    conUbicacion.sort((a, b) {
+      final fa = a.fechaHora ?? DateTime(0);
+      final fb = b.fechaHora ?? DateTime(0);
+      return fb.compareTo(fa);
+    });
+    return conUbicacion;
+  }
+
+  Widget _buildNoHayViajesHoy({required Color textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(Icons.directions_bus_outlined, color: Colors.grey[400], size: 48),
+            const SizedBox(height: 16),
             Text(
-              "Actividad",
+              'No hay viajes hoy',
               style: TextStyle(
                 color: textColor,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16.0),
-
-            // Activity grid 2x2
-            _buildActivityGrid(
-              textColor: textColor,
-              isDark: isDark,
-              cardColor: cardColor,
+            const SizedBox(height: 8),
+            Text(
+              'Los viajes del día aparecerán aquí',
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -802,7 +874,16 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
     required Color textColor,
     required bool isDark,
     required Color cardColor,
+    TransaccionModel? ultimoViaje,
   }) {
+    final numeroSerie = ultimoViaje?.numeroSerieMonedero ?? '—';
+    final fechaStr = ultimoViaje?.fechaHora != null
+        ? DateFormatter.formatDateTimeFromDateTime(ultimoViaje!.fechaHora)
+        : '—';
+    final montoStr = ultimoViaje?.monto != null
+        ? '\$ ${ultimoViaje!.monto!.toStringAsFixed(2)}'
+        : '—';
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -811,7 +892,6 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
       ),
       child: Stack(
         children: [
-          // Main content
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -825,7 +905,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
               ),
               const SizedBox(height: 8),
               Text(
-                "Calle Ignacio Zaragoza 12",
+                numeroSerie,
                 style: TextStyle(
                   color: textColor,
                   fontSize: 14,
@@ -833,18 +913,17 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
               ),
               const SizedBox(height: 4),
               Text(
-                "27 Nov 25 - 12:13 pm",
+                fechaStr,
                 style: TextStyle(
                   color: Colors.grey[400],
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 8),
-              // Total aligned to the right
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
-                  "Total: \$ 84.14",
+                  "Total: $montoStr",
                   style: TextStyle(
                     color: textColor,
                     fontSize: 14,
@@ -854,7 +933,6 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
               ),
             ],
           ),
-          // Top right - Green car icon
           Positioned(
             top: 0,
             right: 0,
@@ -862,10 +940,10 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFFA6CE39), // Green
+                color: const Color(0xFFA6CE39),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.directions_car,
                 color: Colors.white,
                 size: 32,
@@ -878,10 +956,12 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
   }
 
   Widget _buildActivityGrid({
+    required List<TransaccionModel> viajes,
     required Color textColor,
     required bool isDark,
     required Color cardColor,
   }) {
+    final count = viajes.length > 4 ? 4 : viajes.length;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -891,12 +971,21 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
         mainAxisSpacing: 12,
         childAspectRatio: 1.1,
       ),
-      itemCount: 4,
+      itemCount: count,
       itemBuilder: (context, index) {
+        final t = viajes[index];
+        final location = t.numeroSerieMonedero ?? 'Viaje';
+        final dateTime = t.fechaHora != null
+            ? DateFormatter.formatDateTimeFromDateTime(t.fechaHora)
+            : '—';
+        final cost = t.monto != null
+            ? '\$ ${t.monto!.toStringAsFixed(2)}'
+            : '—';
         return _buildActivityCard(
-          location: "Ignacio Zaragoza 12",
-          dateTime: "27 Nov 25 - 12:13 pm",
-          cost: "\$ 84.14",
+          transaccion: t,
+          location: location,
+          dateTime: dateTime,
+          cost: cost,
           textColor: textColor,
           cardColor: cardColor,
         );
@@ -905,6 +994,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
   }
 
   Widget _buildActivityCard({
+    required TransaccionModel transaccion,
     required String location,
     required String dateTime,
     required String cost,
@@ -953,24 +1043,18 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
               ),
             ],
           ),
-          // Detalle button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                // Obtener el Navigator principal antes de cerrar
-                final navigator = Navigator.of(context, rootNavigator: false);
-                // Cerrar el bottomsheet actual
-                navigator.pop();
-                // Abrir el bottomsheet de detalles del viaje usando el Navigator principal
-                Future.delayed(const Duration(milliseconds: 200), () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (newContext) => const DetallesViajeBottomSheet(),
-                  );
-                });
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (newContext) => DetallesViajeBottomSheet(
+                    transaccion: transaccion,
+                  ),
+                );
               },
               icon: const Icon(
                 Icons.description,
@@ -986,7 +1070,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF205AA8), // Blue
+                backgroundColor: const Color(0xFF205AA8),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

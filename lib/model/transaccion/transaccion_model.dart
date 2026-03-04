@@ -14,6 +14,14 @@ class TransaccionModel {
   final double? monto;
   /// 0 = cobro con tarjeta física, distinto de 0 = cobro con código QR (GET /transacciones/paginado).
   final int? esQR;
+  /// Ubicación inicial del viaje (opcional, desde API)
+  final double? latitudInicial;
+  final double? longitudInicial;
+  /// Ubicación final del viaje (opcional, desde API)
+  final double? latitudFinal;
+  final double? longitudFinal;
+  /// Método de pago (ej. Tarjeta, QR) desde API
+  final String? nombreMetodoPago;
 
   TransaccionModel({
     required this.id,
@@ -27,6 +35,11 @@ class TransaccionModel {
     this.tipoTransaccion,
     this.monto,
     this.esQR,
+    this.latitudInicial,
+    this.longitudInicial,
+    this.latitudFinal,
+    this.longitudFinal,
+    this.nombreMetodoPago,
   });
 
   factory TransaccionModel.fromJson(Map<String, dynamic> json) {
@@ -104,6 +117,11 @@ class TransaccionModel {
         esQR: json['esQR'] != null
             ? (json['esQR'] is num ? (json['esQR'] as num).toInt() : int.tryParse(json['esQR'].toString()))
             : null,
+        latitudInicial: json['latitudInicial'] != null ? (json['latitudInicial'] as num).toDouble() : null,
+        longitudInicial: json['longitudInicial'] != null ? (json['longitudInicial'] as num).toDouble() : null,
+        latitudFinal: json['latitudFinal'] != null ? (json['latitudFinal'] as num).toDouble() : null,
+        longitudFinal: json['longitudFinal'] != null ? (json['longitudFinal'] as num).toDouble() : null,
+        nombreMetodoPago: json['nombreMetodoPago']?.toString(),
       );
     } catch (e) {
       // Si hay un error al parsear, loguearlo pero continuar con valores por defecto
@@ -126,6 +144,11 @@ class TransaccionModel {
       'tipoTransaccion': tipoTransaccion,
       'monto': monto,
       'esQR': esQR,
+      'latitudInicial': latitudInicial,
+      'longitudInicial': longitudInicial,
+      'latitudFinal': latitudFinal,
+      'longitudFinal': longitudFinal,
+      'nombreMetodoPago': nombreMetodoPago,
     };
   }
 
