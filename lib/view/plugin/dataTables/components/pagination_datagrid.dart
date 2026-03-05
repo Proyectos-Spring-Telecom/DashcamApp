@@ -261,11 +261,10 @@ class _PaginationDataGridState extends State<PaginationDataGrid> {
                         _pagingController.refresh();
                       });
                     },
+                    totalPages: 20,
+                    currentPage: page,
+                    visiblePagesCount: 3,
                     fontSize: 12.0,
-                    pageTotal: 20,
-                    pageInit: 1, // picked number when init page
-                    threshold: 3,
-                    controlButton: const SizedBox(),
                   ),
                 ),
               ],
@@ -449,11 +448,10 @@ class _PaginationDataGridState extends State<PaginationDataGrid> {
                         _pagingController.refresh();
                       });
                     },
+                    totalPages: 20,
+                    currentPage: page,
+                    visiblePagesCount: 3,
                     fontSize: 12.0,
-                    pageTotal: 20,
-                    pageInit: 1, // picked number when init page
-                    threshold: 3,
-                    controlButton: const SizedBox(),
                   ),
                 ),
               ],
