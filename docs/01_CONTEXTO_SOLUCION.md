@@ -17,11 +17,23 @@ Aplicación Flutter multiplataforma (Android, iOS, Web) que funciona como monede
 | **iOS** | Configuración en Xcode para Maps y permisos. |
 | **Web** | Google Maps JS inyectado desde `main.dart` con `--dart-define=GOOGLE_MAPS_API_KEY`. |
 
-**Dependencias principales:** Flutter SDK ≥3.4.1, Dio (HTTP), go_router, flutter_secure_storage, Firebase (core, Firestore), google_maps_flutter, Syncfusion (charts, maps, PDF, etc.), quickalert, mobile_scanner, qr_flutter, geolocator, NFC (flutter_nfc_kit), entre otras.
+**Dependencias principales:** Flutter SDK ≥3.4.1, Dio (HTTP), go_router, flutter_secure_storage, Firebase (core, Firestore), google_maps_flutter, Syncfusion (charts, maps, PDF, etc.), quickalert, mobile_scanner, qr_flutter, geolocator, NFC (flutter_nfc_kit), number_pagination (^1.0.6, resuelto a 1.1.6), entre otras.
 
 ---
 
-## 1.3 Arquitectura de capas
+## 1.3 Build y despliegue
+
+| Plataforma | Configuración relevante |
+|------------|-------------------------|
+| **Web** | Build: `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave>`. Opcional: `--no-wasm-dry-run` para suprimir avisos Wasm. La API key se puede leer de `android/local.properties` con `grep 'google.maps.api.key' android/local.properties \| cut -d= -f2`. |
+| **Android** | Plugin de Kotlin **2.3.0** en `android/settings.gradle` (compatible con kotlin-stdlib 2.3.x). API key de Google Maps en `android/local.properties` (`google.maps.api.key`). |
+| **iOS** | Configuración en Xcode para Maps y permisos. |
+
+**Paginación (DataTables):** En `lib/view/plugin/dataTables/components/pagination_datagrid.dart` se usa el paquete `number_pagination` 1.1.6. La API actual del widget `NumberPagination` utiliza `totalPages`, `currentPage` y `visiblePagesCount` (no `pageTotal`, `pageInit`, `threshold` ni `controlButton`).
+
+---
+
+## 1.4 Arquitectura de capas
 
 La solución mezcla patrones en función del módulo:
 
@@ -41,7 +53,7 @@ La solución mezcla patrones en función del módulo:
 
 ---
 
-## 1.4 Módulos y funcionalidades principales
+## 1.5 Módulos y funcionalidades principales
 
 | Módulo | Descripción | Servicios / Blocs principales |
 |--------|-------------|-----------------------------|
@@ -58,7 +70,7 @@ La solución mezcla patrones en función del módulo:
 
 ---
 
-## 1.5 API backend
+## 1.6 API backend
 
 - **Base URL:** `https://dashcampay.com/apidev`
 - **Autenticación:** Bearer token en header `Authorization` para la mayoría de los endpoints.
@@ -67,7 +79,7 @@ La solución mezcla patrones en función del módulo:
 
 ---
 
-## 1.6 Navegación y roles
+## 1.7 Navegación y roles
 
 - **Navegación:** GoRouter (`lib/widgets/routes/app_routes.dart`); rutas definidas en `RoutesName`.
 - **Ruta inicial:** según si el usuario está logueado y su rol: no logueado → bienvenida; logueado y rol **Cajero** → POS; resto → Dashboard.
@@ -76,14 +88,14 @@ La solución mezcla patrones en función del módulo:
 
 ---
 
-## 1.7 Seguridad y persistencia
+## 1.8 Seguridad y persistencia
 
 - **Token y usuario:** persistidos con `SecureStorageService` (flutter_secure_storage); el token se envía en las peticiones que no son públicas.
 - **Expiración de sesión:** manejada por `SessionManager` y `SessionInterceptor`; la UI puede mostrar alertas (p. ej. QuickAlert) y redirigir a login.
 
 ---
 
-## 1.8 Estructura de carpetas relevante (raíz lib/)
+## 1.9 Estructura de carpetas relevante (raíz lib/)
 
 ```
 lib/
@@ -102,7 +114,7 @@ lib/
 
 ---
 
-## 1.9 Flujos de datos representativos
+## 1.10 Flujos de datos representativos
 
 1. **Login:** UI → AuthBloc.login → AuthService.post('/login') → SecureStorage (token, user) → AuthBloc actualiza estado → GoRouter redirige.
 2. **Monedero / transacciones general:** UI → MonederoBloc (obtenerWallet, obtenerTransacciones, etc.) → MonederoService (Dio + baseUrl) → API → respuesta parseada a modelos → streams actualizados.

@@ -302,7 +302,30 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 
 ---
 
-## 2.12 Resumen de contratos por capa
+## 2.12 Contrato de build y dependencias de plataforma
+
+### Web
+
+- **Comando de build:** `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave>`.
+- **Variable de entorno / clave:** puede obtenerse de `android/local.properties` (`google.maps.api.key`) o definirse en el comando.
+- **Opcional:** `--no-wasm-dry-run` para omitir avisos de incompatibilidad Wasm (p. ej. flutter_secure_storage_web).
+
+### Android
+
+- **Kotlin Gradle plugin:** versión **2.3.0** en `android/settings.gradle` (bloque `plugins`, `id "org.jetbrains.kotlin.android"`). Requerido para compatibilidad con dependencias que usan metadata Kotlin 2.3.x (p. ej. kotlin-stdlib 2.3.10).
+- **Google Maps:** clave en `android/local.properties` como `google.maps.api.key=...`; se inyecta vía `manifestPlaceholders` en `app/build.gradle`.
+
+### number_pagination (DataTables / pagination_datagrid)
+
+- **Versión en uso:** 1.1.6 (pubspec: `number_pagination: ^1.0.6`).
+- **Widget:** `NumberPagination`. Parámetros de la API actual (no usar nombres antiguos):
+  - **Requeridos:** `onPageChanged`, `totalPages`, `currentPage`.
+  - **Opcionales:** `visiblePagesCount` (default 10), `fontSize`, y el resto según documentación del paquete.
+- **Nombres obsoletos (no existen en 1.1.6):** `pageTotal`, `pageInit`, `threshold`, `controlButton`; sustituir por `totalPages`, `currentPage`, `visiblePagesCount` y eliminar `controlButton`.
+
+---
+
+## 2.13 Resumen de contratos por capa
 
 | Capa | Contratos principales |
 |------|------------------------|
@@ -311,6 +334,7 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 | **Servicios** | AuthService, MonederoService, TransaccionQrDebitoService, ZonasService, RutasService, VariantesService, MonitoreoService, DireccionService, NetPay*, SecureStorageService; baseUrl apidev; excepciones propias por servicio. |
 | **Infraestructura** | SessionInterceptor (Dio), SessionManager (expiración de sesión). |
 | **Presentación** | AuthBloc, MonederoBloc, TransaccionesController, ThemeBloc, TransaccionQrDebitoBloc, ZonasBloc, RutasBloc, VariantesBloc, MonitoreoBloc, DireccionBloc, NetPayBloc, ExtravioBloc, ClienteBloc; GoRouter y RoutesName. |
+| **Build / plataforma** | Web: base-href /dashcampay/, GOOGLE_MAPS_API_KEY vía dart-define. Android: Kotlin 2.3.0 en settings.gradle; google.maps.api.key en local.properties. number_pagination 1.1.6: totalPages, currentPage, visiblePagesCount. |
 | **API** | POST/GET contra https://dashcampay.com/apidev; autenticación Bearer salvo endpoints públicos; estructura de request/response según cada endpoint (login, transacciones/paginado, clientes/public, etc.). |
 
 Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código.
