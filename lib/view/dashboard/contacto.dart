@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
@@ -77,13 +78,13 @@ class ContactoPage extends StatelessWidget {
                               icon: Icons.phone,
                               iconColor: const Color(0xFF205AA8), // Blue
                               title: "Centro de Atención",
-                              subtitle: "55 5889 1234",
+                              subtitle: "55 1040 4127",
                               buttonText: "Llamar",
                               textColor: textColor,
                               isDark: isDark,
                               onButtonTap: () async {
                                 final Uri phoneUri =
-                                    Uri(scheme: 'tel', path: '5558891234');
+                                    Uri(scheme: 'tel', path: '5510404127');
                                 if (await canLaunchUrl(phoneUri)) {
                                   await launchUrl(phoneUri);
                                 }
@@ -95,18 +96,12 @@ class ContactoPage extends StatelessWidget {
                               icon: Icons.email,
                               iconColor: const Color(0xFFA6CE39), // Green
                               title: "Comentarios y sugerencias",
-                              subtitle: "hola@dascam.com.mx",
-                              buttonText: "Enviar correo",
+                              subtitle: "admin@mexicodashcam.com",
+                              buttonText: "Enviar",
                               textColor: textColor,
                               isDark: isDark,
-                              onButtonTap: () async {
-                                final Uri emailUri = Uri(
-                                  scheme: 'mailto',
-                                  path: 'hola@dascam.com.mx',
-                                );
-                                if (await canLaunchUrl(emailUri)) {
-                                  await launchUrl(emailUri);
-                                }
+                              onButtonTap: () {
+                                _launchContactEmail();
                               },
                             ),
                             const SizedBox(height: 12),
@@ -115,33 +110,24 @@ class ContactoPage extends StatelessWidget {
                               icon: Icons.language,
                               iconColor: const Color(0xFF205AA8), // Blue
                               title: "Sitio web",
-                              subtitle: "www.dashcam.com.mx",
+                              subtitle: "www.mexicodashcam.com",
                               buttonText: "Visitar sitio",
                               textColor: textColor,
                               isDark: isDark,
-                              onButtonTap: () async {
-                                final Uri url =
-                                    Uri.parse('https://www.dashcam.com.mx');
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url,
-                                      mode: LaunchMode.externalApplication);
-                                }
+                              onButtonTap: () {
+                                _launchContactWebsite();
                               },
                             ),
                             const SizedBox(height: 12),
-                            // Share Opinion Card
+                            // Sobre esta aplicación
                             _buildContactCard(
-                              icon: Icons.star,
+                              icon: Icons.info_outline,
                               iconColor: const Color(0xFFA6CE39), // Green
-                              title: "Comparte tu opinión",
-                              subtitle: "Evaluar: Dashcam App",
-                              buttonText: "Evaluar",
+                              title: "Sobre esta aplicación",
+                              subtitle:
+                                  "Esta aplicación te permite consultar tu saldo y realizar recargas de forma rápida, segura desde cualquier lugar de forma clara y confiable.",
                               textColor: textColor,
                               isDark: isDark,
-                              onButtonTap: () {
-                                // Navigate to app store rating
-                                // You can implement this based on platform
-                              },
                             ),
                             const SizedBox(height: 32),
                             // Section 2: "¿Buscas otro tipo de información?"
@@ -159,13 +145,13 @@ class ContactoPage extends StatelessWidget {
                               icon: Icons.settings,
                               iconColor: const Color(0xFF205AA8), // Blue
                               title: "Centro de Ayuda",
-                              subtitle: "55 5889 1234",
+                              subtitle: "712 147 2271",
                               buttonText: "Llamar",
                               textColor: textColor,
                               isDark: isDark,
                               onButtonTap: () async {
                                 final Uri phoneUri =
-                                    Uri(scheme: 'tel', path: '5558891234');
+                                    Uri(scheme: 'tel', path: '7121472271');
                                 if (await canLaunchUrl(phoneUri)) {
                                   await launchUrl(phoneUri);
                                 }
@@ -208,13 +194,13 @@ class ContactoPage extends StatelessWidget {
                     icon: Icons.phone,
                     iconColor: const Color(0xFF205AA8), // Blue
                     title: "Centro de Atención",
-                    subtitle: "55 5889 1234",
+                    subtitle: "55 1040 4127",
                     buttonText: "Llamar",
                     textColor: textColor,
                     isDark: isDark,
                     onButtonTap: () async {
                       final Uri phoneUri =
-                          Uri(scheme: 'tel', path: '5558891234');
+                          Uri(scheme: 'tel', path: '5510404127');
                       if (await canLaunchUrl(phoneUri)) {
                         await launchUrl(phoneUri);
                       }
@@ -226,18 +212,12 @@ class ContactoPage extends StatelessWidget {
                     icon: Icons.email,
                     iconColor: const Color(0xFFA6CE39), // Green
                     title: "Comentarios y sugerencias",
-                    subtitle: "hola@dascam.com.mx",
-                    buttonText: "Enviar correo",
+                    subtitle: "admin@mexicodashcam.com",
+                    buttonText: "Enviar",
                     textColor: textColor,
                     isDark: isDark,
-                    onButtonTap: () async {
-                      final Uri emailUri = Uri(
-                        scheme: 'mailto',
-                        path: 'hola@dascam.com.mx',
-                      );
-                      if (await canLaunchUrl(emailUri)) {
-                        await launchUrl(emailUri);
-                      }
+                    onButtonTap: () {
+                      _launchContactEmail();
                     },
                   ),
                   const SizedBox(height: 12),
@@ -246,33 +226,24 @@ class ContactoPage extends StatelessWidget {
                     icon: Icons.language,
                     iconColor: const Color(0xFF205AA8), // Blue
                     title: "Sitio web",
-                    subtitle: "www.dashcam.com.mx",
+                    subtitle: "www.mexicodashcam.com",
                     buttonText: "Visitar sitio",
                     textColor: textColor,
                     isDark: isDark,
-                    onButtonTap: () async {
-                      final Uri url =
-                          Uri.parse('https://www.dashcam.com.mx');
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url,
-                            mode: LaunchMode.externalApplication);
-                      }
+                    onButtonTap: () {
+                      _launchContactWebsite();
                     },
                   ),
                   const SizedBox(height: 12),
-                  // Share Opinion Card
+                  // Sobre esta aplicación
                   _buildContactCard(
-                    icon: Icons.star,
+                    icon: Icons.info_outline,
                     iconColor: const Color(0xFFA6CE39), // Green
-                    title: "Comparte tu opinión",
-                    subtitle: "Evaluar: Dashcam App",
-                    buttonText: "Evaluar",
+                    title: "Sobre esta aplicación",
+                    subtitle:
+                        "Esta aplicación está pensada para brindarte herramientas útiles de forma rápida, clara y confiable.",
                     textColor: textColor,
                     isDark: isDark,
-                    onButtonTap: () {
-                      // Navigate to app store rating
-                      // You can implement this based on platform
-                    },
                   ),
                   const SizedBox(height: 32),
                   // Section 2: "¿Buscas otro tipo de información?"
@@ -290,13 +261,13 @@ class ContactoPage extends StatelessWidget {
                     icon: Icons.settings,
                     iconColor: const Color(0xFF205AA8), // Blue
                     title: "Centro de Ayuda",
-                    subtitle: "55 5889 1234",
+                    subtitle: "712 147 2271",
                     buttonText: "Llamar",
                     textColor: textColor,
                     isDark: isDark,
                     onButtonTap: () async {
                       final Uri phoneUri =
-                          Uri(scheme: 'tel', path: '5558891234');
+                          Uri(scheme: 'tel', path: '7121472271');
                       if (await canLaunchUrl(phoneUri)) {
                         await launchUrl(phoneUri);
                       }
@@ -379,13 +350,14 @@ class ContactoPage extends StatelessWidget {
     required Color iconColor,
     required String title,
     required String subtitle,
-    required String buttonText,
+    String? buttonText,
+    VoidCallback? onButtonTap,
     required Color textColor,
     required bool isDark,
-    required VoidCallback onButtonTap,
   }) {
     final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
     final subtitleColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final showButton = buttonText != null && onButtonTap != null;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -394,6 +366,7 @@ class ContactoPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Icon circle
           Container(
@@ -434,22 +407,23 @@ class ContactoPage extends StatelessWidget {
               ],
             ),
           ),
-          // Button
-          TextButton(
-            onPressed: onButtonTap,
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF205AA8), // Blue
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              buttonText,
-              style: TextStyle(
-                color: const Color(0xFF205AA8), // Blue
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          if (showButton) ...[
+            TextButton(
+              onPressed: onButtonTap,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF205AA8), // Blue
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: Text(
+                buttonText!,
+                style: TextStyle(
+                  color: const Color(0xFF205AA8), // Blue
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -513,5 +487,35 @@ class ContactoPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+const String _kContactEmail = 'admin@mexicodashcam.com';
+const String _kContactWebsite = 'https://www.mexicodashcam.com';
+
+Future<void> _launchContactEmail() async {
+  await _launchExternalUri(Uri.parse('mailto:$_kContactEmail'));
+}
+
+Future<void> _launchContactWebsite() async {
+  await _launchExternalUri(Uri.parse(_kContactWebsite));
+}
+
+Future<void> _launchExternalUri(Uri uri) async {
+  final webWindow = kIsWeb ? '_blank' : null;
+  bool launched = await launchUrl(
+    uri,
+    mode: LaunchMode.externalApplication,
+    webOnlyWindowName: webWindow,
+  );
+  if (!launched) {
+    launched = await launchUrl(
+      uri,
+      mode: LaunchMode.platformDefault,
+      webOnlyWindowName: webWindow,
+    );
+  }
+  if (!launched) {
+    await launchUrl(uri, webOnlyWindowName: webWindow);
   }
 }

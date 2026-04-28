@@ -1,4 +1,6 @@
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:dashboardpro/dashboardpro.dart';
@@ -12,19 +14,7 @@ Future<void> main() async {
 
   // Inyectar script de Google Maps en web con la clave desde --dart-define (valor de android/local.properties)
   if (kIsWeb) {
-    const key = String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
-    if (key.isNotEmpty) {
-      final script = html.ScriptElement()
-        ..src =
-            'https://maps.googleapis.com/maps/api/js?key=$key&libraries=places&loading=async'
-        ..setAttribute('async', '')
-        ..setAttribute('defer', '');
-      script.onError.listen((_) {
-        // ignore: avoid_print
-        print('Error al cargar Google Maps JavaScript API');
-      });
-      html.document.head?.append(script);
-    }
+    await _ensureGoogleMapsScriptLoaded();
   }
 
   // Inicializar Firebase
@@ -43,6 +33,53 @@ Future<void> main() async {
   await authBloc.initialize();
   
   runApp(const MyApp());
+}
+
+Future<void> _ensureGoogleMapsScriptLoaded() async {
+  const key = String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
+  if (key.isEmpty) {
+    debugPrint(
+      '⚠️ GOOGLE_MAPS_API_KEY no fue proporcionada. El mapa web puede fallar.',
+    );
+    return;
+  }
+
+  final existingScript = html.document.querySelector(
+    'script[data-google-maps-sdk="1"]',
+  );
+
+  if (existingScript != null) {
+    // Ya existe un script de maps en el DOM (por hot restart o carga previa).
+    return;
+  }
+
+  final completer = Completer<void>();
+  final script = html.ScriptElement()
+    ..src = 'https://maps.googleapis.com/maps/api/js?key=$key&libraries=places'
+    ..setAttribute('data-google-maps-sdk', '1')
+    ..setAttribute('async', '')
+    ..setAttribute('defer', '');
+
+  script.onLoad.listen((_) {
+    if (!completer.isCompleted) completer.complete();
+  });
+
+  script.onError.listen((_) {
+    if (!completer.isCompleted) {
+      completer.completeError(
+        Exception('No se pudo cargar Google Maps JavaScript API'),
+      );
+    }
+  });
+
+  html.document.head?.append(script);
+
+  try {
+    await completer.future.timeout(const Duration(seconds: 15));
+    debugPrint('✅ Google Maps JavaScript API cargado en web');
+  } catch (e) {
+    debugPrint('❌ Error cargando Google Maps JavaScript API: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {

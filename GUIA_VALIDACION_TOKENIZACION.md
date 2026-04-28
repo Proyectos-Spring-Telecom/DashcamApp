@@ -132,7 +132,7 @@ Revisa estos puntos en el código:
 1. **Servicio configurado:**
    ```dart
    // lib/services/netpay_tokenization_service.dart
-   static const String _publicApiKey = 'pk_netpay_JGFtQNUFIENMlhkoBXdgiozmQ';
+   static const String _publicApiKey = 'pk_netpay_YbahDkYgsFmUhIFYNzijoIqDJ';
    ```
 
 2. **BLoC inicializado:**

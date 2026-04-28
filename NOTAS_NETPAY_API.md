@@ -43,7 +43,7 @@ Según la documentación, NetPay usa principalmente **NetPayJS** (librería Java
 
 ## Información Actual
 
-- **Llave Pública:** `pk_netpay_JGFtQNUFIENMlhkoBXdgiozmQ`
+- **Llave Pública:** `pk_netpay_YbahDkYgsFmUhIFYNzijoIqDJ`
 - **Llave Privada:** `sk_netpay_VcNiErfSqYMnxOZToQxxNYLFORdUHJZpyeFeZFoGsccny` (solo backend)
 - **URL Sandbox:** `https://sandbox.netpay.com.mx`
 - **Endpoint:** `/v1/tokens` (a verificar)

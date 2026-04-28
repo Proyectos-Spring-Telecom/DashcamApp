@@ -25,6 +25,7 @@ Document get document => Document();
 
 class Document {
   Head? get head => null;
+  dynamic querySelector(String selectors) => null;
 }
 
 class Head {
@@ -34,5 +35,6 @@ class Head {
 class ScriptElement {
   String? src;
   void setAttribute(String name, String value) {}
+  Stream<dynamic> get onLoad => const Stream.empty();
   Stream<dynamic> get onError => const Stream.empty();
 }

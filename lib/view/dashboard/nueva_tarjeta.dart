@@ -32,6 +32,9 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
   bool _procesandoAsignacion = false; // Flag para prevenir múltiples ejecuciones
   bool _mostradoMensajeExito = false; // Flag para prevenir mostrar múltiples veces el mensaje
   bool _mostradoMensajeError = false; // Flag para prevenir mostrar múltiples veces el error
+  bool _validandoErrorAsignacion = false; // Evita programar múltiples callbacks de error
+  String? _ultimoTokenProcesado; // Evita reintentar asignar el mismo token en bucle
+  bool _mostradoInfoTokenizacion = false; // Evita repetir QuickAlert info en fallback de red
 
   @override
   void dispose() {
@@ -833,20 +836,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                         borderSide: BorderSide(color: focusedBorderColor, width: 2.0),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      suffixIcon: isLoading
-                          ? Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      const Color(0xFF205AA8)),
-                                ),
-                              ),
-                            )
-                          : null,
                     ),
                     onChanged: (value) {
                       setState(() {});
@@ -1134,31 +1123,26 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
 
                 return Column(
                   children: [
-                    // Mostrar error si existe
-                    if (error != null && status == TokenizationStatus.error)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                error,
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                    if (error != null &&
+                        status == TokenizationStatus.error &&
+                        _esErrorFallbackRedTokenizacion(error) &&
+                        !_mostradoInfoTokenizacion)
+                      Builder(
+                        builder: (_) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted || _mostradoInfoTokenizacion) return;
+                            _mostradoInfoTokenizacion = true;
+                            QuickAlert.show(
+                              context: context,
+                              type: QuickAlertType.info,
+                              title: 'Servicio temporalmente no disponible',
+                              text:
+                                  'No pudimos conectar con el servicio de tokenizacion de tarjetas. Verifica tu conexion e intenta nuevamente en unos momentos.',
+                              confirmBtnText: 'Aceptar',
+                            );
+                          });
+                          return const SizedBox.shrink();
+                        },
                       ),
                     // Botón de guardar
                     SizedBox(
@@ -1200,9 +1184,11 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                         if (status == TokenizationStatus.success && 
                             tokenResponse != null && 
                             !_procesandoAsignacion &&
+                            _ultimoTokenProcesado != tokenResponse.token &&
                             !_mostradoMensajeExito) {
                           // Ejecutar la asignación después de tokenizar (solo una vez)
                           _procesandoAsignacion = true;
+                          _ultimoTokenProcesado = tokenResponse.token;
                           _mostradoMensajeExito = false; // Aún no se ha mostrado el éxito
                           _mostradoMensajeError = false; // Resetear flag de error
                           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1263,7 +1249,10 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                             status == TokenizationStatus.success &&
                             !_mostradoMensajeError &&
                             !_mostradoMensajeExito &&
+                            !_validandoErrorAsignacion &&
                             assignStatus != NetPayStatus.assigning) {
+                          // Bloquear inmediatamente para evitar loop de callbacks en cada rebuild
+                          _validandoErrorAsignacion = true;
                           // Esperar un poco antes de mostrar el error por si hay una respuesta exitosa pendiente
                           WidgetsBinding.instance.addPostFrameCallback((_) async {
                             // Esperar 1 segundo para ver si llega una respuesta exitosa
@@ -1299,6 +1288,9 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
                               );
                               netPayBloc.limpiar();
                             }
+
+                            // Liberar el lock; si hay un nuevo intento se reseteará también en _resetProcessingFlags
+                            _validandoErrorAsignacion = false;
                           });
                         }
                         
@@ -1727,6 +1719,20 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
     _procesandoAsignacion = false;
     _mostradoMensajeExito = false;
     _mostradoMensajeError = false;
+    _validandoErrorAsignacion = false;
+    _ultimoTokenProcesado = null;
+    _mostradoInfoTokenizacion = false;
+  }
+
+  bool _esErrorFallbackRedTokenizacion(String error) {
+    final msg = error.toLowerCase();
+    return msg.contains('netpayjs no esta cargado') ||
+        msg.contains('netpayjs no se pudo cargar') ||
+        msg.contains('tiempo de espera agotado') ||
+        msg.contains('timeout') ||
+        msg.contains('conexion') ||
+        msg.contains('internet') ||
+        msg.contains('network');
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, bool isDark) {

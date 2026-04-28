@@ -24,6 +24,7 @@ class CardTokenRequest {
   final String? state;
   final String? postalCode;
   final String? country;
+  final bool saveCard;
 
   CardTokenRequest({
     required this.cardNumber,
@@ -36,6 +37,7 @@ class CardTokenRequest {
     this.state,
     this.postalCode,
     this.country,
+    this.saveCard = true,
   });
 
   /// Convierte el modelo a JSON para enviar a NetPay

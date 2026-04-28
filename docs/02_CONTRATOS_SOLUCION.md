@@ -194,7 +194,9 @@ Todos con body JSON según modelo (LoginResponse, RegistroResponse, etc.).
 
 ### NetPay (NetPayService, NetPayTokenizationService, NetPayWebviewService)
 
-- Endpoints propios de NetPay (tokenización, cliente, asignación de tarjetas, etc.); no detallados aquí.
+- Endpoints propios de NetPay (tokenización, cliente, asignación de tarjetas, etc.) según documentación NetPay.
+- **Cliente (tokenización):** la llave pública (`pk_netpay_…`) se usa solo en flujos permitidos por NetPayJS/WebView; el backend usa credenciales privadas para cargos y conciliación.
+- **Recarga / monedero:** el parámetro que identifica la tarjeta guardada para cobrar debe ser el **token almacenado reutilizable** (`paymentSource.source` en la lista de medios de pago), no el `card.token` de un solo uso cuando aplique la documentación de NetPay.
 
 ---
 
@@ -221,7 +223,8 @@ Todos con body JSON según modelo (LoginResponse, RegistroResponse, etc.).
 | VariantesService | Variantes | Dio (baseUrl apidev) |
 | MonitoreoService | Monitoreo | Dio (baseUrl apidev) |
 | DireccionService | Consulta por CP | Dio (baseUrl apidev) |
-| NetPayService / NetPayTokenizationService / NetPayWebviewService | NetPay | Dio / WebView según flujo |
+| NetPayService / NetPayTokenizationService / NetPayWebviewService | NetPay (API + tokenización) | Dio; WebView en plataformas no web; **web:** `NetPayWebTokenizer` + NetPayJS en `index.html` |
+| Implementación condicional `netpay_web_tokenizer_*` | Misma API Dart que WebView; en web ejecuta JS global `NetPay` | Solo Flutter Web |
 
 Todos los que usan Dio contra apidev pueden compartir la misma baseUrl y, donde aplique, el mismo interceptor de sesión.
 
@@ -284,7 +287,7 @@ Todos los que usan Dio contra apidev pueden compartir la misma baseUrl y, donde 
 - **Auth:** User, LoginResponse, RegistroRequest/Response, VerifyRequest/Response, ForgotPasswordRequest/Response, ChangePasswordRequest/Response, ResendCodeRequest/Response, FotoPerfilResponse, Rol, Permiso.
 - **Monedero:** MonederoModel, MonederoRequest/Response, PasajeroWalletModel, QrWalletModel, ClienteModel, PasajeroModel, TipoPasajeroModel, MonederosPaginadosResponse, etc.
 - **Transacciones:** TransaccionModel, TransaccionesResponse, PaginacionModel, TransaccionRequest/Response, RecargaRequest.
-- **NetPay:** CardTokenRequest/Response, NetPayCustomerModel, AssignCardTokenRequest, CreateCustomerRequest/Response, etc.
+- **NetPay:** CardTokenRequest/Response (`saveCard` para vault/simpleUse), NetPayCustomerModel, AssignCardTokenRequest, CreateCustomerRequest/Response, modelos de `paymentSource` / tarjeta con distinción entre **source** (reutilizable) y **token** de sesión de tokenización.
 - **Transporte / Zonas:** ZonaModel, ZonasResponse; modelos de ruta, variante, estación, monitoreo (UnidadModel, PosicionModel), etc.
 - **Dominio/Data:** ClienteEntity, ClienteModel; ExtravioReportRequest, ExtravioReportResponse; Result&lt;T&gt;.
 
@@ -325,7 +328,39 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 
 ---
 
-## 2.13 Resumen de contratos por capa
+## 2.13 Contrato de presentación: Movilidad Inteligente (mapa)
+
+**Archivo principal:** `lib/view/dashboard/transporte.dart`  
+**Dependencias:** paquetes `google_maps_flutter` y `geolocator`; blocs de zonas, rutas, variantes y monitoreo.
+
+| Aspecto | Contrato / comportamiento |
+|---------|---------------------------|
+| Origen del centro del mapa | Solo coordenadas de **ubicación actual** (Geolocator). Sin segunda “posición inicial” de producto; un único `LatLng? _currentLocation`. |
+| Antes de tener GPS | Estado de carga: `_isLoadingLocation == true` y UI “Obteniendo tu ubicación…”. No se instancia `GoogleMap` hasta resolver ubicación (o fallback de error). |
+| Fallback sin GPS | Constante interna de respaldo (último recurso) solo si servicio/permisos fallan; no sustituye el flujo normal de GPS. |
+| Zoom | `_zoomContextoInicial` (~15) al abrir; `_zoomCercaMarkerUsuario` (~17,35) tras mostrar markers del usuario (animación con breve retardo). |
+| Overlay “Cargando mapa…” | Visible solo si `onMapCreated` supera un **debounce** (~350 ms móvil / ~450 ms web); el debounce del mapa se programa tras fijar `_currentLocation`. |
+| `GoogleMapController` | No llamar a `dispose()` en el `State`; poner referencia a `null` en `dispose` del widget si se requiere. |
+| Web | La clave `GOOGLE_MAPS_API_KEY` debe coincidir con restricciones y APIs habilitadas en Google Cloud (p. ej. Maps JavaScript API). |
+
+---
+
+## 2.14 Contrato de integración cliente: NetPay (tokenización y recarga)
+
+**Archivos de referencia:** `lib/services/netpay_webview_service.dart`, `lib/services/netpay_web_tokenizer_web.dart` (web) / stub, `lib/services/netpay_service.dart`, `assets/html/netpay_tokenization.html`, `web/index.html`.
+
+| Tema | Contrato |
+|------|----------|
+| Plataformas | **Web:** `kIsWeb` → `NetPayWebTokenizer` (NetPayJS en DOM). **No web:** `WebView` + HTML embebido. No inicializar `WebView` en web. |
+| `CardTokenRequest` | Incluye `saveCard` (p. ej. `true` para guardar en vault). Debe mapearse a `vault` / `simpleUse` en JS según documentación NetPay. |
+| Selección de tarjeta guardada | La UI de recarga debe identificar el medio con **`paymentSource.source`** (token reutilizable de cargo), no confundir con `card.token` de operación de un solo uso. |
+| Resumen de recarga (`resumen.dart`) | `tokenCardNetPay` prioriza `source` sobre `card.token` si `source` no está vacío. |
+| Errores de red (web) | Mensajes al usuario vía `QuickAlert` informativo en el flujo de nueva tarjeta cuando aplique; sin duplicar error crítico en recuadro rojo inline en esos casos. |
+| Documentación externa | Comportamiento alineado con [documentación NetPay](https://docs.netpay.com.mx) (my-requests, tokenización, cobros). |
+
+---
+
+## 2.15 Resumen de contratos por capa
 
 | Capa | Contratos principales |
 |------|------------------------|
@@ -334,7 +369,9 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 | **Servicios** | AuthService, MonederoService, TransaccionQrDebitoService, ZonasService, RutasService, VariantesService, MonitoreoService, DireccionService, NetPay*, SecureStorageService; baseUrl apidev; excepciones propias por servicio. |
 | **Infraestructura** | SessionInterceptor (Dio), SessionManager (expiración de sesión). |
 | **Presentación** | AuthBloc, MonederoBloc, TransaccionesController, ThemeBloc, TransaccionQrDebitoBloc, ZonasBloc, RutasBloc, VariantesBloc, MonitoreoBloc, DireccionBloc, NetPayBloc, ExtravioBloc, ClienteBloc; GoRouter y RoutesName. |
-| **Build / plataforma** | Web: base-href /dashcampay/, GOOGLE_MAPS_API_KEY vía dart-define. Android: Kotlin 2.3.0 en settings.gradle; google.maps.api.key en local.properties. number_pagination 1.1.6: totalPages, currentPage, visiblePagesCount. |
+| **Build / plataforma** | Web: base-href /dashcampay/, GOOGLE_MAPS_API_KEY vía dart-define; carga del script de Maps en `main.dart`. Android: Kotlin 2.3.0 en settings.gradle; google.maps.api.key en local.properties. number_pagination 1.1.6: totalPages, currentPage, visiblePagesCount. |
+| **Movilidad Inteligente (mapa)** | Ver §2.13: ubicación actual obligatoria para instanciar mapa, zoom en dos fases, debounce de overlay, sin `dispose` manual del controlador. |
+| **NetPay (cliente)** | Ver §2.14: tokenización web vs WebView, `saveCard` / vault, recarga con `paymentSource.source`. |
 | **API** | POST/GET contra https://dashcampay.com/apidev; autenticación Bearer salvo endpoints públicos; estructura de request/response según cada endpoint (login, transacciones/paginado, clientes/public, etc.). |
 
-Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código.
+Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código. **Actualización de comportamiento cliente (mapa, NetPay web):** 27 de abril de 2026.

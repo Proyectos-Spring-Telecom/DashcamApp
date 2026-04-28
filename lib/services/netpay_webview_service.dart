@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dashboardpro/model/netpay/card_token_request.dart';
 import 'package:dashboardpro/model/netpay/card_token_response.dart';
+import 'package:dashboardpro/services/netpay_web_tokenizer_stub.dart'
+    if (dart.library.html) 'package:dashboardpro/services/netpay_web_tokenizer_web.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,10 +18,11 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// - Usa HTTPS obligatoriamente
 class NetPayWebViewService {
   // Llave pública de NetPay (para tokenización desde el cliente)
-  static const String _publicApiKey = 'pk_netpay_JGFtQNUFIENMlhkoBXdgiozmQ';
+  static const String _publicApiKey = 'pk_netpay_YbahDkYgsFmUhIFYNzijoIqDJ';
   
   final bool _useSandbox;
   final String? _apiKey;
+  final NetPayWebTokenizer _webTokenizer = NetPayWebTokenizer();
   
   WebViewController? _webViewController;
   final _completerController = <String, Completer<CardTokenResponse>>{};
@@ -33,6 +36,11 @@ class NetPayWebViewService {
 
   /// Inicializa el WebView y carga el HTML de NetPay
   Future<void> initializeWebView() async {
+    if (kIsWeb) {
+      // En Web no usamos WebView: la tokenizacion se hace via NetPay JS directo.
+      return;
+    }
+
     if (_webViewController != null) {
       // Ya está inicializado
       return;
@@ -77,6 +85,8 @@ class NetPayWebViewService {
 
   /// Configura NetPay con la API key y modo sandbox
   Future<void> _configureNetPay() async {
+    if (kIsWeb) return;
+
     if (_webViewController == null) {
       await initializeWebView();
     }
@@ -102,6 +112,14 @@ class NetPayWebViewService {
 
   /// Tokeniza una tarjeta usando NetPayJS
   Future<CardTokenResponse> tokenizeCard(CardTokenRequest request) async {
+    if (kIsWeb) {
+      return _webTokenizer.tokenizeCard(
+        request: request,
+        useSandbox: _useSandbox,
+        apiKey: _apiKey ?? _publicApiKey,
+      );
+    }
+
     // Inicializar WebView si no está inicializado
     if (_webViewController == null) {
       await initializeWebView();
@@ -138,7 +156,8 @@ class NetPayWebViewService {
         'expirationMonth': request.expirationMonth.padLeft(2, '0'),
         'expirationYear': expirationYear,
         'cvv': request.cvv,
-        'saveCard': false, // Por defecto no guardar, se puede pasar desde el request en el futuro
+        // En flujo de alta de tarjeta debe guardarse para reuso en recargas posteriores.
+        'saveCard': request.saveCard,
       };
 
       // Agregar dirección si está disponible
