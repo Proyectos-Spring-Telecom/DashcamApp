@@ -1,10 +1,11 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/data/models/extravio_report_response_model.dart';
 import 'package:dashboardpro/domain/entities/extravio_report_request.dart';
 
 class ExtravioRemoteDataSource {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   ExtravioRemoteDataSource({Dio? dio})
       : _dio = dio ??

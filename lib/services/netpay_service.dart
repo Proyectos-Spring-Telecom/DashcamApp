@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/netpay/netpay_customer_model.dart';
 import 'package:dashboardpro/model/netpay/assign_card_token_request.dart';
@@ -18,7 +19,7 @@ class NetPayException implements Exception {
 
 class NetPayService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   NetPayService({Dio? dio})
       : _dio = dio ??

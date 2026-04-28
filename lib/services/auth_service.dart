@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/auth/login_response.dart';
 import 'package:dashboardpro/model/auth/registro_request.dart';
@@ -21,7 +22,7 @@ import 'dart:io' if (dart.library.html) 'package:dashboardpro/services/auth_serv
 
 class AuthService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   AuthService({Dio? dio})
       : _dio = dio ??

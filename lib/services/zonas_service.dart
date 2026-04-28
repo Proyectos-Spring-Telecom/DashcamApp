@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/zonas/zonas_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
@@ -18,7 +19,7 @@ class ZonasException implements Exception {
 /// Requiere token de autenticación en el header
 class ZonasService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   ZonasService({Dio? dio})
       : _dio = dio ??

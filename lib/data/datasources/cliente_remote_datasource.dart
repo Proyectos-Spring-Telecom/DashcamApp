@@ -1,10 +1,11 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/data/models/cliente_model.dart';
 import 'package:flutter/foundation.dart';
 
 class ClienteRemoteDataSource {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   ClienteRemoteDataSource({Dio? dio})
       : _dio = dio ??

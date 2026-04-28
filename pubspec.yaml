@@ -69,6 +69,7 @@ dependencies:
   webview_flutter: ^4.4.2
   flutter_nfc_kit: ^3.6.1
   geolocator: ^13.0.1
+  flutter_dotenv: ^5.1.0
 
   # syncfusion_flutter
   syncfusion_flutter_charts: ^31.2.12
@@ -115,6 +116,7 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
+    - .env
     - assets/maps/
     - assets/images/
     - assets/logo.png

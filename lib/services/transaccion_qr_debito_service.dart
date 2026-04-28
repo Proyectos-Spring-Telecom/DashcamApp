@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/transaccion/transacciones_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
@@ -23,7 +24,7 @@ class TransaccionQrDebitoException implements Exception {
 /// Body: page, limit, fechaInicio (YYYY-MM-DD), fechaFin (YYYY-MM-DD).
 class TransaccionQrDebitoService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev';
+  static String get baseUrl => EnvConfig.apiBaseUrl;
 
   TransaccionQrDebitoService({Dio? dio})
       : _dio = dio ??

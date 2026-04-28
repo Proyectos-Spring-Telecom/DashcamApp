@@ -1,3 +1,4 @@
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/monedero/monedero_model.dart';
 import 'package:dashboardpro/model/monedero/pasajero_wallet_model.dart';
@@ -19,7 +20,7 @@ import 'package:flutter/foundation.dart';
 
 class MonederoService {
   final Dio _dio;
-  static const String baseUrl = 'https://dashcampay.com/apidev'; 
+  static String get baseUrl => EnvConfig.apiBaseUrl; 
 
   MonederoService({Dio? dio})
       : _dio = dio ??
