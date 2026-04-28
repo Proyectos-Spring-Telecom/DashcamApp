@@ -62,7 +62,7 @@ class DireccionService {
 
       if (response.statusCode == 200) {
         try {
-          final responseData = response.data as Map<String, dynamic>;
+          final responseData = Map<String, dynamic>.from(response.data as Map);
           final codigoPostalResponse =
               CodigoPostalResponse.fromJson(responseData);
 

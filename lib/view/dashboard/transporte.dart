@@ -51,10 +51,11 @@ enum MapSelectionType { none, zonas, ruta, variantes }
 
 class _TransportePageState extends State<TransportePage> {
   gmaps.GoogleMapController? _mapController;
-  // * Posición inicial por defecto (fallback si no se puede obtener la ubicación)
-  static const gmaps.LatLng _defaultPosition =
-      gmaps.LatLng(19.4326, -99.1332); // Ciudad de México
-  gmaps.LatLng _initialPosition = _defaultPosition;
+  /// Último recurso si GPS/permisos fallan; no se usa como cámara inicial mientras carga el GPS.
+  static const gmaps.LatLng _mapFallbackIfNoGps =
+      gmaps.LatLng(19.4326, -99.1332);
+  static const double _zoomContextoInicial = 15.0;
+  static const double _zoomCercaMarkerUsuario = 17.35;
 
   // ! IMPORTANTE: Sets independientes por tipo de objeto; nunca sobrescribir un set al pintar otro.
   // ? INFO: markers del mapa = _userLocationMarker ∪ _vehicleMarkers ∪ _routeMarkers
@@ -90,14 +91,18 @@ class _TransportePageState extends State<TransportePage> {
 
   gmaps.MapType _currentMapType = gmaps.MapType.normal;
   bool _isMapReady = false;
+  /// Callback `onMapCreated` ya corrió; evita overlay si el mapa aparece rápido.
+  bool _onMapCreatedInvoked = false;
+  /// Solo true tras un debounce si [onMapCreated] aún no llegó (carga lenta).
+  bool _showMapLoadingOverlay = false;
   bool _hasAuthError = false;
   String? _errorMessage;
   
   // * Estado para controlar qué se muestra
   String? _currentView; // 'geocercas' o 'rutas' o null
 
-  // * Estado para la ubicación actual
-  bool _isLoadingLocation = false;
+  // * Ubicación actual: el mapa solo se crea una vez resuelta (GPS o [ _mapFallbackIfNoGps ]).
+  bool _isLoadingLocation = true;
   gmaps.LatLng? _currentLocation;
   
   // * Estado para el InfoWindow personalizado
@@ -134,6 +139,19 @@ class _TransportePageState extends State<TransportePage> {
     _cargarRutas();
     // ! IMPORTANTE: Cargar variantes desde API para listado y pintado con estaciones
     _cargarVariantes();
+  }
+
+  /// Muestra "Cargando mapa..." solo si [onMapCreated] tarda (evita parpadeo en carga rápida).
+  void _startMapLoadingOverlayDebounce() {
+    final delay = kIsWeb
+        ? const Duration(milliseconds: 450)
+        : const Duration(milliseconds: 350);
+    Future.delayed(delay, () {
+      if (!mounted || _onMapCreatedInvoked) return;
+      setState(() {
+        _showMapLoadingOverlay = true;
+      });
+    });
   }
 
   /// * Carga las variantes desde el servicio GET /variantes/list
@@ -238,10 +256,14 @@ class _TransportePageState extends State<TransportePage> {
 
       setState(() {
         _currentLocation = location;
-        _initialPosition = location;
         _isLoadingLocation = false;
       });
-      
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _startMapLoadingOverlayDebounce();
+        });
+      }
       // * Si el mapa ya está creado, actualizar la cámara y los markers
       if (_mapController != null && mounted) {
         await _actualizarMapaConUbicacion(location);
@@ -255,18 +277,40 @@ class _TransportePageState extends State<TransportePage> {
     }
   }
   
-  /// * Usa la posición por defecto como fallback
+  /// * Último recurso: sin GPS / permisos; no sustituye la lógica de "ubicación actual" en ruta normal.
   void _usarPosicionPorDefecto() {
     if (mounted) {
       setState(() {
-        _currentLocation = _defaultPosition;
-        _initialPosition = _defaultPosition;
+        _currentLocation = _mapFallbackIfNoGps;
         _isLoadingLocation = false;
       });
-      debugPrint('📍 Usando posición por defecto: $_defaultPosition');
+      debugPrint('⚠️ Sin ubicación del dispositivo; mapa con punto de respaldo: $_mapFallbackIfNoGps');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _startMapLoadingOverlayDebounce();
+      });
     }
   }
   
+  /// * Pequeño acercamiento tras mostrar el marker del usuario (mejor lectura del entorno).
+  Future<void> _acercarCamaraAlMarkerUsuario(gmaps.LatLng target) async {
+    if (_mapController == null || !mounted) return;
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (_mapController == null || !mounted) return;
+    try {
+      await _mapController!.animateCamera(
+        gmaps.CameraUpdate.newCameraPosition(
+          gmaps.CameraPosition(
+            target: target,
+            zoom: _zoomCercaMarkerUsuario,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error al acercar cámara al marker de usuario: $e');
+    }
+  }
+
   /// * Actualiza el mapa con la ubicación actual
   Future<void> _actualizarMapaConUbicacion(gmaps.LatLng location) async {
     if (_mapController == null || !mounted) return;
@@ -277,7 +321,7 @@ class _TransportePageState extends State<TransportePage> {
         gmaps.CameraUpdate.newCameraPosition(
           gmaps.CameraPosition(
             target: location,
-            zoom: 15.0,
+            zoom: _zoomContextoInicial,
           ),
         ),
       );
@@ -286,6 +330,7 @@ class _TransportePageState extends State<TransportePage> {
       final context = this.context;
       if (context.mounted) {
         await _addMarkers(context);
+        await _acercarCamaraAlMarkerUsuario(location);
       }
     } catch (e) {
       debugPrint('❌ Error al actualizar mapa con ubicación: $e');
@@ -349,8 +394,9 @@ class _TransportePageState extends State<TransportePage> {
 
   // * Mostrar geocercas en el mapa
   void _onMarkerTapped() {
+    if (_currentLocation == null) return;
     debugPrint('📍 Marker tocado - user_location');
-    final position = _currentLocation ?? _initialPosition;
+    final position = _currentLocation!;
     debugPrint('📍 Posición actual: $position');
     
     setState(() {
@@ -820,16 +866,16 @@ class _TransportePageState extends State<TransportePage> {
       _currentView = null;
     });
 
-    if (_mapController != null) {
+    if (_mapController != null && _currentLocation != null) {
       final context = this.context;
       if (context.mounted) {
         _addMarkers(context);
-        final targetPosition = _currentLocation ?? _initialPosition;
+        final targetPosition = _currentLocation!;
         _mapController!.animateCamera(
           gmaps.CameraUpdate.newCameraPosition(
             gmaps.CameraPosition(
               target: targetPosition,
-              zoom: 15.0,
+              zoom: _zoomCercaMarkerUsuario,
             ),
           ),
         );
@@ -936,10 +982,9 @@ class _TransportePageState extends State<TransportePage> {
   /// - Marker del usuario (ubicación actual)
   /// - Markers dinámicos de las unidades de monitoreo
   Future<void> _addMarkers(BuildContext context) async {
-    if (!mounted) return;
-    
-    // * Usar la ubicación actual si está disponible, sino usar la posición inicial
-    final position = _currentLocation ?? _initialPosition;
+    if (!mounted || _currentLocation == null) return;
+
+    final position = _currentLocation!;
     
     // * Obtener información del usuario logueado
     final user = authBloc.currentUser;
@@ -1038,68 +1083,54 @@ class _TransportePageState extends State<TransportePage> {
   }
 
   Future<void> _onMapCreated(gmaps.GoogleMapController controller) async {
+    if (!mounted) return;
+    _mapController = controller;
+    // Listo para UI: sin [Future.delayed] artificial; el overlay depende de [_showMapLoadingOverlay].
+    setState(() {
+      _onMapCreatedInvoked = true;
+      _showMapLoadingOverlay = false;
+      _isMapReady = true;
+    });
+
     if (mounted) {
-      _mapController = controller;
-      
-      // En web, puede tomar más tiempo cargar el mapa
-      final delayDuration = kIsWeb 
-          ? const Duration(milliseconds: 1500) 
-          : const Duration(milliseconds: 800);
-      
-      await Future.delayed(delayDuration);
-      
-      if (mounted) {
-        // * Si aún se está cargando la ubicación, esperar un poco más
-        if (_isLoadingLocation) {
-          debugPrint('⏳ Esperando ubicación actual...');
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-        
-        // * Centrar el mapa en la ubicación actual (o posición inicial)
-        final targetPosition = _currentLocation ?? _initialPosition;
-        await controller.animateCamera(
-          gmaps.CameraUpdate.newCameraPosition(
-            gmaps.CameraPosition(
-              target: targetPosition,
-              zoom: 15.0,
+        final current = _currentLocation;
+        if (current == null) return;
+        // * Cámara sobre la misma [LatLng] que se usó al crear el mapa (siempre resuelta vía GPS o fallback)
+        final targetPosition = current;
+        try {
+          await controller.animateCamera(
+            gmaps.CameraUpdate.newCameraPosition(
+              gmaps.CameraPosition(
+                target: targetPosition,
+                zoom: _zoomContextoInicial,
+              ),
             ),
-          ),
-        );
-        
+          );
+        } catch (e) {
+          debugPrint('⚠️ Error al centrar cámara del mapa: $e');
+        }
+
         // Cargar los marcadores después de que el mapa esté creado
         final context = this.context;
         if (context.mounted) {
           await _addMarkers(context);
+          await _acercarCamaraAlMarkerUsuario(targetPosition);
         }
-        
-        setState(() {
-          _isMapReady = true;
-        });
+
         debugPrint('✅ Google Maps controller creado exitosamente');
-        debugPrint('📍 Posición inicial: $_initialPosition');
-        debugPrint('📍 Ubicación actual: ${_currentLocation ?? "No disponible"}');
+        debugPrint('📍 Ubicación (centro del mapa): $current');
         debugPrint('🗺️ Tipo de mapa: $_currentMapType');
         debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
-        
+
         // Aplicar estilo para ocultar comercios/POI en el mapa (web y móvil)
-        try {
-          await controller.setMapStyle(_mapStyleNoPoi);
-        } catch (e) {
-          debugPrint('⚠️ Error al aplicar estilo del mapa (ocultar POI): $e');
+        if (mounted) {
+          try {
+            await controller.setMapStyle(_mapStyleNoPoi);
+          } catch (e) {
+            debugPrint('⚠️ Error al aplicar estilo del mapa (ocultar POI): $e');
+          }
         }
-        
-        // Timeout para web: si después de 5 segundos no se carga, marcar como listo
-        if (kIsWeb) {
-          Future.delayed(const Duration(seconds: 5), () {
-            if (mounted && !_isMapReady) {
-              debugPrint('⚠️ Timeout: Marcando mapa como listo después de 5 segundos (Web)');
-              setState(() {
-                _isMapReady = true;
-              });
-            }
-          });
-        }
-        
+
         // Verificar si el mapa se renderizó correctamente después de un tiempo
         // Si el mapa muestra solo el fondo café sin calles, hay un problema de autorización
         Future.delayed(const Duration(seconds: 3), () {
@@ -1118,7 +1149,6 @@ class _TransportePageState extends State<TransportePage> {
             }
           }
         });
-      }
     }
   }
   
@@ -1408,72 +1438,101 @@ class _TransportePageState extends State<TransportePage> {
       height: double.infinity,
       child: Stack(
         children: [
-          // Google Map - Ocupa todo el espacio disponible
-          gmaps.GoogleMap(
-            initialCameraPosition: const gmaps.CameraPosition(
-              target: _defaultPosition,
-              zoom: 13,
-              tilt: 0,
+          if (_isLoadingLocation && _currentLocation == null)
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(
+                      color: Color(0xFF205AA8),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Obteniendo tu ubicación...',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            // ? INFO: Unión de todos los markers (usuario + unidades + rutas + estaciones variante)
-            markers: _allMarkers,
-            polygons: _zonePolygons,
-            // ? INFO: Unión de polylines (rutas + variantes)
-            polylines: _allPolylines,
-            mapType: _currentMapType,
-            onMapCreated: _onMapCreated,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false, // * Deshabilitar controles nativos para usar personalizados
-            compassEnabled: true,
-            mapToolbarEnabled: false,
-            myLocationEnabled: false,
-            buildingsEnabled: true,
-            trafficEnabled: false,
-            rotateGesturesEnabled: true,
-            scrollGesturesEnabled: true,
-            tiltGesturesEnabled: true,
-            zoomGesturesEnabled: true,
-            minMaxZoomPreference: const gmaps.MinMaxZoomPreference(3, 20),
-            padding: EdgeInsets.zero,
-            liteModeEnabled: false,
-            onCameraMoveStarted: () {
-              // Si el usuario puede interactuar con el mapa, está funcionando
-              if (!_isMapReady && mounted) {
-                setState(() {
-                  _isMapReady = true;
-                });
-              }
-              // * Cerrar InfoWindow personalizado si el usuario mueve el mapa
-              // * PERO NO si se acaba de tocar el marker
-              if (_selectedMarkerId != null && !_isMarkerTapped) {
-                debugPrint('🗺️ Cámara movida - cerrando InfoWindow');
-                setState(() {
-                  _selectedMarkerId = null;
-                  _selectedMarkerPosition = null;
-                  _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
-                });
-              } else if (_isMarkerTapped) {
-                debugPrint('🚫 Ignorando movimiento de cámara porque el marker fue tocado');
-              }
-            },
-            onTap: (gmaps.LatLng position) {
-              // * Cerrar InfoWindow personalizado si se toca el mapa
-              // * PERO NO si se acaba de tocar el marker (para evitar que se cierre inmediatamente)
-              if (_selectedMarkerId != null && !_isMarkerTapped) {
-                debugPrint('🗺️ Mapa tocado - cerrando InfoWindow');
-                setState(() {
-                  _selectedMarkerId = null;
-                  _selectedMarkerPosition = null;
-                  _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
-                });
-              } else if (_isMarkerTapped) {
-                debugPrint('🚫 Ignorando tap del mapa porque el marker fue tocado');
-              }
-            },
-          ),
+          if (!_isLoadingLocation && _currentLocation != null)
+            gmaps.GoogleMap(
+              key: ValueKey<Object>(
+                '${_currentLocation!.latitude},${_currentLocation!.longitude}',
+              ),
+              initialCameraPosition: gmaps.CameraPosition(
+                target: _currentLocation!,
+                zoom: _zoomContextoInicial,
+                tilt: 0,
+              ),
+              // ? INFO: Unión de todos los markers (usuario + unidades + rutas + estaciones variante)
+              markers: _allMarkers,
+              polygons: _zonePolygons,
+              // ? INFO: Unión de polylines (rutas + variantes)
+              polylines: _allPolylines,
+              mapType: _currentMapType,
+              onMapCreated: _onMapCreated,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false, // * Deshabilitar controles nativos para usar personalizados
+              compassEnabled: true,
+              mapToolbarEnabled: false,
+              myLocationEnabled: false,
+              buildingsEnabled: true,
+              trafficEnabled: false,
+              rotateGesturesEnabled: true,
+              scrollGesturesEnabled: true,
+              tiltGesturesEnabled: true,
+              zoomGesturesEnabled: true,
+              minMaxZoomPreference: const gmaps.MinMaxZoomPreference(3, 20),
+              padding: EdgeInsets.zero,
+              liteModeEnabled: false,
+              onCameraMoveStarted: () {
+                // Respaldo (p. ej. web): el mapa es interactivo aunque falle un edge case del callback
+                if ((!_isMapReady || !_onMapCreatedInvoked) && mounted) {
+                  setState(() {
+                    _isMapReady = true;
+                    _onMapCreatedInvoked = true;
+                    _showMapLoadingOverlay = false;
+                  });
+                }
+                // * Cerrar InfoWindow personalizado si el usuario mueve el mapa
+                // * PERO NO si se acaba de tocar el marker
+                if (_selectedMarkerId != null && !_isMarkerTapped) {
+                  debugPrint('🗺️ Cámara movida - cerrando InfoWindow');
+                  setState(() {
+                    _selectedMarkerId = null;
+                    _selectedMarkerPosition = null;
+                    _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
+                  });
+                } else if (_isMarkerTapped) {
+                  debugPrint('🚫 Ignorando movimiento de cámara porque el marker fue tocado');
+                }
+              },
+              onTap: (gmaps.LatLng position) {
+                // * Cerrar InfoWindow personalizado si se toca el mapa
+                // * PERO NO si se acaba de tocar el marker (para evitar que se cierre inmediatamente)
+                if (_selectedMarkerId != null && !_isMarkerTapped) {
+                  debugPrint('🗺️ Mapa tocado - cerrando InfoWindow');
+                  setState(() {
+                    _selectedMarkerId = null;
+                    _selectedMarkerPosition = null;
+                    _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
+                  });
+                } else if (_isMarkerTapped) {
+                  debugPrint('🚫 Ignorando tap del mapa porque el marker fue tocado');
+                }
+              },
+            ),
           // ! CAMBIO DE FLUJO: eliminación del dropdown; listas se abren directamente desde "Opciones del mapa".
-          // Loading indicator while map initializes
-          if (!_isMapReady && !_hasAuthError)
+          // Carga: solo si [onMapCreated] tarda más que el debounce (no cubrir carga rápida)
+          if (_showMapLoadingOverlay && !_hasAuthError)
             Container(
               width: double.infinity,
               height: double.infinity,
@@ -1539,9 +1598,11 @@ class _TransportePageState extends State<TransportePage> {
                           setState(() {
                             _hasAuthError = false;
                             _errorMessage = null;
+                            _onMapCreatedInvoked = false;
+                            _showMapLoadingOverlay = false;
                             _isMapReady = false;
                           });
-                          // Reintentar inicialización
+                          _startMapLoadingOverlayDebounce();
                           if (_mapController != null) {
                             _onMapCreated(_mapController!);
                           }
@@ -2386,7 +2447,9 @@ class _TransportePageState extends State<TransportePage> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    // No llamar a [GoogleMapController.dispose]: lo gestiona el propio [GoogleMap]
+    // (en web, dispose manual dispara: Maps cannot be retrieved before calling buildView).
+    _mapController = null;
     super.dispose();
   }
 }

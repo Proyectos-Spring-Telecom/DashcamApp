@@ -13,47 +13,75 @@ class TransaccionesResponse {
 
   factory TransaccionesResponse.fromJson(Map<String, dynamic> json) {
     List<TransaccionModel> transacciones = [];
-    
-    if (json['data'] != null && json['data'] is List) {
-      final dataList = json['data'] as List<dynamic>;
-      debugPrint('🔄 Parseando ${dataList.length} transacciones...');
+
+    debugPrint('🔄 [TransaccionesResponse] Keys en JSON: ${json.keys.toList()}');
+
+    // Listado: prioridad `data`, luego alias comunes del backend
+    List<dynamic>? dataList;
+    if (json['data'] is List) {
+      dataList = json['data'] as List<dynamic>;
+    } else if (json['items'] is List) {
+      dataList = json['items'] as List<dynamic>;
+    } else if (json['transacciones'] is List) {
+      dataList = json['transacciones'] as List<dynamic>;
+    }
+
+    if (dataList != null) {
+      debugPrint('🔄 Parseando ${dataList.length} transacciones (lista cruda)...');
       for (var i = 0; i < dataList.length; i++) {
         try {
           final item = dataList[i];
-          if (item is Map<String, dynamic>) {
-            final transaccion = TransaccionModel.fromJson(item);
+          if (item is Map) {
+            final asMap = Map<String, dynamic>.from(item as Map);
+            final transaccion = TransaccionModel.fromJson(asMap);
             transacciones.add(transaccion);
             if (i == 0) {
-              debugPrint('✅ Primera transacción parseada - ID: ${transaccion.id}, Tipo: ${transaccion.tipoTransaccion}');
+              debugPrint(
+                  '✅ Primera transacción parseada - ID: ${transaccion.id}, Tipo: ${transaccion.tipoTransaccion}');
             }
           } else {
-            debugPrint('⚠️ Item $i no es un Map, es: ${item.runtimeType}, valor: $item');
+            debugPrint(
+                '⚠️ Item $i no es un Map, es: ${item.runtimeType}, valor: $item');
           }
         } catch (e, stackTrace) {
           debugPrint('❌ Error al parsear transacción en índice $i: $e');
           debugPrint('❌ Stack trace: $stackTrace');
           debugPrint('❌ Datos del item: ${dataList[i]}');
-          // Continuar con las demás transacciones
         }
       }
-      debugPrint('✅ Transacciones parseadas exitosamente: ${transacciones.length}/${dataList.length}');
+      debugPrint(
+          '✅ Transacciones parseadas exitosamente: ${transacciones.length}/${dataList.length}');
     } else {
-      debugPrint('⚠️ data es null o no es una lista');
+      debugPrint('⚠️ Sin lista reconocida (data / items / transacciones)');
       debugPrint('⚠️ Tipo de data: ${json['data']?.runtimeType}');
-      debugPrint('⚠️ Valor de data: ${json['data']}');
     }
-    
-    // Parsear paginación
+
+    // Paginación: `paginated` (contrato actual) o alias
     PaginacionModel paginacion;
-    if (json['paginated'] != null && json['paginated'] is Map<String, dynamic>) {
+    Map<String, dynamic>? pagMap;
+    if (json['paginated'] is Map) {
+      pagMap = Map<String, dynamic>.from(json['paginated'] as Map);
+    } else if (json['pagination'] is Map) {
+      pagMap = Map<String, dynamic>.from(json['pagination'] as Map);
+    }
+
+    if (pagMap != null) {
       try {
-        paginacion = PaginacionModel.fromJson(json['paginated'] as Map<String, dynamic>);
+        paginacion = PaginacionModel.fromJson(pagMap);
       } catch (e) {
-        debugPrint('❌ Error al parsear paginated: $e');
+        debugPrint('❌ Error al parsear paginación: $e');
         paginacion = PaginacionModel(total: 0, page: 1, lastPage: 1);
       }
     } else {
-      paginacion = PaginacionModel(total: 0, page: 1, lastPage: 1);
+      // Inferir desde el tamaño de la lista si no viene bloque de paginación
+      final inferredTotal = transacciones.length;
+      paginacion = PaginacionModel(
+        total: inferredTotal,
+        page: 1,
+        lastPage: 1,
+      );
+      debugPrint(
+          '📄 Sin objeto paginated; usando total inferido: $inferredTotal');
     }
     
     return TransaccionesResponse(

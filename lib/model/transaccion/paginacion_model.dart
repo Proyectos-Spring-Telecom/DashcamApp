@@ -19,9 +19,14 @@ class PaginacionModel {
       return 0;
     }
 
-    final total = parseToInt(json['total']);
-    final page = parseToInt(json['page']);
-    final lastPage = parseToInt(json['lastPage']);
+    final total = parseToInt(
+        json['total'] ?? json['totalItems'] ?? json['total_records']);
+    final page = parseToInt(
+        json['page'] ?? json['currentPage'] ?? json['current_page']);
+    final lastPage = parseToInt(json['lastPage'] ??
+        json['last_page'] ??
+        json['totalPages'] ??
+        json['total_pages']);
 
     return PaginacionModel(
       total: total,

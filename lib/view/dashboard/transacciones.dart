@@ -1,5 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
@@ -324,8 +325,9 @@ class _TransaccionesPageState extends State<TransaccionesPage> {
       builder: (context, statusSnapshot) {
         final status = statusSnapshot.data ?? MonederoStatus.initial;
 
-        // Loading state
-        if (status == MonederoStatus.loading) {
+        // Loading state (incluye initial: aún no hubo primera emisión del bloc)
+        if (status == MonederoStatus.loading ||
+            status == MonederoStatus.initial) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -392,11 +394,14 @@ class _TransaccionesPageState extends State<TransaccionesPage> {
         }
 
         // Loaded state
+        // ! Stream broadcast sin replay: no usar solo snapshot.data del listado.
+        // El listener del listado puede suscribirse después del add() y ver vacío.
+        // Siempre leer la lista actual del bloc; el StreamBuilder solo fuerza rebuilds.
         return StreamBuilder<List<TransaccionModel>>(
           stream: monederoBloc.transaccionesStream,
           initialData: monederoBloc.transacciones,
           builder: (context, transaccionesSnapshot) {
-            final transacciones = transaccionesSnapshot.data ?? [];
+            final transacciones = monederoBloc.transacciones;
 
             // Ordenar transacciones por fecha descendente (más recientes primero)
             final transaccionesOrdenadas = List<TransaccionModel>.from(transacciones);
@@ -457,6 +462,14 @@ class _TransaccionesPageState extends State<TransaccionesPage> {
 
               return true;
             }).toList();
+
+            if (kDebugMode) {
+              debugPrint(
+                '🖥️ [Transacciones UI] bloc=${transacciones.length} '
+                '→ mostrando=${filteredTransacciones.length} '
+                '| filtroDia=$_filtroAlDia | tipo=$_tipoFiltro '
+                '| búsqueda="${_searchController.text}"');
+            }
 
             // Las transacciones ya están ordenadas por fecha descendente
             // El filtrado mantiene el orden original

@@ -16,16 +16,50 @@ class CodigoPostalModel {
   });
 
   factory CodigoPostalModel.fromJson(Map<String, dynamic> json) {
+    final estadoRaw = json['estado'];
+    final municipioRaw = json['municipio'];
+    final coloniasRaw = json['colonias'];
+
+    String _parseNombre(dynamic value) {
+      if (value is Map) {
+        return value['nombre']?.toString() ?? '';
+      }
+      return value?.toString() ?? '';
+    }
+
+    String _parseEstadoAbreviatura(dynamic value) {
+      if (value is Map) {
+        return value['abreviatura']?.toString() ??
+            value['clave']?.toString() ??
+            '';
+      }
+      return '';
+    }
+
+    List<String> _parseColonias(dynamic value) {
+      if (value is! List) return [];
+      return value
+          .map((item) {
+            if (item is Map) {
+              return item['nombre']?.toString() ?? '';
+            }
+            return item?.toString() ?? '';
+          })
+          .where((nombre) => nombre.isNotEmpty)
+          .toList();
+    }
+
     return CodigoPostalModel(
-      estado: json['estado']?.toString() ?? '',
-      estadoAbreviatura: json['estado_abreviatura']?.toString() ?? '',
-      municipio: json['municipio']?.toString() ?? '',
-      centroReparto: json['centro_reparto']?.toString() ?? '',
-      codigoPostal: json['codigo_postal']?.toString() ?? '',
-      colonias: (json['colonias'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      estado: _parseNombre(estadoRaw),
+      estadoAbreviatura: json['estado_abreviatura']?.toString() ??
+          _parseEstadoAbreviatura(estadoRaw),
+      municipio: _parseNombre(municipioRaw),
+      centroReparto: json['centro_reparto']?.toString() ??
+          json['ciudad']?['nombre']?.toString() ??
+          '',
+      codigoPostal:
+          json['codigo_postal']?.toString() ?? json['codigoPostal']?.toString() ?? '',
+      colonias: _parseColonias(coloniasRaw),
     );
   }
 
@@ -53,13 +87,23 @@ class CodigoPostalResponse {
   });
 
   factory CodigoPostalResponse.fromJson(Map<String, dynamic> json) {
+    final tieneEnvelope =
+        json.containsKey('error') || json.containsKey('message') || json.containsKey('codigo_postal');
+
+    // Nuevo formato: respuesta directa del CP sin envelope.
+    final esPayloadDirecto = json.containsKey('codigoPostal') &&
+        json.containsKey('estado') &&
+        json.containsKey('municipio');
+
     return CodigoPostalResponse(
       error: json['error'] as bool? ?? false,
       message: json['message']?.toString() ?? '',
-      codigoPostal: json['codigo_postal'] != null
-          ? CodigoPostalModel.fromJson(
-              json['codigo_postal'] as Map<String, dynamic>)
-          : null,
+      codigoPostal: tieneEnvelope
+          ? (json['codigo_postal'] != null
+              ? CodigoPostalModel.fromJson(
+                  json['codigo_postal'] as Map<String, dynamic>)
+              : null)
+          : (esPayloadDirecto ? CodigoPostalModel.fromJson(json) : null),
     );
   }
 

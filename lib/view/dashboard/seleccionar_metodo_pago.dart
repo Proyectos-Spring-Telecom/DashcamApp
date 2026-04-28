@@ -501,12 +501,13 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                     );
                   }
                   
-                  // Seleccionar automáticamente la primera tarjeta si ninguna está seleccionada
+                  // Seleccionar automáticamente la primera tarjeta si ninguna está seleccionada.
+                  // Usamos `source` (token almacenado para cobro) en lugar de `card.token`.
                   if (_selectedCard == null && paymentSources.isNotEmpty) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) {
                         setState(() {
-                          _selectedCard = paymentSources.first.card.token;
+                          _selectedCard = paymentSources.first.source;
                         });
                       }
                     });
@@ -539,12 +540,12 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                                 Expanded(
                                   child: _buildCardButton(
                                     cardNumber: tarjetasFila[0].card.lastFourDigits,
-                                    isSelected: _selectedCard == tarjetasFila[0].card.token,
+                                    isSelected: _selectedCard == tarjetasFila[0].source,
                                     isDark: isDark,
                                     textColor: textColor,
                                     onTap: () {
                                       setState(() {
-                                        _selectedCard = tarjetasFila[0].card.token;
+                                        _selectedCard = tarjetasFila[0].source;
                                       });
                                     },
                                   ),
@@ -555,12 +556,12 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                                   Expanded(
                                     child: _buildCardButton(
                                       cardNumber: tarjetasFila[1].card.lastFourDigits,
-                                      isSelected: _selectedCard == tarjetasFila[1].card.token,
+                                      isSelected: _selectedCard == tarjetasFila[1].source,
                                       isDark: isDark,
                                       textColor: textColor,
                                       onTap: () {
                                         setState(() {
-                                          _selectedCard = tarjetasFila[1].card.token;
+                                          _selectedCard = tarjetasFila[1].source;
                                         });
                                       },
                                     ),

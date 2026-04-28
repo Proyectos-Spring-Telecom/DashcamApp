@@ -446,6 +446,14 @@ class MonederoBloc {
     }
   }
 
+  static String _fechaHoyIsoLocal() {
+    final n = DateTime.now();
+    final y = n.year.toString().padLeft(4, '0');
+    final m = n.month.toString().padLeft(2, '0');
+    final d = n.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   /// Obtiene la lista de transacciones desde el API (primera página)
   /// Opcionalmente puede recibir filtros de fecha
   /// [fechaInicio]: Fecha de inicio en formato "YYYY-MM-DD" (opcional)
@@ -465,6 +473,13 @@ class MonederoBloc {
         if (fechaInicio != null) _fechaInicio = fechaInicio;
         if (fechaFin != null) _fechaFin = fechaFin;
       }
+
+      // ! Fix: mismo rango “hoy” en el bloc (paginación y getters) alineado al servicio.
+      final hoy = _fechaHoyIsoLocal();
+      _fechaInicio ??= hoy;
+      _fechaFin ??= hoy;
+      debugPrint(
+          '📅 [MonederoBloc] Fecha inicio (efectiva): $_fechaInicio | Fecha fin: $_fechaFin');
 
       _transaccionesStatus = MonederoStatus.loading;
       _transaccionesStatusController.add(_transaccionesStatus);
@@ -497,6 +512,8 @@ class MonederoBloc {
       _transaccionesErrorController.add(null);
       _transaccionesErrorMessage = null;
 
+      debugPrint(
+          '✅ Cantidad de transacciones (estado bloc): ${_transacciones.length}');
       debugPrint('✅ Transacciones obtenidas exitosamente: ${response.data.length}');
       debugPrint('✅ Paginación: página ${response.paginacion.page}/${response.paginacion.lastPage} (total: ${response.paginacion.total})');
       if (response.paginacion.total > 0 && response.data.isEmpty) {

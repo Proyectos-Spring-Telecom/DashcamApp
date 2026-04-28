@@ -2,6 +2,21 @@ import 'package:flutter/foundation.dart';
 
 class TransaccionModel {
   static int _parseCount = 0;
+
+  static double? _parseDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
+
+  static int? _parseIntLoose(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
   final int id;
   final String? numeroSerieMonedero;
   final String? nombrePasajero;
@@ -14,6 +29,14 @@ class TransaccionModel {
   final double? monto;
   /// 0 = cobro con tarjeta física, distinto de 0 = cobro con código QR (GET /transacciones/paginado).
   final int? esQR;
+  /// Ubicación inicial del viaje (opcional, desde API)
+  final double? latitudInicial;
+  final double? longitudInicial;
+  /// Ubicación final del viaje (opcional, desde API)
+  final double? latitudFinal;
+  final double? longitudFinal;
+  /// Método de pago (ej. Tarjeta, QR) desde API
+  final String? nombreMetodoPago;
 
   TransaccionModel({
     required this.id,
@@ -27,6 +50,11 @@ class TransaccionModel {
     this.tipoTransaccion,
     this.monto,
     this.esQR,
+    this.latitudInicial,
+    this.longitudInicial,
+    this.latitudFinal,
+    this.longitudFinal,
+    this.nombreMetodoPago,
   });
 
   factory TransaccionModel.fromJson(Map<String, dynamic> json) {
@@ -84,14 +112,22 @@ class TransaccionModel {
         }
       }
 
-      // Validar que el ID exista
-      final id = json['id'];
-      if (id == null) {
-        throw Exception('El campo "id" es requerido en la transacción');
+      // ID: alias típicos en APIs (evita descartar filas completas).
+      final idRaw = json['id'] ??
+          json['idTransaccion'] ??
+          json['id_transaccion'] ??
+          json['idTransaccionMonedero'];
+      final idParsed = _parseIntLoose(idRaw);
+      if (idParsed == null) {
+        throw Exception(
+            'Sin id reconocido (id / idTransaccion): keys=${json.keys.toList()}');
       }
 
+      final tipoRaw = json['tipoTransaccion'] ?? json['tipo'] ?? json['tipoTransaccionNombre'];
+      final montoRaw = json['monto'] ?? json['importe'] ?? json['total'];
+
       return TransaccionModel(
-        id: id is int ? id : int.tryParse(id.toString()) ?? 0,
+        id: idParsed,
         numeroSerieMonedero: json['numeroSerieMonedero']?.toString(),
         nombrePasajero: json['nombrePasajero']?.toString(),
         apellidoPaternoPasajero: json['apellidoPaternoPasajero']?.toString(),
@@ -99,17 +135,19 @@ class TransaccionModel {
         nombreCompletoPasajero: json['nombreCompletoPasajero']?.toString(),
         clienteNombre: clienteNombre,
         fechaHora: fechaHora,
-        tipoTransaccion: json['tipoTransaccion']?.toString(),
-        monto: json['monto'] != null ? (json['monto'] as num).toDouble() : null,
-        esQR: json['esQR'] != null
-            ? (json['esQR'] is num ? (json['esQR'] as num).toInt() : int.tryParse(json['esQR'].toString()))
-            : null,
+        tipoTransaccion: tipoRaw?.toString(),
+        monto: _parseDouble(montoRaw),
+        esQR: _parseIntLoose(json['esQR'] ?? json['es_qr']),
+        latitudInicial: _parseDouble(json['latitudInicial']),
+        longitudInicial: _parseDouble(json['longitudInicial']),
+        latitudFinal: _parseDouble(json['latitudFinal']),
+        longitudFinal: _parseDouble(json['longitudFinal']),
+        nombreMetodoPago: json['nombreMetodoPago']?.toString(),
       );
     } catch (e) {
-      // Si hay un error al parsear, loguearlo pero continuar con valores por defecto
-      print('⚠️ Error al parsear TransaccionModel: $e');
-      print('⚠️ JSON recibido: $json');
-      rethrow; // Relanzar para que el servicio pueda manejarlo
+      debugPrint('⚠️ Error al parsear TransaccionModel: $e');
+      debugPrint('⚠️ JSON recibido: $json');
+      rethrow;
     }
   }
 
@@ -126,6 +164,11 @@ class TransaccionModel {
       'tipoTransaccion': tipoTransaccion,
       'monto': monto,
       'esQR': esQR,
+      'latitudInicial': latitudInicial,
+      'longitudInicial': longitudInicial,
+      'latitudFinal': latitudFinal,
+      'longitudFinal': longitudFinal,
+      'nombreMetodoPago': nombreMetodoPago,
     };
   }
 

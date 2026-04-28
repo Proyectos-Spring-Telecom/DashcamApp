@@ -78,7 +78,9 @@ class _ResumenPageState extends State<ResumenPage> {
 
     try {
       return customer.paymentSources.firstWhere(
-        (ps) => ps.card.token == widget.selectedCardToken,
+        (ps) =>
+            ps.source == widget.selectedCardToken ||
+            ps.card.token == widget.selectedCardToken,
       );
     } catch (e) {
       return null;
@@ -110,8 +112,8 @@ class _ResumenPageState extends State<ResumenPage> {
   }
 
   /// Obtiene el idDireccion del arreglo datosTarjeta del servicio /netpay/customers
-  /// Busca el registro donde tokenCard coincida con el token de la tarjeta seleccionada
-  int? _getIdDireccionFromDatosTarjeta(String tokenCard) {
+  /// Busca el registro donde tokenCard coincida con el source/token de la tarjeta seleccionada.
+  int? _getIdDireccionFromDatosTarjeta(String sourceOrTokenCard) {
     final customer = netPayBloc.currentCustomer;
     if (customer == null) {
       debugPrint('⚠️ Customer es null, no se puede obtener idDireccion');
@@ -120,13 +122,13 @@ class _ResumenPageState extends State<ResumenPage> {
 
     try {
       final datoTarjeta = customer.datosTarjeta.firstWhere(
-        (dt) => dt.tokenCard == tokenCard,
+        (dt) => dt.tokenCard == sourceOrTokenCard,
       );
       
       debugPrint('✅ idDireccion encontrado en datosTarjeta: ${datoTarjeta.idDireccion}');
       return datoTarjeta.idDireccion;
     } catch (e) {
-      debugPrint('❌ No se encontró idDireccion en datosTarjeta para token: $tokenCard');
+      debugPrint('❌ No se encontró idDireccion en datosTarjeta para token/source: $sourceOrTokenCard');
       debugPrint('   - datosTarjeta disponibles: ${customer.datosTarjeta.length}');
       for (var dt in customer.datosTarjeta) {
         debugPrint('     - tokenCard: ${dt.tokenCard}, idDireccion: ${dt.idDireccion}');
@@ -190,7 +192,11 @@ class _ResumenPageState extends State<ResumenPage> {
           return;
         }
 
-        tokenCardNetPay = selectedCard.card.token;
+        // Para recarga debe enviarse el token almacenado reutilizable (`source`).
+        // `card.token` puede corresponder al token inicial de tokenización (single-use).
+        tokenCardNetPay = selectedCard.source.isNotEmpty
+            ? selectedCard.source
+            : selectedCard.card.token;
         deviceFingerPrint = _getDeviceFingerPrint(selectedCard);
         
         // Obtener idDireccion del arreglo datosTarjeta del servicio /netpay/customers
@@ -301,6 +307,9 @@ class _ResumenPageState extends State<ResumenPage> {
       );
 
       if (!mounted) return;
+
+      // ! Refrescar transacciones para que la pantalla Transacciones / streams vean el movimiento nuevo
+      monederoBloc.obtenerTransacciones();
 
       setState(() {
         _isLoading = false;
@@ -936,7 +945,9 @@ class _ResumenPageState extends State<ResumenPage> {
                           if (widget.selectedCardToken != null && paymentSources.isNotEmpty) {
                             try {
                               final selectedCard = paymentSources.firstWhere(
-                                (ps) => ps.card.token == widget.selectedCardToken,
+                                (ps) =>
+                                    ps.source == widget.selectedCardToken ||
+                                    ps.card.token == widget.selectedCardToken,
                               );
                               lastFourDigits = selectedCard.card.lastFourDigits;
                             } catch (e) {

@@ -115,7 +115,7 @@ Si la documentación no es clara:
 
 ```dart
 // Llaves
-Public Key: pk_netpay_JGFtQNUFIENMlhkoBXdgiozmQ
+Public Key: pk_netpay_YbahDkYgsFmUhIFYNzijoIqDJ
 Private Key: sk_netpay_VcNiErfSqYMnxOZToQxxNYLFORdUHJZpyeFeZFoGsccny
 
 // URLs

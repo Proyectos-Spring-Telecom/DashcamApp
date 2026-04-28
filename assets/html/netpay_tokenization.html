@@ -109,7 +109,7 @@
                     expYear: expYear,
                     cvv2: cvv2,
                     vault: requestData.saveCard || false, // Si se quiere guardar la tarjeta
-                    simpleUse: !(requestData.saveCard || true), // true si no se guarda, false si se guarda
+                    simpleUse: !(requestData.saveCard || false), // true si no se guarda, false si se guarda
                     deviceFingerPrint: deviceFingerPrint // REQUERIDO según documentación
                 };
                 

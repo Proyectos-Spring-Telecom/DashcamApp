@@ -413,12 +413,25 @@ class MonederoService {
     }
   }
 
+  /// Fecha local `YYYY-MM-DD` (mismo criterio que Swagger/curl para filtrar “hoy”).
+  static String _fechaHoyIsoLocal() {
+    final n = DateTime.now();
+    final y = n.year.toString().padLeft(4, '0');
+    final m = n.month.toString().padLeft(2, '0');
+    final d = n.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  static String _resolverFechaRequest(String? f) {
+    if (f != null && f.trim().isNotEmpty) return f.trim();
+    return _fechaHoyIsoLocal();
+  }
+
   /// Obtiene la lista de transacciones con paginación
   /// Requiere token de autenticación en el header
   /// page: número de página (inicia en 1)
   /// limit: cantidad de registros por página
-  /// fechaInicio: fecha de inicio para filtrar (formato: "YYYY-MM-DD") - opcional
-  /// fechaFin: fecha de fin para filtrar (formato: "YYYY-MM-DD") - opcional
+  /// fechaInicio / fechaFin: "YYYY-MM-DD". Si vienen vacíos o null, se usa el día actual (el backend lo exige).
   Future<TransaccionesResponse> obtenerListaTransacciones({
     required String? token,
     required int page,
@@ -435,10 +448,17 @@ class MonederoService {
         throw MonederoException('El límite debe ser mayor a 0.');
       }
 
-      // Configurar headers con token de autenticación
+      // ! Fix crítico: nunca enviar null en fechas — el API filtra por rango (comportamiento Swagger).
+      final inicio = _resolverFechaRequest(fechaInicio);
+      final fin = _resolverFechaRequest(fechaFin);
+      debugPrint('📅 Fecha inicio (request): $inicio');
+      debugPrint('📅 Fecha fin (request): $fin');
+      debugPrint('📅 Zona horaria dispositivo: ${DateTime.now().timeZoneName} | now local: ${DateTime.now()}');
+
+      // Configurar headers con token de autenticación (Accept alineado a curl / Swagger)
       final headers = <String, dynamic>{
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': '*/*',
       };
       
       if (token != null && token.isNotEmpty) {
@@ -449,16 +469,13 @@ class MonederoService {
         headers: headers,
       );
 
-      // Preparar el body exactamente como Postman lo envía
-      // Incluir fechaInicio y fechaFin si se proporcionan, de lo contrario null
-      final requestBody = {
+      final requestBody = <String, dynamic>{
         'page': page,
         'limit': limit,
-        'fechaInicio': fechaInicio, // Puede ser null o un string con formato "YYYY-MM-DD"
-        'fechaFin': fechaFin, // Puede ser null o un string con formato "YYYY-MM-DD"
+        'fechaInicio': inicio,
+        'fechaFin': fin,
       };
 
-      // Serializar a JSON para ver exactamente qué se envía
       final jsonBodyString = jsonEncode(requestBody);
       
       debugPrint('📤 Obteniendo lista de transacciones (paginado)');
@@ -473,10 +490,8 @@ class MonederoService {
         debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
       }
       
-      // Log adicional para diagnóstico
-      debugPrint('📤 Parámetros: page=$page, limit=$limit, fechaInicio=$fechaInicio, fechaFin=$fechaFin');
+      debugPrint('📤 Parámetros: page=$page, limit=$limit, fechaInicio=$inicio, fechaFin=$fin');
 
-      // Dio serializará el Map automáticamente a JSON
       final response = await _dio.post(
         '/transacciones/paginado',
         data: requestBody,
@@ -484,10 +499,11 @@ class MonederoService {
       );
 
       debugPrint('📥 Status Code: ${response.statusCode}');
+      debugPrint('📥 Response transacciones (raw): ${response.data}');
       
       // Logging detallado de la respuesta completa
-      if (response.data is Map<String, dynamic>) {
-        final responseData = response.data as Map<String, dynamic>;
+      if (response.data is Map) {
+        final responseData = Map<String, dynamic>.from(response.data as Map);
         debugPrint('📦 Respuesta completa recibida:');
         debugPrint('📦 Keys: ${responseData.keys.toList()}');
         if (responseData['data'] != null) {
@@ -514,21 +530,24 @@ class MonederoService {
       // Aceptar 201 (Created) como respuesta exitosa
       if (response.statusCode == 201 || response.statusCode == 200) {
         try {
-          if (response.data is Map<String, dynamic>) {
-            final responseData = response.data as Map<String, dynamic>;
-            final transaccionesResponse =
-                TransaccionesResponse.fromJson(responseData);
-            debugPrint('✅ Transacciones parseadas: ${transaccionesResponse.data.length}');
-            debugPrint('✅ Paginación: página ${transaccionesResponse.paginacion.page}/${transaccionesResponse.paginacion.lastPage} (total: ${transaccionesResponse.paginacion.total})');
-            if (transaccionesResponse.data.isEmpty && transaccionesResponse.paginacion.total > 0) {
-              debugPrint('⚠️ ADVERTENCIA: total > 0 pero lista vacía. Posible error en parseo.');
-            }
-            return transaccionesResponse;
-          } else {
+          // ! Dio puede entregar Map<dynamic,dynamic>; `is Map<String,dynamic>` falla y no se parseaba.
+          final raw = response.data;
+          if (raw is! Map) {
             debugPrint('❌ La respuesta no es un Map, es: ${response.data.runtimeType}');
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
+          final responseData = Map<String, dynamic>.from(raw as Map);
+          final transaccionesResponse =
+              TransaccionesResponse.fromJson(responseData);
+          debugPrint('✅ Transacciones parseadas: ${transaccionesResponse.data.length}');
+          debugPrint('✅ Paginación: página ${transaccionesResponse.paginacion.page}/${transaccionesResponse.paginacion.lastPage} (total: ${transaccionesResponse.paginacion.total})');
+          if (transaccionesResponse.data.isEmpty &&
+              transaccionesResponse.paginacion.total > 0) {
+            debugPrint(
+                '⚠️ ADVERTENCIA: total > 0 pero lista vacía. Posible error en parseo.');
+          }
+          return transaccionesResponse;
         } catch (parseError, stackTrace) {
           debugPrint('❌ Error al parsear respuesta: $parseError');
           debugPrint('❌ Stack trace: $stackTrace');

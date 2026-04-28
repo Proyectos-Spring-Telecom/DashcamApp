@@ -35,14 +35,11 @@
 
   <title>Monedero Digital</title>
   <link rel="manifest" href="manifest.json">
+  <script
+    type="text/javascript"
+    src="https://docs.netpay.mx/cdn/v1.3/netpay.min.js"></script>
   
-  <!-- Google Maps JavaScript API - Cargar con loading=async para mejor rendimiento -->
-  <script 
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC3vvrNAZOxtjzm0LmdDzSW9gXT1ZZbEYQ&libraries=places&loading=async" 
-    async 
-    defer
-    onerror="console.error('Error al cargar Google Maps JavaScript API')">
-  </script>
+  <!-- Google Maps JavaScript API: la clave se inyecta en tiempo de ejecución desde la variable de compilación (valor en android/local.properties). Build: flutter build web --dart-define=GOOGLE_MAPS_API_KEY=$(grep google.maps.api.key android/local.properties | cut -d= -f2) -->
   
   <!-- Estilos para evitar franja blanca en modo oscuro -->
   <style>
