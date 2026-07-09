@@ -1,7 +1,6 @@
 import 'package:dashboardpro/services/variantes_service.dart';
 import 'package:dashboardpro/model/variantes/variante_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 /// * Estados del bloc de variantes
@@ -48,7 +47,6 @@ class VariantesBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Cargando variantes...');
 
       final response = await _variantesService.obtenerVariantes(token);
       _variantes = response.data;
@@ -59,18 +57,13 @@ class VariantesBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Variantes cargadas exitosamente');
-      debugPrint('✅ Total de variantes: ${_variantes.length}');
     } on VariantesException catch (e) {
-      debugPrint('❌ VariantesException en cargarVariantes: ${e.message}');
       _status = VariantesStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
       _errorController.add(_errorMessage);
       _variantesController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarVariantes: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = VariantesStatus.error;
       _errorMessage = 'No fue posible cargar las variantes. Intenta más tarde.';
       _statusController.add(_status);

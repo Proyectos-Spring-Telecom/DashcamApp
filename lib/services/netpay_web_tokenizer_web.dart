@@ -130,9 +130,6 @@ class NetPayWebTokenizer {
       [js_util.jsify(cardInformation), successCallback, errorCallback],
     );
 
-    if (kDebugMode) {
-      debugPrint('🌐 NetPay tokenization via JS en Web');
-    }
 
     return completer.future.timeout(
       const Duration(seconds: 30),

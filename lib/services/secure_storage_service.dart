@@ -13,6 +13,7 @@ class SecureStorageService {
   );
 
   static const String _tokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'auth_refresh_token';
   static const String _userKey = 'user_data';
 
   /// Guarda el token de autenticación
@@ -30,6 +31,24 @@ class SecureStorageService {
       return await _storage.read(key: _tokenKey);
     } catch (e) {
       throw Exception('Error al leer el token: $e');
+    }
+  }
+
+  /// Guarda el refresh token
+  Future<void> saveRefreshToken(String refreshToken) async {
+    try {
+      await _storage.write(key: _refreshTokenKey, value: refreshToken);
+    } catch (e) {
+      throw Exception('Error al guardar el refresh token: $e');
+    }
+  }
+
+  /// Obtiene el refresh token
+  Future<String?> getRefreshToken() async {
+    try {
+      return await _storage.read(key: _refreshTokenKey);
+    } catch (e) {
+      throw Exception('Error al leer el refresh token: $e');
     }
   }
 
@@ -59,6 +78,7 @@ class SecureStorageService {
   Future<void> clearAll() async {
     try {
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _refreshTokenKey);
       await _storage.delete(key: _userKey);
     } catch (e) {
       throw Exception('Error al limpiar el almacenamiento: $e');

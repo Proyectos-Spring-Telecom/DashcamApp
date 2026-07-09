@@ -1,18 +1,9 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:dashboardpro/view/dashboard/datos_fiscales_bottom_sheet.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/services.dart';
 // Imports condicionales para File
 import 'dart:io' if (dart.library.html) 'package:dashboardpro/services/auth_service_file_stub.dart';
-// Imports condicionales para HTML (solo web)
-import 'package:dashboardpro/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
-import 'package:dashboardpro/services/ui_web_stub.dart' as ui_web if (dart.library.html) 'dart:ui_web';
-import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:dashboardpro/model/auth/user.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
 import 'package:quickalert/quickalert.dart';
 
 class PerfilUsuarioPage extends StatefulWidget {
@@ -23,8 +14,6 @@ class PerfilUsuarioPage extends StatefulWidget {
 }
 
 class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
-  // En mobile, File es de dart:io; en web nunca se usa
-  dynamic _selectedImage; // Usamos dynamic para evitar conflictos de tipos entre stub y dart:io
   Uint8List? _selectedImageBytes; // Para web
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
@@ -730,8 +719,6 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
         height: 120,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          debugPrint('Error loading profile image from S3: $error');
-          debugPrint('Image URL: $imageUrl');
           return _buildDefaultAvatar();
         },
         loadingBuilder: (context, child, loadingProgress) {
@@ -948,7 +935,6 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
         }
         
         if (!isValidFormat) {
-          debugPrint('Formato de imagen no válido. MimeType: ${image.mimeType}');
           if (mounted) {
             QuickAlert.show(
               context: context,
@@ -966,9 +952,6 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
         // Usamos bytes en ambos casos para evitar conflictos de tipos
         setState(() {
           _selectedImageBytes = imageBytes;
-          if (!kIsWeb) {
-            _selectedImage = imageFile; // Guardamos también para el servicio
-          }
         });
 
         // Subir la foto automáticamente
@@ -1043,7 +1026,6 @@ class _PerfilUsuarioPageState extends State<PerfilUsuarioPage> {
 
         // Mantener la imagen seleccionada en la UI para que se vea actualizada
         // La imagen del servidor se actualizará cuando se recargue el usuario
-        // No limpiar _selectedImage para mantener la imagen visible en la UI
         
         // Nota: Si el backend retorna la nueva URL en la respuesta, podríamos
         // actualizar el usuario aquí. Por ahora, la imagen se mantendrá visible

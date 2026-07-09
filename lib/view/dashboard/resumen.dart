@@ -1,4 +1,5 @@
 // Project imports:
+import 'package:dashboardpro/utils/secure_log.dart';
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/utils/device_info_helper.dart';
 import 'package:dashboardpro/utils/location_helper.dart';
@@ -63,7 +64,6 @@ class _ResumenPageState extends State<ResumenPage> {
     }
 
     // Si el tipo no es reconocido, usar crédito por defecto
-    debugPrint('⚠️ Tipo de tarjeta no reconocido: $cardType, usando crédito por defecto');
     return 3; // Crédito por defecto
   }
 
@@ -91,23 +91,18 @@ class _ResumenPageState extends State<ResumenPage> {
   /// El deviceFingerPrint viene del servicio /netpay/customers en el arreglo paymentSources
   String? _getDeviceFingerPrint(PaymentSourceModel? paymentSource) {
     if (paymentSource == null) {
-      debugPrint('⚠️ PaymentSource es null');
       return null;
     }
     
     // Debug: imprimir información de la tarjeta
-    debugPrint('🔍 Información de la tarjeta seleccionada:');
-    debugPrint('   - Token: ${paymentSource.card.token}');
-    debugPrint('   - deviceFingerPrint: ${paymentSource.deviceFingerPrint}');
-    debugPrint('   - deviceFingerPrint es null: ${paymentSource.deviceFingerPrint == null}');
-    debugPrint('   - deviceFingerPrint está vacío: ${paymentSource.deviceFingerPrint?.isEmpty ?? true}');
+    SecureLog.d('🔍 Información de la tarjeta seleccionada:');
+    SecureLog.dToken('   - Token', paymentSource.card.token);
     
     if (paymentSource.deviceFingerPrint != null && paymentSource.deviceFingerPrint!.isNotEmpty) {
       return paymentSource.deviceFingerPrint;
     }
     
     // Si no hay deviceFingerPrint, NO usar fallback - debe venir del servicio
-    debugPrint('❌ deviceFingerPrint no disponible en paymentSource');
     return null;
   }
 
@@ -116,7 +111,6 @@ class _ResumenPageState extends State<ResumenPage> {
   int? _getIdDireccionFromDatosTarjeta(String sourceOrTokenCard) {
     final customer = netPayBloc.currentCustomer;
     if (customer == null) {
-      debugPrint('⚠️ Customer es null, no se puede obtener idDireccion');
       return null;
     }
 
@@ -125,13 +119,12 @@ class _ResumenPageState extends State<ResumenPage> {
         (dt) => dt.tokenCard == sourceOrTokenCard,
       );
       
-      debugPrint('✅ idDireccion encontrado en datosTarjeta: ${datoTarjeta.idDireccion}');
       return datoTarjeta.idDireccion;
     } catch (e) {
-      debugPrint('❌ No se encontró idDireccion en datosTarjeta para token/source: $sourceOrTokenCard');
-      debugPrint('   - datosTarjeta disponibles: ${customer.datosTarjeta.length}');
+      SecureLog.d('❌ No se encontró idDireccion en datosTarjeta para token/source (redactado)');
+      SecureLog.d('   - datosTarjeta disponibles: ${customer.datosTarjeta.length}');
       for (var dt in customer.datosTarjeta) {
-        debugPrint('     - tokenCard: ${dt.tokenCard}, idDireccion: ${dt.idDireccion}');
+        SecureLog.d('     - idDireccion: ${dt.idDireccion}');
       }
       return null;
     }
@@ -209,21 +202,12 @@ class _ResumenPageState extends State<ResumenPage> {
         }
         
         // Debug: verificar información de la tarjeta
-        debugPrint('🔍 Información de tarjeta para recarga:');
-        debugPrint('   - Token: ${selectedCard.card.token}');
-        debugPrint('   - Type: ${selectedCard.card.type}');
-        debugPrint('   - deviceFingerPrint (raw): ${selectedCard.deviceFingerPrint}');
-        debugPrint('   - deviceFingerPrint (obtenido): $deviceFingerPrint');
-        debugPrint('   - deviceFingerPrint es null: ${deviceFingerPrint == null}');
-        debugPrint('   - deviceFingerPrint está vacío: ${deviceFingerPrint?.isEmpty ?? true}');
-        debugPrint('   - idDireccion (datosTarjeta): ${_getIdDireccionFromDatosTarjeta(tokenCardNetPay)}');
-        debugPrint('   - idDireccion (paymentSource): ${selectedCard.idDireccion}');
-        debugPrint('   - idDireccion (card): ${selectedCard.card.idDireccion}');
-        debugPrint('   - idDireccion (final): $idDireccion');
+        SecureLog.d('🔍 Información de tarjeta para recarga:');
+        SecureLog.dToken('   - Token', selectedCard.card.token);
+        SecureLog.dToken('   - source', selectedCard.source);
         
         // Validar que el deviceFingerPrint esté disponible
         if (deviceFingerPrint == null || deviceFingerPrint.isEmpty) {
-          debugPrint('❌ ERROR: deviceFingerPrint es null o vacío');
           QuickAlert.show(
             context: context,
             type: QuickAlertType.warning,
@@ -237,7 +221,6 @@ class _ResumenPageState extends State<ResumenPage> {
         
         // Validar que idDireccion esté disponible (obligatorio para tarjeta)
         if (idDireccion == null) {
-          debugPrint('❌ ERROR: idDireccion es null');
           QuickAlert.show(
             context: context,
             type: QuickAlertType.warning,
@@ -249,17 +232,14 @@ class _ResumenPageState extends State<ResumenPage> {
           return;
         }
         
-        debugPrint('✅ Todos los campos de tarjeta están disponibles');
-        debugPrint('   - tokenCardNetPay: $tokenCardNetPay');
-        debugPrint('   - deviceFingerPrint: $deviceFingerPrint');
-        debugPrint('   - idDireccion: $idDireccion');
+        SecureLog.d('✅ Todos los campos de tarjeta están disponibles');
+        SecureLog.dToken('   - tokenCardNetPay', tokenCardNetPay);
       }
 
       // Obtener información del dispositivo
       final deviceInformation = await DeviceInfoHelper.getDeviceInformation(context);
 
       // Obtener ubicación actual con helper robusto (PWA iOS: solicita permisos si hace falta)
-      debugPrint('📍 [Resumen] Solicitando coordenadas antes de recarga (requestPermissionIfNeeded=true)...');
       final ubicacion = await LocationHelper.getValidCoordinatesMap(
         requestPermissionIfNeeded: true,
       );
@@ -271,9 +251,7 @@ class _ResumenPageState extends State<ResumenPage> {
           LocationHelper.isValidCoordinate(ubicacion['longitud'])) {
         latitudInicial = ubicacion['latitud'];
         longitudInicial = ubicacion['longitud'];
-        debugPrint('📍 [Resumen] Coordenadas válidas para recarga: lat=$latitudInicial, lng=$longitudInicial');
       } else {
-        debugPrint('⚠️ [Resumen] No se obtuvieron coordenadas válidas. ubicacion=$ubicacion');
         if (!mounted) return;
         QuickAlert.show(
           context: context,
@@ -293,7 +271,7 @@ class _ResumenPageState extends State<ResumenPage> {
       });
 
       // Realizar la recarga con todos los campos necesarios (coordenadas ya validadas)
-      final response = await monederoBloc.realizarRecarga(
+      await monederoBloc.realizarRecarga(
         numeroSerieMonedero: numeroSerieMonedero,
         monto: amount,
         idMetodoPago: idMetodoPago,

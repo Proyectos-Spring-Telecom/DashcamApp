@@ -4,7 +4,6 @@ import 'package:dashboardpro/widgets/routes/routes_name.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quickalert/quickalert.dart';
-import 'package:flutter/foundation.dart';
 
 /// * Gestor centralizado de sesión
 /// Maneja el cierre automático de sesión cuando el token expira
@@ -49,14 +48,12 @@ class SessionManager {
   static Future<void> handleSessionExpired(BuildContext? context) async {
     // * Evitar múltiples llamadas simultáneas
     if (_isLoggingOut) {
-      debugPrint('⚠️ Ya se está procesando un cierre de sesión');
       return;
     }
 
     _isLoggingOut = true;
 
     try {
-      debugPrint('🔐 Sesión expirada. Cerrando sesión automáticamente...');
 
       // * Cerrar sesión en AuthBloc primero
       await authBloc.logout();
@@ -89,7 +86,6 @@ class SessionManager {
             },
           );
         } catch (e) {
-          debugPrint('⚠️ Error al mostrar alerta: $e');
           // * Si falla la alerta, redirigir directamente
           if (navigatorContext.mounted) {
             GoRouter.of(navigatorContext).go(RoutesName.login);
@@ -97,7 +93,6 @@ class SessionManager {
         }
       } else {
         // * Si no hay contexto, intentar redirigir usando el navigator key
-        debugPrint('⚠️ No hay contexto disponible, intentando redirigir con navigator key');
         // * Esperar un momento para que el contexto esté disponible
         await Future.delayed(const Duration(milliseconds: 300));
         
@@ -106,17 +101,12 @@ class SessionManager {
           try {
             GoRouter.of(routerContext).go(RoutesName.login);
           } catch (e) {
-            debugPrint('⚠️ Error al redirigir con GoRouter: $e');
           }
         } else {
-          debugPrint('⚠️ No se pudo obtener contexto para redirigir');
         }
       }
 
-      debugPrint('✅ Sesión cerrada y redirigido al login');
     } catch (e, stackTrace) {
-      debugPrint('❌ Error al manejar expiración de sesión: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
     } finally {
       _isLoggingOut = false;
     }

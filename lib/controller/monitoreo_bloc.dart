@@ -1,7 +1,6 @@
 import 'package:dashboardpro/services/monitoreo_service.dart';
 import 'package:dashboardpro/model/monitoreo/unidad_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 /// * Estados del bloc de monitoreo
@@ -55,7 +54,6 @@ class MonitoreoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Cargando unidades de monitoreo...');
 
       // * Llamar al servicio
       final response = await _monitoreoService.obtenerUnidades(token);
@@ -68,19 +66,13 @@ class MonitoreoBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Unidades cargadas exitosamente');
-      debugPrint('✅ Total de unidades: ${_unidades.length}');
-      debugPrint('✅ Unidades con posición válida: ${response.unidadesConPosicionValida.length}');
     } on MonitoreoException catch (e) {
-      debugPrint('❌ MonitoreoException en cargarUnidades: ${e.message}');
       _status = MonitoreoStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
       _errorController.add(_errorMessage);
       _unidadesController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarUnidades: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = MonitoreoStatus.error;
       _errorMessage = 'No se pudieron cargar las unidades. Intenta más tarde.';
       _statusController.add(_status);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dashboardpro/model/netpay/card_token_request.dart';
 import 'package:dashboardpro/model/netpay/card_token_response.dart';
 import 'package:dashboardpro/services/netpay_web_tokenizer_stub.dart'
@@ -17,9 +18,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// - No se imprimen datos sensibles en logs
 /// - Usa HTTPS obligatoriamente
 class NetPayWebViewService {
-  // Llave pública de NetPay (para tokenización desde el cliente)
-  static const String _publicApiKey = 'pk_netpay_YbahDkYgsFmUhIFYNzijoIqDJ';
-  
   final bool _useSandbox;
   final String? _apiKey;
   final NetPayWebTokenizer _webTokenizer = NetPayWebTokenizer();
@@ -32,7 +30,24 @@ class NetPayWebViewService {
     bool useSandbox = true,
     String? apiKey,
   })  : _useSandbox = useSandbox,
-        _apiKey = apiKey ?? _publicApiKey;
+        _apiKey = _resolveApiKey(apiKey);
+
+  static String? _resolveApiKey(String? apiKey) {
+    final resolved = (apiKey ?? EnvConfig.netpayPublicApiKey).trim();
+    return resolved.isEmpty ? null : resolved;
+  }
+
+  String get _effectiveApiKey {
+    final key = _apiKey;
+    if (key == null || key.isEmpty) {
+      throw StateError(
+        'NETPAY_PUBLIC_API_KEY no configurada. '
+        'Defínela en .env con --dart-define-from-file=.env '
+        'o --dart-define=NETPAY_PUBLIC_API_KEY=pk_...',
+      );
+    }
+    return key;
+  }
 
   /// Inicializa el WebView y carga el HTML de NetPay
   Future<void> initializeWebView() async {
@@ -56,9 +71,6 @@ class NetPayWebViewService {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
-            if (kDebugMode) {
-              debugPrint('📄 Página cargada en WebView');
-            }
             // Configurar NetPay después de que la página se cargue
             _configureNetPay();
           },
@@ -78,9 +90,6 @@ class NetPayWebViewService {
         ),
       );
 
-    if (kDebugMode) {
-      debugPrint('🔵 WebView inicializado para NetPay');
-    }
   }
 
   /// Configura NetPay con la API key y modo sandbox
@@ -91,11 +100,12 @@ class NetPayWebViewService {
       await initializeWebView();
     }
 
+    final apiKey = _effectiveApiKey;
     final script = '''
       if (typeof handleMessageFromFlutter === 'function') {
         handleMessageFromFlutter(JSON.stringify({
           action: 'configure',
-          apiKey: '$_apiKey',
+          apiKey: ${jsonEncode(apiKey)},
           useSandbox: $_useSandbox
         }));
       } else {
@@ -105,9 +115,6 @@ class NetPayWebViewService {
 
     await _webViewController!.runJavaScript(script);
 
-    if (kDebugMode) {
-      debugPrint('⚙️ NetPay configurado con API key y sandbox: $_useSandbox');
-    }
   }
 
   /// Tokeniza una tarjeta usando NetPayJS
@@ -116,7 +123,7 @@ class NetPayWebViewService {
       return _webTokenizer.tokenizeCard(
         request: request,
         useSandbox: _useSandbox,
-        apiKey: _apiKey ?? _publicApiKey,
+        apiKey: _effectiveApiKey,
       );
     }
 
@@ -189,8 +196,6 @@ class NetPayWebViewService {
       await _webViewController!.runJavaScript(script);
 
       if (kDebugMode) {
-        debugPrint('📤 Datos enviados al WebView para tokenización');
-        debugPrint('📤 Request ID: $_currentRequestId');
       }
 
       // Esperar la respuesta (con timeout)
@@ -198,17 +203,11 @@ class NetPayWebViewService {
         const Duration(seconds: 30),
         onTimeout: () {
           _completerController.remove(_currentRequestId);
-          if (kDebugMode) {
-            debugPrint('⏱️ Timeout: La tokenización tardó más de 30 segundos');
-          }
           throw Exception('Tiempo de espera agotado. Por favor, verifica tu conexión a internet e intenta nuevamente.');
         },
       );
     } catch (e) {
       _completerController.remove(_currentRequestId);
-      if (kDebugMode) {
-        debugPrint('❌ Error en tokenizeCard: $e');
-      }
       rethrow;
     }
   }
@@ -220,21 +219,12 @@ class NetPayWebViewService {
       final type = message['type'] as String?;
       final requestId = message['requestId'] as String?;
 
-      if (kDebugMode) {
-        debugPrint('📥 Mensaje recibido del WebView: $type');
-      }
 
       switch (type) {
         case 'ready':
-          if (kDebugMode) {
-            debugPrint('✅ NetPayJS está listo');
-          }
           break;
 
         case 'configured':
-          if (kDebugMode) {
-            debugPrint('✅ NetPay configurado correctamente');
-          }
           break;
 
         case 'success':
@@ -247,9 +237,6 @@ class NetPayWebViewService {
             final brand = message['brand'] as String?;
 
             if (token.isEmpty) {
-              if (kDebugMode) {
-                debugPrint('❌ Token vacío recibido de NetPay');
-              }
               completer.completeError('Token vacío recibido de NetPay');
               return;
             }
@@ -265,9 +252,6 @@ class NetPayWebViewService {
 
             completer.complete(response);
 
-            if (kDebugMode) {
-              debugPrint('✅ Tokenización exitosa');
-            }
           }
           break;
 
@@ -314,22 +298,13 @@ class NetPayWebViewService {
             completer.completeError(errorMessage);
 
             if (kDebugMode) {
-              debugPrint('❌ Error de tokenización: $errorMessage');
-              debugPrint('❌ Código de error: $errorCode');
-              debugPrint('❌ Mensaje original: $errorMessageRaw');
             }
           }
           break;
 
         default:
-          if (kDebugMode) {
-            debugPrint('⚠️ Tipo de mensaje desconocido: $type');
-          }
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error al procesar mensaje del WebView: $e');
-      }
       // Intentar completar con error si hay un requestId
       final requestId = _currentRequestId;
       if (requestId != null && _completerController.containsKey(requestId)) {

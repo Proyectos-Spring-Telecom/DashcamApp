@@ -6,10 +6,13 @@ Contratos por capa y módulo para toda la aplicación (API, dominio, datos, serv
 
 ## 2.1 Convenciones generales
 
-- **Base URL API:** `https://dashcampay.com/apidev`
+- **Base URL API:** `EnvConfig.apiBaseUrl` — por defecto `https://dashcampay.com/apipay` (configurable vía `API_BASE_URL` en `.env` o `--dart-define`).
+- **Base URL auth:** `EnvConfig.authApiBaseUrl` — igual a `apiBaseUrl` salvo que se defina `AUTH_API_BASE_URL`.
+- **Desarrollo Web (localhost):** en debug, `EnvConfig` redirige a `http://127.0.0.1:8090/apipay` (proxy CORS). Flag `EnvConfig.usesWebDevProxy`.
 - **Autenticación:** `Authorization: Bearer {token}` salvo en endpoints públicos.
 - **Headers habituales:** `Content-Type: application/json`, `Accept: application/json`
 - **Manejo de errores:** los servicios suelen lanzar excepciones propias (AuthException, MonederoException, etc.); los repositorios que siguen el patrón Result devuelven `Result.failure(message, statusCode)`.
+- **HTTP 429:** manejado globalmente por `RateLimitInterceptor` (alerta QuickAlert + reject con extra `rate_limit_handled`).
 
 ---
 
@@ -27,6 +30,27 @@ Contratos por capa y módulo para toda la aplicación (API, dominio, datos, serv
 | `statusCode` | int? | Código HTTP opcional. |
 
 **Constructores:** `Result.success(T data, {int? statusCode})`, `Result.failure(String message, {int? statusCode})`.
+
+---
+
+## 2.2.1 Contrato de configuración (EnvConfig)
+
+**Archivo:** `lib/core/env_config.dart`
+
+| Propiedad / getter | Descripción |
+|--------------------|-------------|
+| `configuredApiBaseUrl` | URL configurada sin proxy (p. ej. `https://dashcampay.com/apipay`). |
+| `apiBaseUrl` | URL efectiva para servicios; en Web localhost debug → proxy local. |
+| `authApiBaseUrl` | Base para auth; usa `AUTH_API_BASE_URL` si existe, si no `apiBaseUrl`. |
+| `googleMapsApiKey` | Clave Maps (`--dart-define` o `.env`). |
+| `netpayPublicApiKey` | Llave pública NetPay `pk_*` (nunca `sk_*` en cliente). |
+| `appEnv` | Ambiente: `development`, `qa`, `production`. |
+| `usesWebDevProxy` | `true` si Web + debug + localhost y proxy habilitado. |
+| `webDevProxyUrl` | `http://127.0.0.1:8090/apipay` (puerto configurable con `WEB_DEV_PROXY_PORT`). |
+
+**Prioridad de resolución:** `--dart-define` > `flutter_dotenv` (`.env`) > valor por defecto.
+
+**Proxy de desarrollo Web:** `tool/dev_api_proxy.dart` — reenvía a la API real e inyecta cabeceras CORS. Solo necesario en Flutter Web sobre `localhost`.
 
 ---
 
@@ -85,7 +109,7 @@ abstract class TransaccionesRepository {
 
 **Archivo:** `lib/data/datasources/extravio_remote_datasource.dart`
 
-- Reporte de extravío; baseUrl: dashcampay.com/apidev.
+- Reporte de extravío; baseUrl: `EnvConfig.apiBaseUrl`.
 - **Excepción:** tipo específico de extravío (según implementación).
 
 ### TransaccionesRemoteDataSource
@@ -122,19 +146,38 @@ abstract class TransaccionesRepository {
 
 Los servicios usan Dio contra la base URL indicada. Resumen por servicio:
 
-### Auth (AuthService)
+### Auth (AuthService + AuthApiService)
 
-| Método HTTP | Ruta | Uso |
-|-------------|------|-----|
-| POST | /login | login(userName, password) |
-| POST | /register | registro |
-| POST | /verify-code | verificación de correo |
-| POST | /forgot-password | recuperación de contraseña |
-| POST | /resend-code | reenvío de código |
-| POST | /change-password | cambio de contraseña |
-| POST | (upload) | foto de perfil |
+**AuthApiService** (`lib/services/auth_api_service.dart`): cliente Dio **sin** `SessionInterceptor` (evita ciclos en refresh). Incluye `RateLimitInterceptor`.
 
-Todos con body JSON según modelo (LoginResponse, RegistroResponse, etc.).
+| Método HTTP | Ruta | Uso | Respuesta |
+|-------------|------|-----|-----------|
+| POST | /login | login(userName, password) | `{ token, refreshToken }` → `LoginResponse` |
+| POST | /login/refresh | refreshTokens(refreshToken) | `{ token, refreshToken }` → `LoginResponse` |
+
+**AuthService** (`lib/services/auth_service.dart`): resto de operaciones auth y perfil.
+
+| Método HTTP | Ruta | Uso | Autenticación |
+|-------------|------|-----|---------------|
+| GET | /login/me | fetchCurrentUser(token) — perfil completo (rol, permisos, cliente) | Bearer |
+| POST | /register | registro | No |
+| POST | /verify-code | verificación de correo (**código 6 dígitos**) | No |
+| POST | /forgot-password | recuperación de contraseña | No |
+| POST | /resend-code | reenvío de código | No |
+| POST | /change-password | cambio de contraseña | Sí |
+| POST | (upload) | foto de perfil | Sí |
+
+**LoginResponse** (`lib/model/auth/login_response.dart`):
+
+```dart
+class LoginResponse {
+  final String token;
+  final String refreshToken;
+  // fromJson: token, refreshToken
+}
+```
+
+**Flujo post-login:** `AuthBloc.applyRefreshedTokens()` → guarda tokens → `GET /login/me` → persiste `User` (fallback `User.fromAccessToken` si `/login/me` falla).
 
 ### Monedero (MonederoService)
 
@@ -195,18 +238,29 @@ Todos con body JSON según modelo (LoginResponse, RegistroResponse, etc.).
 ### NetPay (NetPayService, NetPayTokenizationService, NetPayWebviewService)
 
 - Endpoints propios de NetPay (tokenización, cliente, asignación de tarjetas, etc.) según documentación NetPay.
-- **Cliente (tokenización):** la llave pública (`pk_netpay_…`) se usa solo en flujos permitidos por NetPayJS/WebView; el backend usa credenciales privadas para cargos y conciliación.
+- **Cliente (tokenización):** la llave pública (`pk_netpay_…`) se resuelve con `EnvConfig.netpayPublicApiKey`; el backend usa credenciales privadas para cargos y conciliación.
 - **Recarga / monedero:** el parámetro que identifica la tarjeta guardada para cobrar debe ser el **token almacenado reutilizable** (`paymentSource.source` en la lista de medios de pago), no el `card.token` de un solo uso cuando aplique la documentación de NetPay.
 
 ---
 
-## 2.7 Contrato del interceptor de sesión
+## 2.7 Contratos de interceptores Dio
+
+### SessionInterceptor
 
 **Archivo:** `lib/interceptors/session_interceptor.dart`
 
 - **Tipo:** Dio `Interceptor`.
-- **Endpoints públicos (no requieren token):** `/login`, `/register`, `/forgot-password`, `/resend-code`, `/verify-code`, `/clientes/public`.
-- **Comportamiento en error:** si la respuesta indica sesión inválida (`SessionManager.isSessionInvalid(responseData, statusCode)`), rechaza la petición con error "Sesión expirada" y llama a `SessionManager.handleSessionExpired()` para cerrar sesión en la app.
+- **Endpoints públicos (no requieren token):** `/login`, `/login/refresh`, `/register`, `/forgot-password`, `/resend-code`, `/verify-code`, `/clientes/public`.
+- **HTTP 401:** delega primero a `RateLimitInterceptor.tryHandle`; si no es 429, intenta refresh vía `TokenRefreshService.refreshSession()` y reintenta la petición una vez (extra `retriedExtraKey`). Si el refresh falla o la respuesta indica sesión inválida → `SessionManager.handleSessionExpired()`.
+- **HTTP 429:** delegado a `RateLimitInterceptor`.
+
+### RateLimitInterceptor
+
+**Archivo:** `lib/interceptors/rate_limit_interceptor.dart`
+
+- **Tipo:** Dio `Interceptor` (también expone `tryHandle` estático para uso desde `SessionInterceptor`).
+- **HTTP 429:** log debug `[HTTP 429] METHOD /path`, QuickAlert “Demasiados intentos” (una alerta a la vez), reject con extra `rate_limit_handled: true`.
+- **Integración:** añadido en `AuthApiService`, `SessionInterceptor` (vía tryHandle), `ClienteRemoteDataSource`, `ExtravioRemoteDataSource`.
 
 ---
 
@@ -214,19 +268,20 @@ Todos con body JSON según modelo (LoginResponse, RegistroResponse, etc.).
 
 | Servicio | Responsabilidad | Cliente HTTP |
 |----------|-----------------|--------------|
-| AuthService | Login, registro, verify, forgot/resend/change password, foto perfil | Dio (baseUrl apidev) + SessionInterceptor |
-| SecureStorageService | Guardar/obtener token y usuario (flutter_secure_storage) | — |
-| MonederoService | Monederos, wallet, transacciones paginadas, recargas, clientes/pasajeros/catpasajero, QR saldo, crear monedero | Dio (baseUrl apidev) + SessionInterceptor |
+| AuthApiService | POST /login, POST /login/refresh (sin SessionInterceptor) | Dio + RateLimitInterceptor; baseUrl `EnvConfig.authApiBaseUrl` |
+| AuthService | Registro, verify, forgot/resend/change password, GET /login/me, foto perfil | Dio (`EnvConfig.apiBaseUrl` / `authApiBaseUrl`) + SessionInterceptor |
+| SecureStorageService | Guardar/obtener token, refresh token y usuario (flutter_secure_storage) | — |
+| MonederoService | Monederos, wallet, transacciones paginadas, recargas, clientes/pasajeros/catpasajero, QR saldo, crear monedero | Dio (`EnvConfig.apiBaseUrl`) + SessionInterceptor |
 | TransaccionQrDebitoService | Transacciones débito QR paginadas | Dio |
-| ZonasService | Zonas | Dio (baseUrl apidev) |
-| RutasService | Rutas | Dio (baseUrl apidev) |
-| VariantesService | Variantes | Dio (baseUrl apidev) |
-| MonitoreoService | Monitoreo | Dio (baseUrl apidev) |
-| DireccionService | Consulta por CP | Dio (baseUrl apidev) |
-| NetPayService / NetPayTokenizationService / NetPayWebviewService | NetPay (API + tokenización) | Dio; WebView en plataformas no web; **web:** `NetPayWebTokenizer` + NetPayJS en `index.html` |
+| ZonasService | Zonas | Dio (`EnvConfig.apiBaseUrl`) |
+| RutasService | Rutas | Dio (`EnvConfig.apiBaseUrl`) |
+| VariantesService | Variantes | Dio (`EnvConfig.apiBaseUrl`) |
+| MonitoreoService | Monitoreo | Dio (`EnvConfig.apiBaseUrl`) |
+| DireccionService | Consulta por CP | Dio (`EnvConfig.apiBaseUrl`) |
+| NetPayService / NetPayTokenizationService / NetPayWebviewService | NetPay (API + tokenización); llave pública vía `EnvConfig.netpayPublicApiKey` | Dio; WebView en plataformas no web; **web:** `NetPayWebTokenizer` + NetPayJS |
 | Implementación condicional `netpay_web_tokenizer_*` | Misma API Dart que WebView; en web ejecuta JS global `NetPay` | Solo Flutter Web |
 
-Todos los que usan Dio contra apidev pueden compartir la misma baseUrl y, donde aplique, el mismo interceptor de sesión.
+Todos los que usan Dio comparten `EnvConfig.apiBaseUrl` y, donde aplique, interceptores de sesión y rate limit.
 
 ---
 
@@ -238,8 +293,9 @@ Todos los que usan Dio contra apidev pueden compartir la misma baseUrl y, donde 
 
 - **Estado:** AuthStatus (unauthenticated, authenticated, loading, error), User? currentUser, String? currentToken.
 - **Streams:** authStatusStream, userStream, errorStream.
-- **Métodos principales:** initialize(), login(userName, password), logout(), register, verifyEmail, changePassword, etc.
-- **Dependencias:** AuthService, SecureStorageService.
+- **Métodos principales:** initialize(), login(userName, password), logout(), register, verifyEmail, changePassword, applyRefreshedTokens(), refreshUserProfile(), refreshSession(), uploadProfilePhoto, etc.
+- **Dependencias:** AuthService, AuthApiService (vía AuthService), SecureStorageService.
+- **Post-login:** `applyRefreshedTokens` persiste token + refreshToken, llama `GET /login/me` y actualiza streams.
 
 ### MonederoBloc
 
@@ -284,7 +340,7 @@ Todos los que usan Dio contra apidev pueden compartir la misma baseUrl y, donde 
 
 ## 2.10 Contratos de modelos compartidos (referencia)
 
-- **Auth:** User, LoginResponse, RegistroRequest/Response, VerifyRequest/Response, ForgotPasswordRequest/Response, ChangePasswordRequest/Response, ResendCodeRequest/Response, FotoPerfilResponse, Rol, Permiso.
+- **Auth:** User, LoginResponse (`token`, `refreshToken`), RegistroRequest/Response, VerifyRequest/Response (código **6 dígitos**), ForgotPasswordRequest/Response, ChangePasswordRequest/Response, ResendCodeRequest/Response, FotoPerfilResponse, Rol, Permiso.
 - **Monedero:** MonederoModel, MonederoRequest/Response, PasajeroWalletModel, QrWalletModel, ClienteModel, PasajeroModel, TipoPasajeroModel, MonederosPaginadosResponse, etc.
 - **Transacciones:** TransaccionModel, TransaccionesResponse, PaginacionModel, TransaccionRequest/Response, RecargaRequest.
 - **NetPay:** CardTokenRequest/Response (`saveCard` para vault/simpleUse), NetPayCustomerModel, AssignCardTokenRequest, CreateCustomerRequest/Response, modelos de `paymentSource` / tarjeta con distinción entre **source** (reutilizable) y **token** de sesión de tokenización.
@@ -309,8 +365,9 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 
 ### Web
 
-- **Comando de build:** `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave>`.
-- **Variable de entorno / clave:** puede obtenerse de `android/local.properties` (`google.maps.api.key`) o definirse en el comando.
+- **Comando de build:** `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave> --dart-define-from-file=.env`.
+- **Desarrollo local:** proxy CORS en terminal separada (`dart run tool/dev_api_proxy.dart`) o `scripts/run_web_dev.sh`. La app en localhost usa automáticamente el proxy en debug.
+- **Variable de entorno / clave:** `.env` (gitignored) o `--dart-define`; Maps también desde `android/local.properties` (`google.maps.api.key`).
 - **Opcional:** `--no-wasm-dry-run` para omitir avisos de incompatibilidad Wasm (p. ej. flutter_secure_storage_web).
 
 ### Android
@@ -360,18 +417,59 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 
 ---
 
-## 2.15 Resumen de contratos por capa
+## 2.16 Contrato de presentación: autenticación (registro, verificación, contraseña)
+
+### PasswordRules / PasswordSecurityMeter
+
+**Archivos:** `lib/utils/password_rules.dart`, `lib/widgets/password_security_meter.dart`
+
+| Regla | Valor |
+|-------|-------|
+| Longitud | 12–16 caracteres |
+| Minúscula | al menos una `[a-z]` |
+| Número | al menos un dígito |
+| Símbolo | al menos uno de `[!@#$%^&*(),.?":{}|<>]` |
+| Espacios | no permitidos |
+
+**Uso:** `register.dart`, `cambio_contrasena.dart` — widget `PasswordSecurityMeter` muestra semáforo visual de cumplimiento.
+
+### Verificación de correo (email_verify.dart)
+
+| Aspecto | Contrato |
+|---------|----------|
+| Longitud del código | **6 dígitos** (`_verificationCodeLength = 6`) |
+| Entrada | campos numéricos individuales; solo dígitos |
+| Hot reload | `_initCodeFields()`, `_ensureCodeFields()`, `reassemble()` para evitar desincronización de listas |
+
+### Registro — fecha de nacimiento (CalendarDatePicker2)
+
+**Archivo:** `lib/view/extras/authentications/register.dart` — método `_abrirDialogFechaNacimiento`.
+
+| Aspecto | Contrato |
+|---------|----------|
+| Paquete | `calendar_date_picker2` ^2.0.1 |
+| Diálogo | `showCalendarDatePicker2Dialog` |
+| Ancho responsive | `(screenWidth - 32).clamp(240, 400)` |
+| Modo compacto (`dialogWidth < 320`) | `disableMonthPicker: true` (selector único "Mes Año"), `useAbbrLabelForMonthModePicker`, `modePickersGap: 0`, tipografías reducidas |
+| Meses | español completo en pantallas amplias; abreviados (`Ene`, `Feb`, …) en compacto |
+| Rango de fechas | `firstDate`: hoy − 120 años; `lastDate`: hoy |
+
+---
+
+## 2.17 Resumen de contratos por capa
 
 | Capa | Contratos principales |
 |------|------------------------|
+| **Configuración** | EnvConfig (apiBaseUrl, authApiBaseUrl, claves, proxy Web); `.env` + `--dart-define-from-file`. |
 | **Dominio** | Result&lt;T&gt;, ClienteRepository, ExtravioRepository, TransaccionesRepository; entidades (ClienteEntity, ExtravioReportRequest/Response). |
 | **Data** | ClienteRemoteDataSource, ExtravioRemoteDataSource, TransaccionesRemoteDataSource; ClienteRepositoryImpl, ExtravioRepositoryImpl, TransaccionesRepositoryImpl; modelos de data (ClienteModel, etc.). |
-| **Servicios** | AuthService, MonederoService, TransaccionQrDebitoService, ZonasService, RutasService, VariantesService, MonitoreoService, DireccionService, NetPay*, SecureStorageService; baseUrl apidev; excepciones propias por servicio. |
-| **Infraestructura** | SessionInterceptor (Dio), SessionManager (expiración de sesión). |
-| **Presentación** | AuthBloc, MonederoBloc, TransaccionesController, ThemeBloc, TransaccionQrDebitoBloc, ZonasBloc, RutasBloc, VariantesBloc, MonitoreoBloc, DireccionBloc, NetPayBloc, ExtravioBloc, ClienteBloc; GoRouter y RoutesName. |
-| **Build / plataforma** | Web: base-href /dashcampay/, GOOGLE_MAPS_API_KEY vía dart-define; carga del script de Maps en `main.dart`. Android: Kotlin 2.3.0 en settings.gradle; google.maps.api.key en local.properties. number_pagination 1.1.6: totalPages, currentPage, visiblePagesCount. |
+| **Servicios** | AuthApiService, AuthService, MonederoService, TransaccionQrDebitoService, ZonasService, RutasService, VariantesService, MonitoreoService, DireccionService, NetPay*, SecureStorageService; baseUrl vía EnvConfig; excepciones propias por servicio. |
+| **Infraestructura** | SessionInterceptor (refresh 401, expiración), RateLimitInterceptor (429), SessionManager, TokenRefreshService; proxy dev Web (`tool/dev_api_proxy.dart`). |
+| **Presentación** | AuthBloc, MonederoBloc, TransaccionesController, ThemeBloc, TransaccionQrDebitoBloc, ZonasBloc, RutasBloc, VariantesBloc, MonitoreoBloc, DireccionBloc, NetPayBloc, ExtravioBloc, ClienteBloc; PasswordSecurityMeter; GoRouter y RoutesName. |
+| **Build / plataforma** | Web: base-href /dashcampay/, GOOGLE_MAPS_API_KEY, `--dart-define-from-file=.env`, proxy CORS en dev. Android: Kotlin 2.3.0; google.maps.api.key; sin Firebase. number_pagination 1.1.6. |
+| **Autenticación (UI)** | Ver §2.16: PasswordRules, verificación 6 dígitos, CalendarDatePicker2 responsive. |
 | **Movilidad Inteligente (mapa)** | Ver §2.13: ubicación actual obligatoria para instanciar mapa, zoom en dos fases, debounce de overlay, sin `dispose` manual del controlador. |
-| **NetPay (cliente)** | Ver §2.14: tokenización web vs WebView, `saveCard` / vault, recarga con `paymentSource.source`. |
-| **API** | POST/GET contra https://dashcampay.com/apidev; autenticación Bearer salvo endpoints públicos; estructura de request/response según cada endpoint (login, transacciones/paginado, clientes/public, etc.). |
+| **NetPay (cliente)** | Ver §2.14: tokenización web vs WebView, `saveCard` / vault, recarga con `paymentSource.source`, llave vía EnvConfig. |
+| **API** | POST/GET contra `EnvConfig.apiBaseUrl` (apipay); auth: /login, /login/refresh, /login/me; Bearer salvo endpoints públicos. |
 
-Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código. **Actualización de comportamiento cliente (mapa, NetPay web):** 27 de abril de 2026.
+Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código. **Actualización:** 8 de julio de 2026 (EnvConfig, apipay, auth, interceptores, contraseñas, calendario responsive).

@@ -1,4 +1,5 @@
 // Project imports:
+import 'package:dashboardpro/utils/secure_log.dart';
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/utils/solo_letras_input.dart';
 import 'package:dashboardpro/utils/email_validation.dart';
@@ -25,7 +26,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
   final TextEditingController _codigoPostalController = TextEditingController();
   final TextEditingController _estadoController = TextEditingController();
   final TextEditingController _calleController = TextEditingController();
-  bool _guardarTarjeta = false;
   bool _direccionHabilitada = false;
   String? _municipioSeleccionado;
   String? _coloniaSeleccionada;
@@ -1358,9 +1358,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
       await netPayTokenizationBloc.tokenizeCard(request);
     } catch (e) {
       // El error ya se maneja en el BLoC
-      if (kDebugMode) {
-        debugPrint('Error en _handlePayment: $e');
-      }
     }
   }
 
@@ -1458,10 +1455,8 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
     }
     
     if (kDebugMode) {
-      debugPrint('✅ Tokenización completada exitosamente');
-      debugPrint('✅ Token: ${response.token}');
-      debugPrint('✅ Últimos 4 dígitos: ${response.last4Digits ?? "N/A"}');
-      debugPrint('✅ Tipo de tarjeta: ${response.cardType ?? "N/A"}');
+      SecureLog.d('✅ Tokenización completada exitosamente');
+      SecureLog.dToken('✅ Token', response.token);
     }
 
     // Obtener wallet para conseguir customerIdNetPay
@@ -1538,9 +1533,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
 
     // Verificar si customerIdNetPay es null - Si es null, crear cliente primero
     if (wallet.customerIdNetPay == null || wallet.customerIdNetPay!.isEmpty) {
-      if (kDebugMode) {
-        debugPrint('📝 customerIdNetPay es null, creando cliente en NetPay...');
-      }
 
       try {
         // Crear cliente en NetPay
@@ -1553,9 +1545,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
           idPasajero: wallet.idPasajero,
         );
 
-        if (kDebugMode) {
-          debugPrint('✅ Cliente creado exitosamente. Customer ID: $customerId');
-        }
 
         // Actualizar el wallet para obtener el nuevo customerIdNetPay
         // Esto es importante para que en futuras operaciones ya tenga el customerId
@@ -1564,25 +1553,16 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
         // Verificar que el wallet ahora tiene el customerIdNetPay
         final updatedWallet = monederoBloc.wallet;
         if (updatedWallet == null || updatedWallet.customerIdNetPay == null || updatedWallet.customerIdNetPay!.isEmpty) {
-          if (kDebugMode) {
-            debugPrint('⚠️ El wallet no se actualizó con el customerIdNetPay. Usando el ID recibido del servicio.');
-          }
           // Continuar con el customerId recibido del servicio
         } else {
           // Usar el customerId del wallet actualizado
           customerId = updatedWallet.customerIdNetPay!;
-          if (kDebugMode) {
-            debugPrint('✅ Wallet actualizado. Customer ID: $customerId');
-          }
         }
       } catch (e) {
         _procesandoAsignacion = false; // Resetear flag en caso de error
         _mostradoMensajeExito = false;
         _mostradoMensajeError = false;
         _clearSensitiveData();
-        if (kDebugMode) {
-          debugPrint('❌ Error al crear cliente en NetPay: $e');
-        }
         if (mounted && !_mostradoMensajeError && !_mostradoMensajeExito) {
           _mostradoMensajeError = true;
           QuickAlert.show(
@@ -1598,9 +1578,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
     } else {
       // Si ya existe customerIdNetPay, usarlo directamente
       customerId = wallet.customerIdNetPay!;
-      if (kDebugMode) {
-        debugPrint('✅ Usando customerIdNetPay existente: $customerId');
-      }
     }
 
     // Preparar datos para la asignación
@@ -1663,9 +1640,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
       if (mounted) {
         _clearSensitiveData();
       }
-      if (kDebugMode) {
-        debugPrint('❌ Error al asignar token: $e');
-      }
       if (mounted && !_mostradoMensajeError && !_mostradoMensajeExito) {
         _mostradoMensajeError = true;
         QuickAlert.show(
@@ -1705,9 +1679,6 @@ class _NuevaTarjetaPageState extends State<NuevaTarjetaPage> {
       }
     } catch (e) {
       // Si los controllers ya están disposed, ignorar el error
-      if (kDebugMode) {
-        debugPrint('⚠️ No se pudieron limpiar los controllers (posiblemente ya disposed): $e');
-      }
     }
     
     // Resetear el BLoC

@@ -2,9 +2,7 @@ import 'package:dashboardpro/services/netpay_service.dart';
 import 'package:dashboardpro/model/netpay/netpay_customer_model.dart';
 import 'package:dashboardpro/model/netpay/assign_card_token_request.dart';
 import 'package:dashboardpro/model/netpay/create_customer_request.dart';
-import 'package:dashboardpro/model/netpay/create_customer_response.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 enum NetPayStatus {
@@ -92,7 +90,6 @@ class NetPayBloc {
 
       // Verificar caché antes de hacer la llamada (solo si no se fuerza la recarga)
       if (!forceRefresh && _isCacheValid(customerId)) {
-        debugPrint('✅ Usando datos en caché para cliente $customerId');
         // Los datos ya están en _currentCustomer y el estado ya está configurado
         // Solo emitir los streams para actualizar la UI si no es silenciosa
         if (!silent) {
@@ -105,7 +102,6 @@ class NetPayBloc {
 
       // Evitar múltiples cargas simultáneas del mismo cliente (solo si no es silenciosa)
       if (!silent && _currentStatus == NetPayStatus.loading && _currentCustomer?.id == customerId) {
-        debugPrint('⏳ Ya se está cargando el cliente $customerId, omitiendo carga duplicada');
         return;
       }
 
@@ -126,11 +122,6 @@ class NetPayBloc {
         return;
       }
 
-      debugPrint('🔍 NetPayBloc - Iniciando carga de métodos de pago');
-      debugPrint('🔍 customerId recibido: $customerId');
-      debugPrint('🔍 customerId length: ${customerId.length}');
-      debugPrint('🔍 Token disponible: ${token.isNotEmpty}');
-      debugPrint('🔍 Silent mode: $silent');
 
       // Actualizar estado a loading solo si no es silenciosa
       if (!silent) {
@@ -163,20 +154,13 @@ class NetPayBloc {
       _statusController.add(_currentStatus);
       _errorController.add(null);
 
-      debugPrint('✅ Cliente NetPay obtenido exitosamente');
-      debugPrint('✅ Estado: $_currentStatus');
-      debugPrint('✅ Tarjetas encontradas: ${customer.paymentSources.length}');
-      debugPrint('✅ Caché actualizado para cliente $customerId');
     } on NetPayException catch (e) {
-      debugPrint('❌ NetPayException en obtenerClienteNetPay: ${e.message}');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add(e.message);
       _currentCustomer = null;
       _customerController.add(null);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerClienteNetPay: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       
@@ -269,17 +253,6 @@ class NetPayBloc {
       _statusController.add(_currentStatus);
       _errorController.add(null);
 
-      debugPrint('');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('🔄 NetPayBloc: Iniciando creación de cliente NetPay');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('📝 Datos del cliente:');
-      debugPrint('   - Nombre: $firstName');
-      debugPrint('   - Apellido: $lastName');
-      debugPrint('   - Email: $email');
-      debugPrint('   - Teléfono: $phone');
-      debugPrint('   - ID Pasajero: $idPasajero');
-      debugPrint('───────────────────────────────────────────────────────────');
 
       // Crear el request
       final request = CreateCustomerRequest(
@@ -302,25 +275,17 @@ class NetPayBloc {
         throw NetPayException('No se recibió el ID del cliente del servidor.');
       }
 
-      debugPrint('───────────────────────────────────────────────────────────');
-      debugPrint('✅ NetPayBloc: Cliente creado exitosamente');
-      debugPrint('✅ Customer ID recibido: ${response.customerId}');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('');
 
       // El estado se mantendrá en creating hasta que se complete la asignación
       // No cambiar a success aquí porque aún falta asignar la tarjeta
 
       return response.customerId;
     } on NetPayException catch (e) {
-      debugPrint('❌ NetPayException en crearClienteNetPay: ${e.message}');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add(e.message);
       rethrow;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en crearClienteNetPay: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -382,19 +347,6 @@ class NetPayBloc {
       _statusController.add(_currentStatus);
       _errorController.add(null);
 
-      debugPrint('');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('🔄 NetPayBloc: Iniciando asignación de tarjeta al cliente');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('📝 Datos de asignación:');
-      debugPrint('   - Customer ID: $customerId');
-      debugPrint('   - Nombre: $nombre');
-      debugPrint('   - Apellido Paterno: $apellidoPaterno');
-      debugPrint('   - Apellido Materno: $apellidoMaterno');
-      debugPrint('   - Email: $email');
-      debugPrint('   - Teléfono: $telefono');
-      debugPrint('   - ID Dirección: ${idDireccion ?? "null"}');
-      debugPrint('───────────────────────────────────────────────────────────');
 
       // Generar referenceId único (usando timestamp + random para garantizar unicidad)
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -435,19 +387,11 @@ class NetPayBloc {
       // Recargar las tarjetas actualizadas de forma silenciosa
       await obtenerClienteNetPay(customerId, silent: true, forceRefresh: true);
 
-      debugPrint('───────────────────────────────────────────────────────────');
-      debugPrint('✅ NetPayBloc: Tarjeta asignada exitosamente al cliente');
-      debugPrint('✅ Customer ID: $customerId');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('');
     } on NetPayException catch (e) {
-      debugPrint('❌ NetPayException en asignarTokenTarjeta: ${e.message}');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add(e.message);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en asignarTokenTarjeta: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -510,17 +454,13 @@ class NetPayBloc {
       // Resetear el flag de eliminación
       _isDeleting = false;
 
-      debugPrint('✅ Tarjeta eliminada exitosamente');
     } on NetPayException catch (e) {
       _isDeleting = false; // Resetear flag en caso de error
-      debugPrint('❌ NetPayException en eliminarTarjeta: ${e.message}');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add(e.message);
     } catch (e, stackTrace) {
       _isDeleting = false; // Resetear flag en caso de error
-      debugPrint('❌ Error inesperado en eliminarTarjeta: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _currentStatus = NetPayStatus.error;
       _statusController.add(_currentStatus);
       _errorController.add('Error inesperado: ${e.toString()}');

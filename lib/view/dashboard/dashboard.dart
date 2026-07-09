@@ -1,16 +1,11 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'dart:ui';
 import 'package:dashboardpro/controller/transacciones_controller.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
+import 'package:dashboardpro/utils/qr_saldo_validator.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/controller/extravio_bloc.dart';
-import 'package:dashboardpro/model/auth/user.dart';
 import 'package:quickalert/quickalert.dart';
-import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dashboardpro/widgets/routes/app_routes.dart' as app_routes;
 
@@ -55,9 +50,7 @@ class _DashboardState extends State<Dashboard> {
       await monederoBloc.refreshWallet();
       // También recargar las tarjetas de NetPay si hay customerIdNetPay
       _cargarTarjetasNetPay();
-      debugPrint('✅ Datos del dashboard actualizados correctamente');
     } catch (e) {
-      debugPrint('❌ Error al actualizar los datos: $e');
       // El RefreshIndicator manejará el error automáticamente
       rethrow;
     }
@@ -569,7 +562,6 @@ class _DashboardState extends State<Dashboard> {
             extra: {'numeroPasajes': numeroPasajes},
           );
         } else {
-          debugPrint('⚠️ Contexto no montado, usando navigator key');
           // * Fallback: usar el navigator key global
           final routerContext = app_routes.rootNavigatorKey.currentContext;
           if (routerContext != null && routerContext.mounted) {
@@ -579,8 +571,6 @@ class _DashboardState extends State<Dashboard> {
             );
           }
         }
-        debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-        debugPrint('👥 Número de pasajes: $numeroPasajes');
       },
     );
   }
@@ -1815,8 +1805,6 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
                   context: navigatorContext,
                   isDark: isDark,
                   onContinue: (bool esFamiliar, int numeroPasajes) {
-                    debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                    debugPrint('👥 Número de pasajes: $numeroPasajes');
                     // * Esperar otro frame para asegurar que el modal se cerró
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
@@ -1826,7 +1814,6 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
                           extra: {'numeroPasajes': numeroPasajes},
                         );
                       } else {
-                        debugPrint('⚠️ Contexto no montado, usando navigator key');
                         // * Fallback: usar el navigator key global
                         final routerContext = app_routes.rootNavigatorKey.currentContext;
                         if (routerContext != null && routerContext.mounted) {
@@ -2386,12 +2373,6 @@ class _MonederoBottomSheetState extends State<MonederoBottomSheet>
         );
       },
     );
-  }
-
-  Widget _buildOperacionesSection(
-      {Color textColor = Colors.white, bool isDark = true}) {
-    // Este método ya no se usa, pero se mantiene por compatibilidad
-    return const SizedBox.shrink();
   }
 
   Widget _buildTransaccionItem({
@@ -4171,6 +4152,8 @@ class TipoViajeDialog extends StatefulWidget {
     // * UPDATE: Renombrar numeroPasajeros a numeroPasajes
     required Function(bool esFamiliar, int numeroPasajes) onContinue,
   }) {
+    if (!QrSaldoValidator.validarAntesDeGenerar(context)) return;
+
     showDialog(
       context: context,
       barrierDismissible: true,

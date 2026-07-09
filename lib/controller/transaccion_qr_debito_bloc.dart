@@ -2,7 +2,6 @@ import 'package:dashboardpro/services/transaccion_qr_debito_service.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
 import 'package:dashboardpro/model/transaccion/paginacion_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 // ! BLOC: Transacciones Débito QR
@@ -67,7 +66,6 @@ class TransaccionQrDebitoBloc {
       }
 
       final fechaHoy = _fechaHoy;
-      debugPrint('📤 Cargando transacciones débito QR (día: $fechaHoy)');
 
       final response = await _service.obtenerTransaccionesDebitoQr(
         token,
@@ -85,9 +83,7 @@ class TransaccionQrDebitoBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Transacciones débito QR cargadas: ${_transacciones.length}');
     } on TransaccionQrDebitoException catch (e) {
-      debugPrint('❌ TransaccionQrDebitoException: ${e.message}');
       _status = TransaccionQrDebitoStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
@@ -95,8 +91,6 @@ class TransaccionQrDebitoBloc {
       _dataController.add([]);
       _isLoadingMore = false;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargar: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = TransaccionQrDebitoStatus.error;
       _errorMessage = 'No fue posible cargar la información. Intenta más tarde.';
       _statusController.add(_status);
@@ -131,12 +125,9 @@ class TransaccionQrDebitoBloc {
       _dataController.add(_transacciones);
       _isLoadingMore = false;
 
-      debugPrint('✅ Más transacciones débito QR: +${response.data.length}');
     } on TransaccionQrDebitoException catch (e) {
-      debugPrint('❌ TransaccionQrDebitoException en cargarMas: ${e.message}');
       _isLoadingMore = false;
     } catch (e) {
-      debugPrint('❌ Error en cargarMas: $e');
       _isLoadingMore = false;
     }
   }

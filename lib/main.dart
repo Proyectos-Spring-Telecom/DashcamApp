@@ -1,31 +1,22 @@
 
-import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/core/env_config.dart';
+import 'package:dashboardpro/core/env_loader.dart';
 import 'package:dashboardpro/services/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inyectar script de Google Maps en web con la clave desde --dart-define (valor de android/local.properties)
+  await loadAppEnv();
+
+  // Inyectar script de Google Maps en web (--dart-define=GOOGLE_MAPS_API_KEY o .env)
   if (kIsWeb) {
     await _ensureGoogleMapsScriptLoaded();
   }
 
-  // Inicializar Firebase
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    // Si no hay configuración de Firebase, la app puede continuar
-    // Para producción, asegúrate de tener google-services.json configurado
-    debugPrint('Firebase initialization error: $e');
-  }
-  
   // Inicializar el tema con la apariencia del sistema después de que el binding esté listo
   themeBloc.initializeWithSystemBrightness();
   
@@ -36,11 +27,8 @@ Future<void> main() async {
 }
 
 Future<void> _ensureGoogleMapsScriptLoaded() async {
-  const key = String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
+  final key = EnvConfig.googleMapsApiKey;
   if (key.isEmpty) {
-    debugPrint(
-      '⚠️ GOOGLE_MAPS_API_KEY no fue proporcionada. El mapa web puede fallar.',
-    );
     return;
   }
 
@@ -76,9 +64,7 @@ Future<void> _ensureGoogleMapsScriptLoaded() async {
 
   try {
     await completer.future.timeout(const Duration(seconds: 15));
-    debugPrint('✅ Google Maps JavaScript API cargado en web');
   } catch (e) {
-    debugPrint('❌ Error cargando Google Maps JavaScript API: $e');
   }
 }
 
@@ -123,15 +109,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // Usar PlatformDispatcher directamente
       final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
       final isDark = brightness == Brightness.dark;
-      debugPrint('🌓 Apariencia del sistema detectada: ${isDark ? "Oscuro" : "Claro"}');
       
       // Solo actualizar si es diferente al actual
       if (themeBloc.isDarkMode != isDark) {
-        debugPrint('🔄 Actualizando tema a: ${isDark ? "Oscuro" : "Claro"}');
         themeBloc.toggleDarkMode(isDark);
       }
     } catch (e) {
-      debugPrint('❌ Error actualizando tema desde sistema: $e');
     }
   }
 

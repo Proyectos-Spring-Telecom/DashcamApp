@@ -1,6 +1,5 @@
 import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
 import 'package:dashboardpro/model/transaccion/paginacion_model.dart';
-import 'package:flutter/foundation.dart';
 
 class TransaccionesResponse {
   final List<TransaccionModel> data;
@@ -14,7 +13,6 @@ class TransaccionesResponse {
   factory TransaccionesResponse.fromJson(Map<String, dynamic> json) {
     List<TransaccionModel> transacciones = [];
 
-    debugPrint('🔄 [TransaccionesResponse] Keys en JSON: ${json.keys.toList()}');
 
     // Listado: prioridad `data`, luego alias comunes del backend
     List<dynamic>? dataList;
@@ -27,7 +25,6 @@ class TransaccionesResponse {
     }
 
     if (dataList != null) {
-      debugPrint('🔄 Parseando ${dataList.length} transacciones (lista cruda)...');
       for (var i = 0; i < dataList.length; i++) {
         try {
           final item = dataList[i];
@@ -36,24 +33,13 @@ class TransaccionesResponse {
             final transaccion = TransaccionModel.fromJson(asMap);
             transacciones.add(transaccion);
             if (i == 0) {
-              debugPrint(
-                  '✅ Primera transacción parseada - ID: ${transaccion.id}, Tipo: ${transaccion.tipoTransaccion}');
             }
           } else {
-            debugPrint(
-                '⚠️ Item $i no es un Map, es: ${item.runtimeType}, valor: $item');
           }
         } catch (e, stackTrace) {
-          debugPrint('❌ Error al parsear transacción en índice $i: $e');
-          debugPrint('❌ Stack trace: $stackTrace');
-          debugPrint('❌ Datos del item: ${dataList[i]}');
         }
       }
-      debugPrint(
-          '✅ Transacciones parseadas exitosamente: ${transacciones.length}/${dataList.length}');
     } else {
-      debugPrint('⚠️ Sin lista reconocida (data / items / transacciones)');
-      debugPrint('⚠️ Tipo de data: ${json['data']?.runtimeType}');
     }
 
     // Paginación: `paginated` (contrato actual) o alias
@@ -69,7 +55,6 @@ class TransaccionesResponse {
       try {
         paginacion = PaginacionModel.fromJson(pagMap);
       } catch (e) {
-        debugPrint('❌ Error al parsear paginación: $e');
         paginacion = PaginacionModel(total: 0, page: 1, lastPage: 1);
       }
     } else {
@@ -80,8 +65,6 @@ class TransaccionesResponse {
         page: 1,
         lastPage: 1,
       );
-      debugPrint(
-          '📄 Sin objeto paginated; usando total inferido: $inferredTotal');
     }
     
     return TransaccionesResponse(

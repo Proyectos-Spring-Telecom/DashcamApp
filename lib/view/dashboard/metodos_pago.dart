@@ -1,10 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'dashboard.dart';
 import 'package:flutter/services.dart';
 import 'package:quickalert/quickalert.dart';
-import 'dart:async';
-import 'package:flutter/material.dart';
 
 // Painter para el diseño del circuito del chip (basado en la imagen de referencia)
 class ChipCircuitPainter extends CustomPainter {
@@ -629,7 +626,6 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
                         if (deleteStatus == NetPayStatus.success && _tarjetaEliminandoToken != null) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (mounted && _tarjetaEliminandoToken != null) {
-                              final tokenEliminado = _tarjetaEliminandoToken;
                               _tarjetaEliminandoToken = null;
                               
                               QuickAlert.show(
@@ -1174,7 +1170,6 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
           height: 42,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            debugPrint('Error loading chip.png: $error');
             return Container(
               width: 48,
               height: 32,
@@ -1200,7 +1195,6 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
           height: 40,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            debugPrint('Error loading nfc.png: $error');
             return Icon(
               Icons.contactless,
               color: Colors.white,
@@ -1560,7 +1554,6 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
                 height: 30,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Error loading ${card.brand} logo: $error');
                   return Container(
                     width: 50,
                     height: 30,
@@ -1706,125 +1699,6 @@ class _MetodosPagoPageState extends State<MetodosPagoPage> with TickerProviderSt
         ],
       ),
     );
-  }
-
-  Widget _buildCard({
-    required String cardNumber,
-    required String cvv,
-    required String cardholderName,
-    required List<Color> gradientColors,
-    required Color textColor,
-    required String cardType,
-  }) {
-    return Container(
-      width:
-          double.infinity, // Ocupa todo el ancho disponible, igual que el botón
-      height: 200,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradientColors,
-        ),
-      ),
-      padding: const EdgeInsets.all(24.0),
-      child: Stack(
-        children: [
-          // Main content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Spacing to move card number down
-              const SizedBox(height: 24),
-              // Card number
-              Text(
-                cardNumber,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              const Spacer(),
-              // CVV and Cardholder name
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    cvv,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    cardholderName,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          // Card logo (bottom right)
-          Positioned(
-            bottom: 24,
-            right: 24,
-            child: _buildCardLogo(cardType),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Logo Visa o Mastercard con mismo tamaño (60x40) para consistencia visual.
-  Widget _buildCardLogo(String cardType) {
-    const double logoWidth = 60.0;
-    const double logoHeight = 40.0;
-    if (cardType == 'mastercard') {
-      return Image.asset(
-        'assets/images/mastercard.png',
-        width: logoWidth,
-        height: logoHeight,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('Error loading mastercard.png: $error');
-          return Container(
-            width: logoWidth,
-            height: logoHeight,
-            color: Colors.white.withOpacity(0.2),
-            child:
-                const Icon(Icons.credit_card, color: Colors.white, size: 24),
-          );
-        },
-      );
-    } else if (cardType == 'visa') {
-      return Image.asset(
-        'assets/images/visa_white.png',
-        width: logoWidth,
-        height: logoHeight,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('Error loading visa_white.png: $error');
-          return Container(
-            width: logoWidth,
-            height: logoHeight,
-            color: Colors.white.withOpacity(0.2),
-            child:
-                const Icon(Icons.credit_card, color: Colors.white, size: 24),
-          );
-        },
-      );
-    }
-    return const SizedBox.shrink();
   }
 
   Widget _buildBottomNavigationBar(BuildContext context, bool isDark) {

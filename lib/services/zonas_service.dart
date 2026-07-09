@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/zonas/zonas_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 
 /// * Excepción personalizada para errores del servicio de zonas
 class ZonasException implements Exception {
@@ -48,13 +48,10 @@ class ZonasService {
         },
       );
 
-      debugPrint('📤 Obteniendo zonas');
-      debugPrint('📤 URL: $baseUrl/zonas/list');
-      debugPrint('📤 Método: GET');
       if (token != null && token.isNotEmpty) {
-        debugPrint('📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        SecureLog.dAuth('📤 Token', present: token != null && token.isNotEmpty);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
       final response = await _dio.get(
@@ -62,21 +59,13 @@ class ZonasService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
           // ? INFO: API puede devolver { "data": [...] } o el array directo
           final zonasResponse = ZonasResponse.fromJson(response.data);
-          debugPrint('✅ Zonas obtenidas exitosamente');
-          debugPrint('✅ Total de zonas: ${zonasResponse.data.length}');
-          debugPrint('✅ Zonas activas (dropdown): ${zonasResponse.zonasActivas.length}');
-          debugPrint('✅ Zonas con geocerca válida: ${zonasResponse.zonasParaMapa.length}');
           return zonasResponse;
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw ZonasException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -101,10 +90,6 @@ class ZonasService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER ZONAS ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ =============================================');
 
         String errorMessage = 'Error al obtener las zonas';
         if (responseData is Map<String, dynamic>) {
@@ -140,7 +125,6 @@ class ZonasService {
       if (e is ZonasException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerZonas: $e');
       throw ZonasException('Error inesperado: ${e.toString()}');
     }
   }

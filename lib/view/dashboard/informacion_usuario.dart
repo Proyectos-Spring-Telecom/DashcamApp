@@ -1,9 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:dashboardpro/model/auth/user.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
 import 'package:intl/intl.dart';
 
 class InformacionUsuarioPage extends StatelessWidget {
@@ -159,8 +156,6 @@ class InformacionUsuarioPage extends StatelessWidget {
   }
 
   Widget _buildUserHeader(BuildContext context, {User? user, required bool isDark, required Color textColor}) {
-    final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
-    
     return Column(
       children: [
         // Name and profile picture row

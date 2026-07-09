@@ -213,7 +213,6 @@ class _IngresarMontoPageState extends State<IngresarMontoPage> {
   }) {
     final activeStepColor = const Color(0xFF205AA8); // Blue
     final completedStepColor = const Color(0xFFA6CE39); // Green
-    final inactiveStepColor = isDark ? Colors.grey[600] : Colors.grey[400];
     final activeTextColor = activeStepColor;
     final completedTextColor = completedStepColor;
     final inactiveTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
@@ -807,7 +806,6 @@ class _IngresarMontoPageState extends State<IngresarMontoPage> {
 
         try {
           // Obtener ubicación actual con helper robusto (PWA iOS: solicita permisos si hace falta)
-          debugPrint('📍 [IngresarMonto] Solicitando coordenadas antes de recarga (requestPermissionIfNeeded=true)...');
           final ubicacion = await LocationHelper.getValidCoordinatesMap(
             requestPermissionIfNeeded: true,
           );
@@ -819,9 +817,7 @@ class _IngresarMontoPageState extends State<IngresarMontoPage> {
               LocationHelper.isValidCoordinate(ubicacion['longitud'])) {
             latitudInicial = ubicacion['latitud'];
             longitudInicial = ubicacion['longitud'];
-            debugPrint('📍 [IngresarMonto] Coordenadas válidas: lat=$latitudInicial, lng=$longitudInicial');
           } else {
-            debugPrint('⚠️ [IngresarMonto] No se obtuvieron coordenadas válidas. ubicacion=$ubicacion');
             if (!mounted) return;
             setState(() => _isLoading = false);
             QuickAlert.show(

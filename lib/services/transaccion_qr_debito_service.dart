@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/transaccion/transacciones_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 // ! SERVICIO: Transacciones Débito QR
 // ? INFO: Obtiene transacciones débito QR (esQR = true) con paginación.
@@ -77,10 +76,6 @@ class TransaccionQrDebitoService {
         'fechaFin': fechaFin,
       };
 
-      debugPrint('📤 Obteniendo transacciones débito QR (paginado)');
-      debugPrint('📤 URL: $baseUrl/transacciones/paginado/debito-qr');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Body: $requestBody');
 
       final response = await _dio.post(
         '/transacciones/paginado/debito-qr',
@@ -88,7 +83,6 @@ class TransaccionQrDebitoService {
         options: Options(headers: headers),
       );
 
-      debugPrint('📥 Status Code: ${response.statusCode}');
 
       // ? INFO: El servicio devuelve 201 (Created) en respuesta exitosa
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -96,14 +90,12 @@ class TransaccionQrDebitoService {
           if (response.data is Map<String, dynamic>) {
             final transaccionesResponse =
                 TransaccionesResponse.fromJson(response.data as Map<String, dynamic>);
-            debugPrint('✅ Transacciones débito QR: ${transaccionesResponse.data.length}');
             return transaccionesResponse;
           }
           throw TransaccionQrDebitoException(
               'Error al procesar la respuesta del servidor: formato inválido.');
         } catch (e) {
           if (e is TransaccionQrDebitoException) rethrow;
-          debugPrint('❌ Error al parsear respuesta: $e');
           throw TransaccionQrDebitoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -158,7 +150,6 @@ class TransaccionQrDebitoService {
           'Error de conexión. Verifica tu conexión a internet.');
     } catch (e) {
       if (e is TransaccionQrDebitoException) rethrow;
-      debugPrint('❌ Error inesperado en obtenerTransaccionesDebitoQr: $e');
       throw TransaccionQrDebitoException(
           'No fue posible cargar la información. Intenta más tarde.');
     }

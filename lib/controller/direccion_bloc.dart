@@ -1,7 +1,6 @@
 import 'package:dashboardpro/services/direccion_service.dart';
 import 'package:dashboardpro/model/direccion/codigo_postal_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 enum DireccionStatus {
@@ -55,7 +54,6 @@ class DireccionBloc {
       _errorMessage = null;
       _errorController.add(_errorMessage);
 
-      debugPrint('📍 Consultando código postal: $cp');
 
       // Obtener token de autenticación
       final token = _authBloc.currentToken;
@@ -80,12 +78,7 @@ class DireccionBloc {
       _statusController.add(_status);
       _errorController.add(_errorMessage);
 
-      debugPrint('✅ Código postal consultado exitosamente');
-      debugPrint('✅ Estado: ${_codigoPostal!.estado}');
-      debugPrint('✅ Municipio: ${_codigoPostal!.municipio}');
-      debugPrint('✅ Colonias: ${_codigoPostal!.colonias.length}');
     } catch (e) {
-      debugPrint('❌ Error al consultar código postal: $e');
       _updateError(e.toString());
     }
   }

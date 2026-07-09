@@ -1,6 +1,5 @@
 import 'package:dashboardpro/model/monedero/monedero_model.dart';
 import 'package:dashboardpro/model/transaccion/paginacion_model.dart';
-import 'package:flutter/foundation.dart';
 
 class MonederosPaginadosResponse {
   final List<MonederoModel> data;
@@ -16,7 +15,6 @@ class MonederosPaginadosResponse {
     
     if (json['data'] != null && json['data'] is List) {
       final dataList = json['data'] as List<dynamic>;
-      debugPrint('🔄 Parseando ${dataList.length} monederos...');
       for (var i = 0; i < dataList.length; i++) {
         try {
           final item = dataList[i];
@@ -24,12 +22,8 @@ class MonederosPaginadosResponse {
             final monedero = MonederoModel.fromJson(item);
             monederos.add(monedero);
           } else {
-            debugPrint('⚠️ Item $i no es un Map, es: ${item.runtimeType}, valor: $item');
           }
         } catch (e, stackTrace) {
-          debugPrint('❌ Error al parsear monedero en índice $i: $e');
-          debugPrint('❌ Stack trace: $stackTrace');
-          debugPrint('❌ Datos del item: ${dataList[i]}');
         }
       }
     }

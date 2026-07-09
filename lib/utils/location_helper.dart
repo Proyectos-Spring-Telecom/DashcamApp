@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:geolocator/geolocator.dart' as geo;
 
 import 'package:dashboardpro/utils/location_permission_helper.dart';
@@ -51,13 +50,10 @@ class LocationHelper {
     try {
       final hasPermission = await LocationPermissionHelper.hasLocationPermission();
       if (hasPermission) {
-        debugPrint('📍 [LocationHelper] Permisos de ubicación ya otorgados.');
         return true;
       }
-      debugPrint('📍 [LocationHelper] Permisos no otorgados, solicitando...');
       return await LocationPermissionHelper.requestLocationPermission();
     } catch (e) {
-      debugPrint('❌ [LocationHelper] Error al verificar/solicitar permisos: $e');
       return false;
     }
   }
@@ -68,30 +64,25 @@ class LocationHelper {
   static Future<CoordenadasValidas?> getValidCoordinates({
     bool requestPermissionIfNeeded = true,
   }) async {
-    debugPrint('📍 [LocationHelper] getValidCoordinates() iniciado (kIsWeb=$kIsWeb, requestPermission=$requestPermissionIfNeeded)');
 
     try {
       if (requestPermissionIfNeeded) {
         final allowed = await ensureLocationPermission();
         if (!allowed) {
-          debugPrint('⚠️ [LocationHelper] Sin permisos de ubicación. No se obtendrán coordenadas.');
           return null;
         }
       } else {
         final hasPermission = await LocationPermissionHelper.hasLocationPermission();
         if (!hasPermission) {
-          debugPrint('⚠️ [LocationHelper] Permisos no otorgados (no solicitados).');
           return null;
         }
       }
 
       final serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('⚠️ [LocationHelper] Servicios de ubicación deshabilitados.');
         return null;
       }
 
-      debugPrint('📍 [LocationHelper] Obteniendo posición (timeout: ${positionTimeout.inSeconds}s)...');
       final geo.Position position = await geo.Geolocator.getCurrentPosition(
         desiredAccuracy: geo.LocationAccuracy.high,
         timeLimit: positionTimeout,
@@ -100,36 +91,27 @@ class LocationHelper {
       final double rawLat = position.latitude;
       final double rawLng = position.longitude;
 
-      debugPrint('📍 [LocationHelper] Posición bruta: lat=$rawLat (isFinite=${rawLat.isFinite}, isNaN=${rawLat.isNaN}), lng=$rawLng (isFinite=${rawLng.isFinite}, isNaN=${rawLng.isNaN})');
 
       final double? lat = toValidDouble(rawLat);
       final double? lng = toValidDouble(rawLng);
 
       if (lat == null || lng == null) {
-        debugPrint('❌ [LocationHelper] Coordenadas inválidas después de validación: lat=$lat, lng=$lng');
         return null;
       }
 
       // Rango razonable para lat/lng
       if (lat.abs() > 90 || lng.abs() > 180) {
-        debugPrint('⚠️ [LocationHelper] Coordenadas fuera de rango: lat=$lat, lng=$lng');
         return null;
       }
 
-      debugPrint('✅ [LocationHelper] Coordenadas válidas: lat=$lat, lng=$lng');
       return CoordenadasValidas(latitud: lat, longitud: lng);
     } on geo.PermissionDeniedException catch (e) {
-      debugPrint('❌ [LocationHelper] Permiso denegado: $e');
       return null;
     } on geo.LocationServiceDisabledException catch (e) {
-      debugPrint('❌ [LocationHelper] Servicio de ubicación deshabilitado: $e');
       return null;
     } on TimeoutException catch (e) {
-      debugPrint('❌ [LocationHelper] Timeout al obtener ubicación: $e');
       return null;
     } catch (e, st) {
-      debugPrint('❌ [LocationHelper] Error al obtener ubicación: $e');
-      debugPrint('📚 [LocationHelper] StackTrace: $st');
       return null;
     }
   }

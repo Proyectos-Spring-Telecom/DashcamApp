@@ -50,14 +50,9 @@ class _POSPageState extends State<POSPage> {
   /// Retorna true si se encontró el monedero, false si no
   bool _handleNfcCardRead(String cardId) {
     if (kDebugMode) {
-      debugPrint('🔵 Tarjeta NFC leída: $cardId');
-      debugPrint('🔵 Buscando monedero con idCard: $cardId');
     }
 
     if (!mounted || _nfcCardProcessed) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Widget no montado o tarjeta ya procesada, ignorando');
-      }
       return false;
     }
 
@@ -65,9 +60,6 @@ class _POSPageState extends State<POSPage> {
     final monederos = monederoBloc.monederos;
     
     if (monederos.isEmpty) {
-      if (kDebugMode) {
-        debugPrint('⚠️ No hay monederos disponibles');
-      }
       QuickAlert.show(
         context: context,
         type: QuickAlertType.warning,
@@ -90,9 +82,6 @@ class _POSPageState extends State<POSPage> {
       );
     } catch (e) {
       // Monedero no encontrado
-      if (kDebugMode) {
-        debugPrint('❌ Monedero con idCard $cardId no encontrado');
-      }
       QuickAlert.show(
         context: context,
         type: QuickAlertType.error,
@@ -111,9 +100,6 @@ class _POSPageState extends State<POSPage> {
 
     if (monederoEncontrado == null) return false;
 
-    if (kDebugMode) {
-      debugPrint('✅ Monedero encontrado: ${monederoEncontrado.numeroSerie}');
-    }
 
     // Convertir a Map
     final selectedMonedero = _monederoToMap(monederoEncontrado);
@@ -135,9 +121,6 @@ class _POSPageState extends State<POSPage> {
       onConfirmBtnTap: () {
         Navigator.pop(context); // Cerrar el QuickAlert
         
-        if (kDebugMode) {
-          debugPrint('🚀 Navegando a Ingresar Monto con monedero: $numeroSerie');
-        }
         
         // Navegar a Ingresar Monto después de cerrar el alert
         if (mounted) {
@@ -499,40 +482,6 @@ class _POSPageState extends State<POSPage> {
     );
   }
 
-  Widget _buildMonederoSection({
-    required bool isDark,
-    required Color textColor,
-  }) {
-    return Row(
-      children: [
-        // Wallet icon
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFFA6CE39).withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.account_balance_wallet,
-            color: Color(0xFFA6CE39),
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Monedero label
-        Text(
-          "Monedero",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSearchField({
     required bool isDark,
     required Color textColor,
@@ -781,8 +730,6 @@ class _POSPageState extends State<POSPage> {
                               monederoBloc.cargarMasMonederos();
                             }
                           });
-                          // Calcular cuántos items de carga mostrar en el grid
-                          final loadingItemsCount = crossAxisCount;
                           return Container(
                             height: cardMainAxisExtent,
                             padding: const EdgeInsets.all(16.0),
@@ -896,8 +843,6 @@ class _POSPageState extends State<POSPage> {
           // Espaciado más compacto para optimizar espacio
           final spacingSmall = kIsWeb ? 2.0 : 4.0;  // Más compacto
           final spacingMedium = kIsWeb ? 1.0 : 1.5; // Más compacto
-          // Margen entre el texto de "Cliente" y la etiqueta de "Saldo" - reducido
-          final spacingSaldo = kIsWeb ? 20.0 : 24.0;
           
           return Container(
             padding: EdgeInsets.fromLTRB(padding, padding, padding, bottomPadding),

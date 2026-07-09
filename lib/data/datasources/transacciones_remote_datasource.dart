@@ -1,7 +1,6 @@
 import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
 import 'package:dashboardpro/services/monedero_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 /// Fuente de datos remota para transacciones.
@@ -20,13 +19,11 @@ class TransaccionesRemoteDataSource {
   /// Usa POST /transacciones/paginado con fechaInicio = fechaFin = hoy.
   /// 201 → lista de [TransaccionModel]; 400/500 o error de red → lanza [TransaccionesException].
   Future<List<TransaccionModel>> obtenerTransaccionesHoy() async {
-    debugPrint('📤 [TransaccionesDS] Consultando transacciones del día');
     final now = DateTime.now();
     final fecha = DateFormat('yyyy-MM-dd').format(now);
     final token = _authBloc.currentToken;
 
     if (token == null || token.isEmpty) {
-      debugPrint('❌ [TransaccionesDS] Token no disponible');
       throw TransaccionesException(
         message: 'No hay sesión activa. Inicia sesión nuevamente.',
         statusCode: 401,
@@ -44,15 +41,10 @@ class TransaccionesRemoteDataSource {
 
       final data = response.data;
       final statusCode = 201; // El servicio ya validó 200/201
-      debugPrint('📥 [TransaccionesDS] Status code: $statusCode');
-      debugPrint('📥 [TransaccionesDS] Total registros: ${data.length}');
       return data;
     } on MonederoException catch (e) {
-      debugPrint('❌ [TransaccionesDS] MonederoException: ${e.message}');
       throw TransaccionesException(message: e.message);
     } catch (e, st) {
-      debugPrint('❌ [TransaccionesDS] Error inesperado: $e');
-      debugPrint('❌ [TransaccionesDS] Stack: $st');
       throw TransaccionesException(
         message: 'No fue posible obtener los viajes del día. Intenta más tarde.',
       );

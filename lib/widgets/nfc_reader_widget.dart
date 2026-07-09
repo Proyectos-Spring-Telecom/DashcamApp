@@ -22,7 +22,6 @@ class NfcReaderWidget extends StatefulWidget {
 class _NfcReaderWidgetState extends State<NfcReaderWidget> {
   final NfcService _nfcService = NfcService();
   bool _isReading = false;
-  String? _lastCardNumber;
   String? _errorMessage;
   bool _hasStarted = false;
   bool _cardProcessed = false; // Flag para saber si la tarjeta ya fue procesada
@@ -44,9 +43,6 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
 
   Future<void> _startAutoRead() async {
     if (_hasStarted || _cardProcessed) {
-      if (kDebugMode) {
-        debugPrint('⚠️ AutoStart ya iniciado o tarjeta procesada, ignorando');
-      }
       return;
     }
     _hasStarted = true;
@@ -56,44 +52,26 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
   Future<void> _readCard() async {
     // Si la tarjeta ya fue procesada y hay callback, no reiniciar
     if (_cardProcessed && widget.onCardRead != null) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Tarjeta ya procesada, no reiniciando lectura');
-      }
       return;
     }
 
     // Si ya está leyendo, no iniciar otra lectura
     if (_isReading) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ya hay una lectura en progreso, ignorando');
-      }
       return;
     }
 
     setState(() {
       _isReading = true;
       _errorMessage = null;
-      _lastCardNumber = null;
     });
 
     if (kDebugMode) {
-      debugPrint('🔵 ==========================================');
-      debugPrint('🔵 INICIANDO LECTURA NFC');
-      debugPrint('🔵 Por favor NO acerques el tag todavía');
-      debugPrint('🔵 Espera a que aparezca "Sesión NFC activa"');
-      debugPrint('🔵 ==========================================');
     }
 
     try {
       // Verificar disponibilidad primero
-      if (kDebugMode) {
-        debugPrint('🔍 Verificando disponibilidad de NFC...');
-      }
       final isAvailable = await _nfcService.isAvailable();
       if (!isAvailable) {
-        if (kDebugMode) {
-          debugPrint('❌ NFC no está disponible');
-        }
         String errorMsg = 'NFC no está disponible en este dispositivo';
         
         // Detectar si es iOS web para dar un mensaje más específico
@@ -109,8 +87,6 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
       }
 
       if (kDebugMode) {
-        debugPrint('✅ NFC está disponible');
-        debugPrint('📱 Iniciando sesión NFC... AHORA SÍ puedes acercar el tag');
       }
 
       // Iniciar lectura
@@ -118,7 +94,6 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
 
       setState(() {
         _isReading = false;
-        _lastCardNumber = cardNumber;
       });
 
       if (cardNumber != null && cardNumber.isNotEmpty) {
@@ -128,10 +103,8 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
           // Detener la sesión NFC antes de llamar al callback
           try {
             await _nfcService.stopSession();
-          } catch (e) {
-            if (kDebugMode) {
-              debugPrint('⚠️ Error al detener sesión NFC: $e');
-            }
+          } catch (_) {
+            // Ignorar error al detener sesión NFC.
           }
           
           setState(() {
@@ -174,7 +147,6 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
           await Future.delayed(const Duration(seconds: 3));
           if (mounted && !_cardProcessed) {
             setState(() {
-              _lastCardNumber = null;
               _errorMessage = null;
             });
             _readCard();
@@ -292,9 +264,6 @@ class _NfcReaderWidgetState extends State<NfcReaderWidget> {
     // Asegurarse de cancelar la sesión NFC si está activa
     if (_isReading || _hasStarted) {
       _nfcService.stopSession().catchError((e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Error al detener sesión NFC en dispose: $e');
-        }
       });
     }
     super.dispose();

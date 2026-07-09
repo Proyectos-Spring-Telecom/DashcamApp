@@ -1,12 +1,9 @@
 // Project imports:
 import 'package:dashboardpro/controller/transacciones_controller.dart';
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:quickalert/quickalert.dart';
-import 'package:intl/intl.dart';
 
 class CodigosQRPage extends StatefulWidget {
   const CodigosQRPage({super.key});
@@ -366,8 +363,6 @@ class _CodigosQRPageState extends State<CodigosQRPage>
                       extra: {'numeroPasajes': numeroPasajes},
                     );
                   }
-                  debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                  debugPrint('👥 Número de pasajes: $numeroPasajes');
                 },
               );
             },

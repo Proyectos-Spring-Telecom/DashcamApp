@@ -1,7 +1,5 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
 
 class DetallesViajeBottomSheet extends StatelessWidget {
   /// Si se proporciona, se muestran los datos del viaje (monto, fecha, método de pago, ubicación).

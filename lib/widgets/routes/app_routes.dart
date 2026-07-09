@@ -2,7 +2,6 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:dashboardpro/view/components/notifications/badge/badge.dart'
     as badge_screen;
-import 'package:dashboardpro/controller/auth_bloc.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
