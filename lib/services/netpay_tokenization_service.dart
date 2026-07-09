@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+import 'package:dashboardpro/core/env_config.dart';
 import 'package:dashboardpro/model/netpay/card_token_request.dart';
 import 'package:dashboardpro/model/netpay/card_token_response.dart';
 import 'package:dashboardpro/services/netpay_webview_service.dart';
@@ -31,20 +31,17 @@ class NetPayTokenizationException implements Exception {
 /// 
 /// Este servicio usa NetPayJS a través de WebView según la documentación oficial de NetPay
 class NetPayTokenizationService {
-  final Dio _dio; // Mantener Dio por compatibilidad, aunque no se use para tokenización
   final NetPayWebViewService _webViewService;
   
   final bool _useSandbox;
 
   NetPayTokenizationService({
-    Dio? dio,
     bool useSandbox = true, // Por defecto usar sandbox (pruebas)
     String? apiKey,
-  })  : _dio = dio ?? Dio(),
-        _useSandbox = useSandbox,
+  })  : _useSandbox = useSandbox,
         _webViewService = NetPayWebViewService(
           useSandbox: useSandbox,
-          apiKey: apiKey,
+          apiKey: apiKey ?? EnvConfig.netpayPublicApiKey,
         ) {
     // El servicio ahora usa WebView con NetPayJS
     // Dio se mantiene por compatibilidad pero no se usa para tokenización
@@ -56,16 +53,11 @@ class NetPayTokenizationService {
   /// Lanza NetPayTokenizationException en caso de error
   Future<CardTokenResponse> tokenizeCard(CardTokenRequest request) async {
     if (kDebugMode) {
-      debugPrint('🔄 Iniciando tokenización de tarjeta con NetPayJS...');
-      debugPrint('🔄 Ambiente: ${_useSandbox ? "SANDBOX" : "PRODUCCIÓN"}');
     }
 
     try {
       // Validaciones locales antes de enviar
       if (!request.isValid()) {
-        if (kDebugMode) {
-          debugPrint('❌ Validación local fallida: campos incompletos');
-        }
         throw NetPayTokenizationException(
           message: 'Por favor completa todos los campos requeridos',
         );
@@ -73,9 +65,6 @@ class NetPayTokenizationService {
 
       // Validar número de tarjeta (Luhn)
       if (!CardValidator.isValidCardNumber(request.cardNumber)) {
-        if (kDebugMode) {
-          debugPrint('❌ Validación Luhn fallida para número de tarjeta');
-        }
         throw NetPayTokenizationException(
           message: 'El número de tarjeta no es válido.',
         );
@@ -83,8 +72,6 @@ class NetPayTokenizationService {
 
       if (kDebugMode) {
         final cardType = CardValidator.detectCardType(request.cardNumber);
-        debugPrint('✅ Validación Luhn exitosa');
-        debugPrint('✅ Tipo de tarjeta detectado: $cardType');
       }
 
       // Validar fecha de expiración
@@ -107,11 +94,7 @@ class NetPayTokenizationService {
 
       if (kDebugMode) {
         // Mostrar solo campos no sensibles en los logs
-        debugPrint('📤 Datos de request:');
-        debugPrint('   - Holder: ${request.cardholderName}');
-        debugPrint('   - Tiene dirección: ${request.street != null || request.city != null || request.state != null}');
         if (request.postalCode != null) {
-          debugPrint('   - Código postal: ${request.postalCode}');
         }
       }
 
@@ -119,9 +102,6 @@ class NetPayTokenizationService {
       final tokenResponse = await _webViewService.tokenizeCard(request);
 
       if (kDebugMode) {
-        debugPrint('✅ Tokenización exitosa');
-        debugPrint('✅ Últimos 4 dígitos: ${tokenResponse.last4Digits ?? "N/A"}');
-        debugPrint('✅ Tipo de tarjeta: ${tokenResponse.cardType ?? "N/A"}');
       }
 
       return tokenResponse;

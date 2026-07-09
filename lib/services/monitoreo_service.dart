@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/monitoreo/monitoreo_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 
 /// * Excepción personalizada para errores del servicio de monitoreo
 class MonitoreoException implements Exception {
@@ -46,13 +46,10 @@ class MonitoreoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo unidades de monitoreo');
-      debugPrint('📤 URL: $baseUrl/monitoreo');
-      debugPrint('📤 Método: GET');
       if (token != null && token.isNotEmpty) {
-        debugPrint('📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        SecureLog.dAuth('📤 Token', present: true);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
       final response = await _dio.get(
@@ -60,8 +57,6 @@ class MonitoreoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       // * Aceptar 200 (OK) como respuesta exitosa
       if (response.statusCode == 200) {
@@ -69,18 +64,12 @@ class MonitoreoService {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final monitoreoResponse = MonitoreoResponse.fromJson(responseData);
-            debugPrint('✅ Unidades obtenidas exitosamente');
-            debugPrint('✅ Total de unidades: ${monitoreoResponse.data.length}');
-            debugPrint('✅ Unidades con posición válida: ${monitoreoResponse.unidadesConPosicionValida.length}');
-            debugPrint('✅ Unidades en ruta: ${monitoreoResponse.unidadesEnRuta.length}');
             return monitoreoResponse;
           } else {
             throw MonitoreoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw MonitoreoException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -105,11 +94,6 @@ class MonitoreoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER UNIDADES ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===============================================');
 
         // * Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener las unidades';
@@ -146,7 +130,6 @@ class MonitoreoService {
       if (e is MonitoreoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerUnidades: $e');
       throw MonitoreoException('Error inesperado: ${e.toString()}');
     }
   }

@@ -1,7 +1,5 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
 class ContactoPage extends StatelessWidget {

@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/direccion/codigo_postal_model.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class DireccionService {
   final Dio _dio;
@@ -47,18 +46,12 @@ class DireccionService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Consultando dirección por código postal: $cp');
-      debugPrint('📤 URL: $baseUrl/direcciones/CP/$cp');
-      debugPrint('📤 Método: GET');
-      debugPrint('📤 Token: ${token != null ? 'Presente' : 'No presente'}');
 
       final response = await _dio.get(
         '/direcciones/CP/$cp',
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
@@ -68,7 +61,6 @@ class DireccionService {
 
           // Verificar si hay error en la respuesta
           if (codigoPostalResponse.error) {
-            debugPrint('⚠️ La respuesta indica un error: ${codigoPostalResponse.message}');
             throw DireccionException(codigoPostalResponse.message.isNotEmpty
                 ? codigoPostalResponse.message
                 : 'Error al consultar el código postal.');
@@ -76,18 +68,12 @@ class DireccionService {
 
           // Verificar que se recibió información del código postal
           if (codigoPostalResponse.codigoPostal == null) {
-            debugPrint('⚠️ La respuesta no contiene información del código postal');
             throw DireccionException('No se encontró información para el código postal proporcionado.');
           }
 
-          debugPrint('✅ Código postal consultado exitosamente');
-          debugPrint('✅ Estado: ${codigoPostalResponse.codigoPostal!.estado}');
-          debugPrint('✅ Municipio: ${codigoPostalResponse.codigoPostal!.municipio}');
-          debugPrint('✅ Colonias: ${codigoPostalResponse.codigoPostal!.colonias.length}');
 
           return codigoPostalResponse;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw DireccionException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -112,11 +98,6 @@ class DireccionService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN CONSULTA DE CÓDIGO POSTAL ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ======================================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al consultar el código postal';
@@ -157,7 +138,6 @@ class DireccionService {
       if (e is DireccionException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en consultarPorCodigoPostal: $e');
       throw DireccionException('Error inesperado: ${e.toString()}');
     }
   }

@@ -1,5 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/utils/password_rules.dart';
+import 'package:dashboardpro/widgets/password_security_meter.dart';
 import 'package:flutter/services.dart';
 
 class CambioContrasenaPage extends StatefulWidget {
@@ -47,117 +49,17 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
   }
 
   /// Verifica si la nueva contraseña cumple con todas las reglas
-  bool _isNewPasswordValid() {
-    final password = _newPasswordController.text;
-    if (password.isEmpty) return false;
-    
-    // Validar todas las reglas
-    if (password.length < 8 || password.length > 16) return false;
-    if (password.contains(' ')) return false;
-    if (!password.contains(RegExp(r'[a-z]'))) return false;
-    if (!password.contains(RegExp(r'[0-9]'))) return false;
-    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return false;
-    
-    return true;
-  }
+  bool _isNewPasswordValid() =>
+      PasswordRules.isValid(_newPasswordController.text);
 
-  /// Verifica si la contraseña de confirmación cumple con todas las reglas
-  bool _isConfirmPasswordValid() {
-    final password = _confirmPasswordController.text;
-    if (password.isEmpty) return false;
-    
-    // Validar todas las reglas
-    if (password.length < 8 || password.length > 16) return false;
-    if (password.contains(' ')) return false;
-    if (!password.contains(RegExp(r'[a-z]'))) return false;
-    if (!password.contains(RegExp(r'[0-9]'))) return false;
-    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return false;
-    
-    return true;
-  }
+  bool _isConfirmPasswordValid() =>
+      PasswordRules.isValid(_confirmPasswordController.text);
 
   /// Verifica si ambas contraseñas coinciden
   bool _doPasswordsMatch() {
     return _newPasswordController.text == _confirmPasswordController.text &&
            _newPasswordController.text.isNotEmpty &&
            _confirmPasswordController.text.isNotEmpty;
-  }
-
-  /// Construye el widget que muestra las reglas de contraseña
-  Widget _buildPasswordRules({required bool isDark, required Color textColor}) {
-    final password = _newPasswordController.text;
-    final ruleTextColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    
-    // Verificar cada regla
-    final hasMinLength = password.length >= 8;
-    final hasMaxLength = password.length <= 16;
-    final hasNoSpaces = !password.contains(' ');
-    final hasLowercase = password.contains(RegExp(r'[a-z]'));
-    final hasNumber = password.contains(RegExp(r'[0-9]'));
-    final hasSymbol = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "La contraseña debe:",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        _buildRuleItem(
-          "Tener entre 8 y 16 caracteres",
-          hasMinLength && hasMaxLength,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Tener al menos una minúscula",
-          hasLowercase,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Tener al menos un número",
-          hasNumber,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Incluir un símbolo",
-          hasSymbol,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "No contener espacios",
-          hasNoSpaces,
-          ruleTextColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRuleItem(String text, bool isValid, Color defaultColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: Row(
-        children: [
-          Icon(
-            isValid ? Icons.check_circle : Icons.circle_outlined,
-            size: 16,
-            color: isValid ? Colors.green : defaultColor,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: isValid ? Colors.green : defaultColor,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildField({
@@ -265,7 +167,6 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
             }
           });
         } catch (e) {
-          debugPrint('Error al obtener mensaje del stream: $e');
         }
 
         if (mounted) {
@@ -492,52 +393,18 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                               },
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Por favor ingresa una nueva contraseña';
-                            }
-                            
-                            // Validar longitud
-                            if (value.length < 8 || value.length > 16) {
-                              return 'La contraseña debe tener entre 8 y 16 caracteres';
-                            }
-                            
-                            // Validar que no contenga espacios
-                            if (value.contains(' ')) {
-                              return 'La contraseña no puede contener espacios';
-                            }
-                            
-                            // Validar que tenga al menos una minúscula
-                            if (!value.contains(RegExp(r'[a-z]'))) {
-                              return 'La contraseña debe tener al menos una minúscula';
-                            }
-                            
-                            // Validar que tenga al menos un número
-                            if (!value.contains(RegExp(r'[0-9]'))) {
-                              return 'La contraseña debe tener al menos un número';
-                            }
-                            
-                            // Validar que tenga al menos un símbolo
-                            if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                              return 'La contraseña debe incluir al menos un símbolo';
-                            }
-                            
-                            return null;
-                          },
+                          validator: (value) => PasswordRules.validate(
+                            value,
+                            emptyMessage:
+                                'Por favor ingresa una nueva contraseña',
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        // Reglas de contraseña (solo mostrar las que no se cumplen)
-                        if (!_isNewPasswordValid() && _newPasswordController.text.isNotEmpty)
-                          _buildPasswordRules(isDark: isDark, textColor: textColor),
-                        // Mensaje de contraseña válida (solo cuando todas las reglas se cumplan)
-                        if (_isNewPasswordValid())
-                          Text(
-                            "Contraseña válida",
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        const SizedBox(height: 12),
+                        if (_newPasswordController.text.isNotEmpty)
+                          PasswordSecurityMeter(
+                            password: _newPasswordController.text,
+                            isDark: isDark,
+                            textColor: textColor,
                           ),
                       ],
                     ),
@@ -615,43 +482,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                               },
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Por favor confirma tu contraseña';
-                            }
-                            
-                            // Validar longitud
-                            if (value.length < 8 || value.length > 16) {
-                              return 'La contraseña debe tener entre 8 y 16 caracteres';
-                            }
-                            
-                            // Validar que no contenga espacios
-                            if (value.contains(' ')) {
-                              return 'La contraseña no puede contener espacios';
-                            }
-                            
-                            // Validar que tenga al menos una minúscula
-                            if (!value.contains(RegExp(r'[a-z]'))) {
-                              return 'La contraseña debe tener al menos una minúscula';
-                            }
-                            
-                            // Validar que tenga al menos un número
-                            if (!value.contains(RegExp(r'[0-9]'))) {
-                              return 'La contraseña debe tener al menos un número';
-                            }
-                            
-                            // Validar que tenga al menos un símbolo
-                            if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                              return 'La contraseña debe incluir al menos un símbolo';
-                            }
-                            
-                            // Validar que coincida con la nueva contraseña
-                            if (value != _newPasswordController.text) {
-                              return 'Las contraseñas no coinciden';
-                            }
-                            
-                            return null;
-                          },
+                          validator: (value) => PasswordRules.validateConfirmation(
+                            value,
+                            _newPasswordController.text,
+                            emptyMessage: 'Por favor confirma tu contraseña',
+                          ),
                         ),
                         const SizedBox(height: 8),
                         // Mensaje de confirmación válida
@@ -936,38 +771,11 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                 },
                               ),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor ingresa una nueva contraseña';
-                              }
-                              
-                              // Validar longitud
-                              if (value.length < 8 || value.length > 16) {
-                                return 'La contraseña debe tener entre 8 y 16 caracteres';
-                              }
-                              
-                              // Validar que no contenga espacios
-                              if (value.contains(' ')) {
-                                return 'La contraseña no puede contener espacios';
-                              }
-                              
-                              // Validar que tenga al menos una minúscula
-                              if (!value.contains(RegExp(r'[a-z]'))) {
-                                return 'La contraseña debe tener al menos una minúscula';
-                              }
-                              
-                              // Validar que tenga al menos un número
-                              if (!value.contains(RegExp(r'[0-9]'))) {
-                                return 'La contraseña debe tener al menos un número';
-                              }
-                              
-                              // Validar que tenga al menos un símbolo
-                              if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                                return 'La contraseña debe incluir al menos un símbolo';
-                              }
-                              
-                              return null;
-                            },
+                          validator: (value) => PasswordRules.validate(
+                            value,
+                            emptyMessage:
+                                'Por favor ingresa una nueva contraseña',
+                          ),
                           ),
                           const SizedBox(height: 8),
                     TextFormField(
@@ -1026,52 +834,18 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                           },
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor ingresa una nueva contraseña';
-                        }
-                        
-                        // Validar longitud
-                        if (value.length < 8 || value.length > 16) {
-                          return 'La contraseña debe tener entre 8 y 16 caracteres';
-                        }
-                        
-                        // Validar que no contenga espacios
-                        if (value.contains(' ')) {
-                          return 'La contraseña no puede contener espacios';
-                        }
-                        
-                        // Validar que tenga al menos una minúscula
-                        if (!value.contains(RegExp(r'[a-z]'))) {
-                          return 'La contraseña debe tener al menos una minúscula';
-                        }
-                        
-                        // Validar que tenga al menos un número
-                        if (!value.contains(RegExp(r'[0-9]'))) {
-                          return 'La contraseña debe tener al menos un número';
-                        }
-                        
-                        // Validar que tenga al menos un símbolo
-                        if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                          return 'La contraseña debe incluir al menos un símbolo';
-                        }
-                        
-                        return null;
-                      },
+                          validator: (value) => PasswordRules.validate(
+                            value,
+                            emptyMessage:
+                                'Por favor ingresa una nueva contraseña',
+                          ),
                     ),
-                          const SizedBox(height: 8),
-                          // Reglas de contraseña (solo mostrar las que no se cumplen)
-                          if (!_isNewPasswordValid() && _newPasswordController.text.isNotEmpty)
-                            _buildPasswordRules(isDark: isDark, textColor: textColor),
-                          // Mensaje de contraseña válida (solo cuando todas las reglas se cumplan)
-                          if (_isNewPasswordValid())
-                            Text(
-                              "Contraseña válida",
-                              style: TextStyle(
-                                color: Colors.green,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          const SizedBox(height: 12),
+                          if (_newPasswordController.text.isNotEmpty)
+                            PasswordSecurityMeter(
+                              password: _newPasswordController.text,
+                              isDark: isDark,
+                              textColor: textColor,
                             ),
                         ],
                       ),
@@ -1145,43 +919,13 @@ class _CambioContrasenaPageState extends State<CambioContrasenaPage> {
                                 },
                               ),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor confirma tu nueva contraseña';
-                              }
-                              
-                              // Validar longitud
-                              if (value.length < 8 || value.length > 16) {
-                                return 'La contraseña debe tener entre 8 y 16 caracteres';
-                              }
-                              
-                              // Validar que no contenga espacios
-                              if (value.contains(' ')) {
-                                return 'La contraseña no puede contener espacios';
-                              }
-                              
-                              // Validar que tenga al menos una minúscula
-                              if (!value.contains(RegExp(r'[a-z]'))) {
-                                return 'La contraseña debe tener al menos una minúscula';
-                              }
-                              
-                              // Validar que tenga al menos un número
-                              if (!value.contains(RegExp(r'[0-9]'))) {
-                                return 'La contraseña debe tener al menos un número';
-                              }
-                              
-                              // Validar que tenga al menos un símbolo
-                              if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                                return 'La contraseña debe incluir al menos un símbolo';
-                              }
-                              
-                              // Validar que coincida con la nueva contraseña
-                              if (value != _newPasswordController.text) {
-                                return 'Las contraseñas no coinciden';
-                              }
-                              
-                              return null;
-                            },
+                            validator: (value) =>
+                                PasswordRules.validateConfirmation(
+                              value,
+                              _newPasswordController.text,
+                              emptyMessage:
+                                  'Por favor confirma tu nueva contraseña',
+                            ),
                           ),
                           const SizedBox(height: 8),
                           // Mensaje de confirmación válida

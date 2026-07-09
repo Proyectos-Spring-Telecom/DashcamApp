@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/variantes/variantes_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 
 /// * Excepción personalizada para errores del servicio de variantes
 class VariantesException implements Exception {
@@ -47,13 +47,10 @@ class VariantesService {
         },
       );
 
-      debugPrint('📤 Obteniendo variantes');
-      debugPrint('📤 URL: $baseUrl/variantes/list');
       if (token != null && token.isNotEmpty) {
-        debugPrint(
-            '📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        SecureLog.dAuth('📤 Token', present: true);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
       final response = await _dio.get(
@@ -61,17 +58,12 @@ class VariantesService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         try {
           final variantesResponse = VariantesResponse.fromJson(response.data);
-          debugPrint('✅ Variantes obtenidas exitosamente');
-          debugPrint('✅ Total de variantes: ${variantesResponse.data.length}');
           return variantesResponse;
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw VariantesException(
               'Error al procesar la respuesta del servidor. Intenta más tarde.');
         }
@@ -120,7 +112,6 @@ class VariantesService {
           'Error de conexión. Verifica tu conexión a internet.');
     } catch (e) {
       if (e is VariantesException) rethrow;
-      debugPrint('❌ Error inesperado en obtenerVariantes: $e');
       throw VariantesException('No fue posible cargar las variantes.');
     }
   }

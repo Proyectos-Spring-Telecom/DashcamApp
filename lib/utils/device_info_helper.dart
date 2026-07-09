@@ -27,7 +27,6 @@ class DeviceInfoHelper {
       }
     } catch (e) {
       // Si hay error al detectar la plataforma, retornar información por defecto
-      debugPrint('⚠️ Error al detectar plataforma: $e');
     }
     
     return _getDefaultDeviceInformation();
@@ -53,7 +52,6 @@ class DeviceInfoHelper {
       // Obtener información del navegador usando dart:html
       String language = 'es';
       bool javaEnabled = false;
-      bool javaScriptEnabled = true; // Siempre true en Flutter web
       int timeDifference = 0;
 
       if (kIsWeb) {
@@ -72,7 +70,6 @@ class DeviceInfoHelper {
           colorDepth = browserInfo['colorDepth'] ?? 24;
         } catch (e) {
           // Si falla, usar valores por defecto
-          debugPrint('⚠️ No se pudo obtener información completa del navegador: $e');
         }
       }
 
@@ -80,7 +77,7 @@ class DeviceInfoHelper {
         'deviceChannel': 'Browser',
         'httpBrowserColorDepth': colorDepth.toString(),
         'httpBrowserJavaEnabled': javaEnabled ? 'TRUE' : 'FALSE',
-        'httpBrowserJavaScriptEnabled': javaScriptEnabled ? 'TRUE' : 'FALSE',
+        'httpBrowserJavaScriptEnabled': 'TRUE',
         'httpBrowserLanguage': language,
         'httpBrowserScreenHeight': screenHeight.toInt().toString(),
         'httpBrowserScreenWidth': screenWidth.toInt().toString(),
@@ -94,7 +91,6 @@ class DeviceInfoHelper {
         'hardwareConcurrency': webInfo.hardwareConcurrency?.toString() ?? '0',
       };
     } catch (e) {
-      debugPrint('❌ Error al obtener información del dispositivo web: $e');
       return _getDefaultDeviceInformation();
     }
   }
@@ -120,7 +116,6 @@ class DeviceInfoHelper {
         'systemFeatures': androidInfo.systemFeatures.join(','),
       };
     } catch (e) {
-      debugPrint('❌ Error al obtener información del dispositivo Android: $e');
       return _getDefaultDeviceInformation();
     }
   }
@@ -147,7 +142,6 @@ class DeviceInfoHelper {
         'localizedModel': iosInfo.localizedModel ?? '',
       };
     } catch (e) {
-      debugPrint('❌ Error al obtener información del dispositivo iOS: $e');
       return _getDefaultDeviceInformation();
     }
   }

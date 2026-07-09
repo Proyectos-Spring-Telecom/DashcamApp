@@ -1,6 +1,5 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'dart:ui' as ui;
-import 'package:flutter/widgets.dart';
 
 class ThemeBloc {
   final _themeController = StreamController<AppTheme>.broadcast();
@@ -35,18 +34,15 @@ class ThemeBloc {
       // Usar WidgetsBinding para obtener el brightness del sistema
       final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
       final isDark = brightness == ui.Brightness.dark;
-      debugPrint('🔍 Brightness detectado del sistema: $brightness, isDark: $isDark');
       return isDark;
     } catch (e) {
       // Si hay algún error, intentar con PlatformDispatcher directamente
       try {
         final brightness = ui.PlatformDispatcher.instance.platformBrightness;
         final isDark = brightness == ui.Brightness.dark;
-        debugPrint('🔍 Brightness detectado (PlatformDispatcher): $brightness, isDark: $isDark');
         return isDark;
       } catch (e2) {
         // Si hay algún error, usar modo claro por defecto
-        debugPrint('❌ Error detectando brightness del sistema: $e2');
         return false;
       }
     }

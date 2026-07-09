@@ -1,7 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
 import 'package:dashboardpro/utils/location_permission_helper.dart';
 
 class Login extends StatefulWidget {
@@ -67,7 +66,6 @@ class _LoginState extends State<Login> {
     if (success) {
       // Solicitar permisos de ubicación después del login exitoso
       // Esto mostrará el diálogo nativo del sistema (Android/iOS/Web)
-      debugPrint('🔐 Login exitoso, solicitando permisos de ubicación...');
       await LocationPermissionHelper.requestLocationPermission();
       
       // Verificar el rol del usuario para redirigir correctamente

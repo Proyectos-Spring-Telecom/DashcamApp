@@ -1,7 +1,6 @@
 import 'package:dashboardpro/services/rutas_service.dart';
 import 'package:dashboardpro/model/rutas/ruta_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 /// * Estados del bloc de rutas
@@ -49,7 +48,6 @@ class RutasBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Cargando rutas...');
 
       final response = await _rutasService.obtenerRutas(token);
       // ! IMPORTANTE: Dropdown muestra todas las rutas activas (estatusRuta === 1); pintado admite solo inicio/fin si no hay polyline
@@ -61,18 +59,13 @@ class RutasBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Rutas cargadas exitosamente');
-      debugPrint('✅ Total de rutas (dropdown): ${_rutas.length}');
     } on RutasException catch (e) {
-      debugPrint('❌ RutasException en cargarRutas: ${e.message}');
       _status = RutasStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
       _errorController.add(_errorMessage);
       _rutasController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarRutas: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = RutasStatus.error;
       _errorMessage = 'No se pudieron cargar las rutas. Intenta más tarde.';
       _statusController.add(_status);

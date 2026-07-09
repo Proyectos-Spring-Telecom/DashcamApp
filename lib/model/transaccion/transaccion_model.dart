@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 class TransaccionModel {
   static int _parseCount = 0;
@@ -64,7 +63,6 @@ class TransaccionModel {
       _parseCount++;
       
       if (isFirst) {
-        debugPrint('🔍 Parseando primera transacción. Keys disponibles: ${json.keys.toList()}');
       }
       // Construir el nombre del cliente desde los campos individuales si no viene completo
       String? clienteNombre;
@@ -145,8 +143,6 @@ class TransaccionModel {
         nombreMetodoPago: json['nombreMetodoPago']?.toString(),
       );
     } catch (e) {
-      debugPrint('⚠️ Error al parsear TransaccionModel: $e');
-      debugPrint('⚠️ JSON recibido: $json');
       rethrow;
     }
   }

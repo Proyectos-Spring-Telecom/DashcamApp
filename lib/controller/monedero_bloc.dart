@@ -7,14 +7,13 @@ import 'package:dashboardpro/model/monedero/pasajero_model.dart';
 import 'package:dashboardpro/model/monedero/tipo_pasajero_model.dart';
 import 'package:dashboardpro/model/monedero/monedero_request.dart';
 import 'package:dashboardpro/model/monedero/monedero_response.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_request.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_response.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
 import 'package:dashboardpro/model/transaccion/paginacion_model.dart';
 import 'package:dashboardpro/model/transaccion/recarga_request.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 import 'package:dashboardpro/utils/location_helper.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 enum MonederoStatus {
@@ -204,7 +203,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo monederos activos (página 1) con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Obteniendo monederos activos (página 1)');
 
       final response = await _monederoService.obtenerListaMonederos(
         token,
@@ -220,10 +219,7 @@ class MonederoBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Monederos obtenidos exitosamente: ${response.data.length}');
-      debugPrint('✅ Paginación: página ${response.paginacion.page}/${response.paginacion.lastPage} (total: ${response.paginacion.total})');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerMonederos: ${e.message}');
       _status = MonederoStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
@@ -231,8 +227,6 @@ class MonederoBloc {
       _monederosController.add([]);
       _isLoadingMoreMonederos = false;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerMonederos: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = MonederoStatus.error;
       _errorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _statusController.add(_status);
@@ -263,11 +257,6 @@ class MonederoBloc {
       final currentPage = _paginacionMonederos?.page ?? 0;
       final nextPage = currentPage + 1;
       
-      debugPrint('📤 Cargando más monederos...');
-      debugPrint('📤 Página actual: $currentPage');
-      debugPrint('📤 Página siguiente: $nextPage');
-      debugPrint('📤 Monederos actuales: ${_monederos.length}');
-      debugPrint('📤 Última página: ${_paginacionMonederos?.lastPage}');
 
       final response = await _monederoService.obtenerListaMonederos(
         token,
@@ -282,16 +271,10 @@ class MonederoBloc {
       _monederosController.add(_monederos);
       _isLoadingMoreMonederos = false;
 
-      debugPrint('✅ Más monederos cargados: ${response.data.length}');
-      debugPrint('✅ Total de monederos ahora: ${_monederos.length} (antes: $monederosAnteriores)');
-      debugPrint('✅ Paginación actualizada: página ${response.paginacion.page}/${response.paginacion.lastPage} (total: ${response.paginacion.total})');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en cargarMasMonederos: ${e.message}');
       _isLoadingMoreMonederos = false;
       // No actualizar el estado de error para no interrumpir la lista actual
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarMasMonederos: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _isLoadingMoreMonederos = false;
       // No actualizar el estado de error para no interrumpir la lista actual
     }
@@ -365,9 +348,6 @@ class MonederoBloc {
       // Validar coordenadas: solo enviar double válidos (evita null/NaN/String en backend)
       final double? latValid = LocationHelper.toValidDouble(latitudInicial);
       final double? lngValid = LocationHelper.toValidDouble(longitudInicial);
-      debugPrint('📤 Realizando recarga: numeroSerieMonedero=$numeroSerieMonedero, monto=$monto, idMetodoPago=$idMetodoPago');
-      debugPrint('📤 Coordenadas recibidas: latitudInicial=$latitudInicial (válido=$latValid), longitudInicial=$longitudInicial (válido=$lngValid)');
-      debugPrint('📤 Coordenadas que se enviarán al backend: lat=${latValid ?? "no enviada"}, lng=${lngValid ?? "no enviada"}');
 
       // Crear el request de recarga (solo pasamos coordenadas válidas)
       final request = RecargaRequest(
@@ -389,7 +369,6 @@ class MonederoBloc {
 
       final response = await _monederoService.realizarRecarga(request, token);
 
-      debugPrint('✅ Recarga realizada exitosamente: ${response.message}');
 
       // Refrescar la lista de monederos para actualizar saldos
       await refreshMonederos();
@@ -399,11 +378,8 @@ class MonederoBloc {
 
       return response;
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en realizarRecarga: ${e.message}');
       rethrow;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en realizarRecarga: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       throw MonederoException('No se pudo realizar la recarga, intenta más tarde.');
     }
   }
@@ -437,11 +413,8 @@ class MonederoBloc {
         numeroSerieValidador: numeroSerieValidador,
       );
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en realizarCargo: ${e.message}');
       rethrow;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en realizarCargo: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       throw MonederoException('No se pudo realizar el cargo, intenta más tarde.');
     }
   }
@@ -478,8 +451,6 @@ class MonederoBloc {
       final hoy = _fechaHoyIsoLocal();
       _fechaInicio ??= hoy;
       _fechaFin ??= hoy;
-      debugPrint(
-          '📅 [MonederoBloc] Fecha inicio (efectiva): $_fechaInicio | Fecha fin: $_fechaFin');
 
       _transaccionesStatus = MonederoStatus.loading;
       _transaccionesStatusController.add(_transaccionesStatus);
@@ -494,7 +465,6 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo transacciones (página 1) con filtros: fechaInicio=$_fechaInicio, fechaFin=$_fechaFin');
 
       final response = await _monederoService.obtenerListaTransacciones(
         token: token,
@@ -512,15 +482,9 @@ class MonederoBloc {
       _transaccionesErrorController.add(null);
       _transaccionesErrorMessage = null;
 
-      debugPrint(
-          '✅ Cantidad de transacciones (estado bloc): ${_transacciones.length}');
-      debugPrint('✅ Transacciones obtenidas exitosamente: ${response.data.length}');
-      debugPrint('✅ Paginación: página ${response.paginacion.page}/${response.paginacion.lastPage} (total: ${response.paginacion.total})');
       if (response.paginacion.total > 0 && response.data.isEmpty) {
-        debugPrint('⚠️ ADVERTENCIA: El servidor reporta ${response.paginacion.total} transacciones pero la lista está vacía');
       }
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerTransacciones: ${e.message}');
       _transaccionesStatus = MonederoStatus.error;
       _transaccionesErrorMessage = e.message;
       _transaccionesStatusController.add(_transaccionesStatus);
@@ -528,8 +492,6 @@ class MonederoBloc {
       _transaccionesController.add([]);
       _isLoadingMore = false;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerTransacciones: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _transaccionesStatus = MonederoStatus.error;
       _transaccionesErrorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _transaccionesStatusController.add(_transaccionesStatus);
@@ -560,11 +522,6 @@ class MonederoBloc {
       final currentPage = _paginacion?.page ?? 0;
       final nextPage = currentPage + 1;
       
-      debugPrint('📤 Cargando más transacciones...');
-      debugPrint('📤 Página actual: $currentPage');
-      debugPrint('📤 Página siguiente: $nextPage');
-      debugPrint('📤 Transacciones actuales: ${_transacciones.length}');
-      debugPrint('📤 Última página: ${_paginacion?.lastPage}');
 
       final response = await _monederoService.obtenerListaTransacciones(
         token: token,
@@ -581,16 +538,10 @@ class MonederoBloc {
       _transaccionesController.add(_transacciones);
       _isLoadingMore = false;
 
-      debugPrint('✅ Más transacciones cargadas: ${response.data.length}');
-      debugPrint('✅ Total de transacciones ahora: ${_transacciones.length} (antes: $transaccionesAnteriores)');
-      debugPrint('✅ Paginación actualizada: página ${response.paginacion.page}/${response.paginacion.lastPage} (total: ${response.paginacion.total})');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en cargarMasTransacciones: ${e.message}');
       _isLoadingMore = false;
       // No actualizar el estado de error para no interrumpir la lista actual
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarMasTransacciones: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _isLoadingMore = false;
       // No actualizar el estado de error para no interrumpir la lista actual
     }
@@ -617,7 +568,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo wallet con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Obteniendo wallet');
 
       final wallet = await _monederoService.obtenerWallet(token, anio: anio);
 
@@ -628,19 +579,13 @@ class MonederoBloc {
       _walletErrorController.add(null);
       _walletErrorMessage = null;
 
-      debugPrint('✅ Wallet obtenido exitosamente');
-      debugPrint('✅ Saldo Total: ${wallet.saldoTotal}');
-      debugPrint('✅ Monederos: ${wallet.monederos}');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerWallet: ${e.message}');
       _walletStatus = MonederoStatus.error;
       _walletErrorMessage = e.message;
       _walletStatusController.add(_walletStatus);
       _walletErrorController.add(_walletErrorMessage);
       _walletController.add(null);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerWallet: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _walletStatus = MonederoStatus.error;
       _walletErrorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _walletStatusController.add(_walletStatus);
@@ -672,20 +617,17 @@ class MonederoBloc {
       if (!forzarNuevo && _qr != null && !_qrUsado && _qrStatus == MonederoStatus.loaded) {
         // * Verificar si el numeroPasajes coincide con el QR en caché
         if (_qr!.numeroPasajes == numeroPasajes) {
-          debugPrint('✅ Retornando QR desde caché (ID: ${_qr!.idQR}, Pasajes: ${_qr!.numeroPasajes})');
           // Asegurar que el estado esté en loaded y emitir el QR
           _qrStatusController.add(_qrStatus);
           _qrController.add(_qr);
           return;
         } else {
-          debugPrint('🔄 NumeroPasajes diferente (caché: ${_qr!.numeroPasajes}, nuevo: $numeroPasajes), generando nuevo QR...');
           forzarNuevo = true;
         }
       }
 
       // Si el QR fue usado o se fuerza nuevo, limpiar caché antes de generar uno nuevo
       if (_qrUsado || forzarNuevo) {
-        debugPrint('🔄 ${_qrUsado ? "QR anterior fue usado" : "Forzando nuevo QR"}, limpiando caché...');
         _qr = null;
         _qrUsado = false;
       }
@@ -702,7 +644,6 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Generando código QR para saldo con $numeroPasajes pasaje(s)...');
 
       // * UPDATE: Pasar numeroPasajes al servicio
       final response = await _monederoService.obtenerQrSaldo(token, numeroPasajes);
@@ -715,17 +656,13 @@ class MonederoBloc {
       _qrErrorController.add(null);
       _qrErrorMessage = null;
 
-      debugPrint('✅ QR generado exitosamente (ID: ${_qr!.idQR}, Pasajes: ${_qr!.numeroPasajes ?? 'N/A'})');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerQrSaldo: ${e.message}');
       _qrStatus = MonederoStatus.error;
       _qrErrorMessage = e.message;
       _qrStatusController.add(_qrStatus);
       _qrErrorController.add(_qrErrorMessage);
       _qrController.add(null);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerQrSaldo: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _qrStatus = MonederoStatus.error;
       _qrErrorMessage = 'No se pudo generar el código QR. Intenta más tarde.';
       _qrStatusController.add(_qrStatus);
@@ -738,7 +675,6 @@ class MonederoBloc {
   /// Debe llamarse cuando el QR se utiliza para realizar un débito
   void marcarQrComoUsado() {
     if (_qr != null) {
-      debugPrint('🗑️ Marcando QR como usado y limpiando caché (ID: ${_qr!.idQR})');
       _qrUsado = true;
       _limpiarQrCache();
     }
@@ -771,7 +707,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo clientes con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Obteniendo clientes');
 
       final clientes = await _monederoService.obtenerListaClientes(token);
 
@@ -782,17 +718,13 @@ class MonederoBloc {
       _clientesErrorController.add(null);
       _clientesErrorMessage = null;
 
-      debugPrint('✅ Clientes obtenidos exitosamente: ${clientes.length}');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerClientes: ${e.message}');
       _clientesStatus = MonederoStatus.error;
       _clientesErrorMessage = e.message;
       _clientesStatusController.add(_clientesStatus);
       _clientesErrorController.add(_clientesErrorMessage);
       _clientesController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerClientes: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _clientesStatus = MonederoStatus.error;
       _clientesErrorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _clientesStatusController.add(_clientesStatus);
@@ -816,7 +748,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo pasajeros con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Obteniendo pasajeros');
 
       final pasajeros = await _monederoService.obtenerListaPasajeros(token);
 
@@ -827,17 +759,13 @@ class MonederoBloc {
       _pasajerosErrorController.add(null);
       _pasajerosErrorMessage = null;
 
-      debugPrint('✅ Pasajeros obtenidos exitosamente: ${pasajeros.length}');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerPasajeros: ${e.message}');
       _pasajerosStatus = MonederoStatus.error;
       _pasajerosErrorMessage = e.message;
       _pasajerosStatusController.add(_pasajerosStatus);
       _pasajerosErrorController.add(_pasajerosErrorMessage);
       _pasajerosController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerPasajeros: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _pasajerosStatus = MonederoStatus.error;
       _pasajerosErrorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _pasajerosStatusController.add(_pasajerosStatus);
@@ -862,7 +790,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Obteniendo tipos de pasajero con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Obteniendo tipos de pasajero');
 
       final tiposPasajero = await _monederoService.obtenerListaTiposPasajero(token);
 
@@ -873,17 +801,13 @@ class MonederoBloc {
       _tiposPasajeroErrorController.add(null);
       _tiposPasajeroErrorMessage = null;
 
-      debugPrint('✅ Tipos de pasajero obtenidos exitosamente: ${tiposPasajero.length}');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en obtenerTiposPasajero: ${e.message}');
       _tiposPasajeroStatus = MonederoStatus.error;
       _tiposPasajeroErrorMessage = e.message;
       _tiposPasajeroStatusController.add(_tiposPasajeroStatus);
       _tiposPasajeroErrorController.add(_tiposPasajeroErrorMessage);
       _tiposPasajeroController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en obtenerTiposPasajero: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _tiposPasajeroStatus = MonederoStatus.error;
       _tiposPasajeroErrorMessage = 'No se pudo obtener la información. Intenta más tarde.';
       _tiposPasajeroStatusController.add(_tiposPasajeroStatus);
@@ -908,7 +832,7 @@ class MonederoBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Creando monedero con token: ${token.substring(0, 20)}...');
+      SecureLog.d('📤 Creando monedero');
 
       final response = await _monederoService.crearMonedero(request, token);
 
@@ -919,17 +843,13 @@ class MonederoBloc {
       _crearMonederoErrorController.add(null);
       _crearMonederoErrorMessage = null;
 
-      debugPrint('✅ Monedero creado exitosamente: ID ${response.data.id}');
     } on MonederoException catch (e) {
-      debugPrint('❌ MonederoException en crearMonedero: ${e.message}');
       _crearMonederoStatus = MonederoStatus.error;
       _crearMonederoErrorMessage = e.message;
       _crearMonederoStatusController.add(_crearMonederoStatus);
       _crearMonederoErrorController.add(_crearMonederoErrorMessage);
       _crearMonederoResponseController.add(null);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en crearMonedero: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _crearMonederoStatus = MonederoStatus.error;
       _crearMonederoErrorMessage = 'No se pudo crear el monedero. Intenta más tarde.';
       _crearMonederoStatusController.add(_crearMonederoStatus);

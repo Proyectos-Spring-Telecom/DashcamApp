@@ -1,6 +1,5 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class SeleccionarMetodoPagoPage extends StatefulWidget {
@@ -420,7 +419,6 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Error loading image from AWS S3: $error');
                   return Container(
                     width: 120,
                     height: 40,
@@ -672,61 +670,6 @@ class _SeleccionarMetodoPagoPageState extends State<SeleccionarMetodoPagoPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentMethodButton({
-    required String title,
-    required bool isDark,
-    required Color textColor,
-    required VoidCallback onTap,
-  }) {
-    final buttonColor = isDark ? Colors.grey[800] : Colors.grey[100];
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-        decoration: BoxDecoration(
-          color: buttonColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Mostrar imagen para NetPay, texto para los demás
-            title == "NetPay"
-                ? SizedBox(
-                    width: 50,
-                    height: 24,
-                    child: Image.asset(
-                      'assets/images/netpay_logo.png',
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        debugPrint('Error loading NetPay logo: $error');
-                        return Text(
-                          title,
-                          style: TextStyle(
-                            color: Colors.blue[300],
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                : Text(
-                    title,
-                    style: TextStyle(
-                      color: title == "PayPal" ? Colors.blue : textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
           ],
         ),
       ),

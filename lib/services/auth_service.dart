@@ -1,6 +1,7 @@
 import 'package:dashboardpro/core/env_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/auth/login_response.dart';
+import 'package:dashboardpro/model/auth/user.dart';
 import 'package:dashboardpro/model/auth/registro_request.dart';
 import 'package:dashboardpro/model/auth/registro_response.dart';
 import 'package:dashboardpro/model/auth/verify_request.dart';
@@ -12,8 +13,9 @@ import 'package:dashboardpro/model/auth/resend_code_response.dart';
 import 'package:dashboardpro/model/auth/change_password_request.dart';
 import 'package:dashboardpro/model/auth/change_password_response.dart';
 import 'package:dashboardpro/model/auth/foto_perfil_response.dart';
+import 'package:dashboardpro/services/auth_exception.dart';
+import 'package:dashboardpro/services/auth_api_service.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 
@@ -39,7 +41,7 @@ class AuthService {
             )..interceptors.add(SessionInterceptor());
 
   /// Extrae mensaje de error del body de respuesta (String, Map con message/error/detail, etc.).
-  static String _extractErrorMessage(dynamic responseData) {
+  static String extractErrorMessage(dynamic responseData) {
     if (responseData == null) return '';
     if (responseData is String) return responseData.trim();
     if (responseData is Map<String, dynamic>) {
@@ -60,62 +62,94 @@ class AuthService {
     return responseData.toString().trim();
   }
 
-  /// Realiza el login del usuario
+  /// Realiza el login del usuario (API apipay: token + refreshToken).
   Future<LoginResponse> login(String userName, String password) async {
     try {
-      final response = await _dio.post(
-        '/login',
-        data: {
-          'userName': userName,
-          'password': password,
-        },
+      return await AuthApiService.login(
+        userName: userName,
+        password: password,
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('Error inesperado: ${e.toString()}');
+    }
+  }
+
+  /// Renueva access + refresh token (POST /login/refresh).
+  Future<LoginResponse> refreshTokens(String refreshToken) async {
+    try {
+      return await AuthApiService.refreshTokens(refreshToken: refreshToken);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('Error inesperado al renovar sesión: ${e.toString()}');
+    }
+  }
+
+  /// GET /login/me — perfil de sesión (rol, permisos, cliente, etc.).
+  Future<User> fetchCurrentUser({required String token}) async {
+    if (token.isEmpty) {
+      throw AuthException('No hay token de autenticación');
+    }
+
+    final url = '${EnvConfig.authApiBaseUrl}/login/me';
+
+    try {
+      final response = await _dio.get(
+        url,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': '*/*',
+          },
+        ),
       );
 
-      if (response.statusCode == 200) {
-        return LoginResponse.fromJson(response.data as Map<String, dynamic>);
-      } else {
-        throw AuthException('Error en la respuesta del servidor');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw AuthException('Error al obtener información del usuario');
       }
+
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw AuthException('Respuesta de perfil inválida');
+      }
+
+      return User.fromJson(data);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
         throw AuthException(
-            'Tiempo de espera agotado. Revisa tu conexión a internet.');
+          'Tiempo de espera agotado. Revisa tu conexión a internet.',
+        );
       }
-
       if (e.type == DioExceptionType.connectionError) {
+        if (EnvConfig.usesWebDevProxy) {
+          throw AuthException(
+            'Proxy de desarrollo no activo. Ejecuta en otra terminal: '
+            'dart run tool/dev_api_proxy.dart',
+          );
+        }
         throw AuthException('No hay conexión a internet. Revisa tu conexión.');
       }
 
-      if (e.response != null) {
-        final statusCode = e.response!.statusCode;
-        final responseData = e.response!.data;
-        if (statusCode == 400 || statusCode == 401) {
-          throw AuthException('Usuario o contraseña incorrectos');
-        } else if (statusCode == 404) {
-          // Mostrar el texto del response body (mismo diseño que el resto de errores de login)
-          String message = _extractErrorMessage(responseData);
-          if (message.isEmpty) {
-            message = e.response!.statusMessage ?? 'Not Found';
-          }
-          throw AuthException(message);
-        } else if (statusCode == 500) {
-          throw AuthException('Error en el servidor. Intenta más tarde.');
-        } else {
-          throw AuthException(
-              'Error al iniciar sesión: ${e.response!.statusMessage}');
-        }
-      } else {
-        throw AuthException(
-            'Error de conexión. Revisa tu conexión a internet.');
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401 || statusCode == 403) {
+        throw AuthException('Sesión expirada. Inicia sesión nuevamente.');
       }
+
+      var message = extractErrorMessage(e.response?.data);
+      if (message.isEmpty) {
+        message = 'No se pudo obtener la información del usuario';
+      }
+      throw AuthException(message);
     } on SocketException {
       throw AuthException('No hay conexión a internet. Revisa tu conexión.');
+    } on AuthException {
+      rethrow;
     } catch (e) {
-      if (e is AuthException) {
-        rethrow;
-      }
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
@@ -124,10 +158,6 @@ class AuthService {
   Future<RegistroResponse> registerPasajero(RegistroRequest request) async {
     try {
       final requestBody = request.toJson();
-      debugPrint('📤 Realizando registro de pasajero');
-      debugPrint('📤 URL: $baseUrl/login/pasajero/registro');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Request Body: $requestBody');
       
       final response = await _dio.post(
         '/login/pasajero/registro',
@@ -137,9 +167,6 @@ class AuthService {
       // Aceptar tanto 200 (OK) como 201 (Created) como respuestas exitosas
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Agregar logging para debug
-        debugPrint(
-            '📦 Respuesta del servidor (${response.statusCode}): ${response.data}');
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
 
         try {
           // Manejar diferentes formatos de respuesta
@@ -148,7 +175,6 @@ class AuthService {
               return RegistroResponse.fromJson(
                   response.data as Map<String, dynamic>);
             } catch (parseError) {
-              debugPrint('⚠️ Error al parsear RegistroResponse: $parseError');
               // Si el parseo falla pero el código es exitoso, crear respuesta básica
               return RegistroResponse(
                 status: 'success',
@@ -159,8 +185,6 @@ class AuthService {
           } else if (response.data == null ||
               response.data.toString().isEmpty) {
             // Si la respuesta está vacía pero el código es exitoso
-            debugPrint(
-                '⚠️ Respuesta vacía pero código exitoso, creando respuesta básica');
             return RegistroResponse(
               status: 'success',
               message: 'Usuario registrado exitosamente',
@@ -168,10 +192,6 @@ class AuthService {
             );
           } else {
             // Si la respuesta no es un Map, intentar crear una respuesta básica
-            debugPrint(
-                '⚠️ La respuesta no es un Map, creando respuesta básica');
-            debugPrint(
-                '⚠️ Tipo de dato recibido: ${response.data.runtimeType}');
             return RegistroResponse(
               status: 'success',
               message: 'Usuario registrado exitosamente',
@@ -179,7 +199,6 @@ class AuthService {
             );
           }
         } catch (e) {
-          debugPrint('❌ Error inesperado al procesar respuesta exitosa: $e');
           // Si hay un error pero el código es 201, asumir que el registro fue exitoso
           return RegistroResponse(
             status: 'success',
@@ -188,7 +207,6 @@ class AuthService {
           );
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -208,12 +226,6 @@ class AuthService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN REGISTRO DE USUARIO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ Request data enviado: ${request.toJson()}');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = '';
@@ -236,7 +248,6 @@ class AuthService {
           errorMessage = responseData.toString().trim();
         }
 
-        debugPrint('❌ Mensaje de error extraído: $errorMessage');
 
         if (statusCode == 400) {
           // Para error 400, mostrar el mensaje del servidor si existe, sino un mensaje genérico
@@ -265,35 +276,24 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en registerPasajero: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
 
   /// Verifica el código de verificación de email
-  /// El endpoint espera: PATCH /login/verify con body { "codigo": "1234" }
+  /// El endpoint espera: PATCH /login/verify con body { "codigo": "123456" }
   Future<VerifyResponse> verifyEmail(VerifyRequest request) async {
     try {
       final requestData = request.toJson();
-      debugPrint('📤 Request body para verificación: $requestData');
-      debugPrint('📤 Código a enviar: ${request.codigo}');
-      debugPrint('📤 Método HTTP: PATCH');
-      debugPrint('📤 URL completa: $baseUrl/login/verify');
 
       final response = await _dio.patch(
         '/login/verify',
         data: requestData,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Headers de respuesta: ${response.headers}');
 
       // Aceptar 200 (OK), 201 (Created) y 204 (No Content) como respuestas exitosas
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
-        debugPrint(
-            '📦 Respuesta de verificación (${response.statusCode}): ${response.data}');
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
 
         try {
           // Si la respuesta es un String, tratarlo como mensaje de éxito
@@ -315,7 +315,6 @@ class AuthService {
           }
           return VerifyResponse.fromJson(response.data);
         } catch (parseError) {
-          debugPrint('⚠️ Error al parsear VerifyResponse: $parseError');
           // Si el parseo falla pero el código es exitoso, crear respuesta básica
           return VerifyResponse(
             success: true,
@@ -324,7 +323,6 @@ class AuthService {
           );
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -345,16 +343,6 @@ class AuthService {
         final responseData = e.response!.data;
         final responseHeaders = e.response!.headers;
 
-        debugPrint('❌ ========== ERROR EN VERIFICACIÓN ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ Headers de respuesta: $responseHeaders');
-        debugPrint('❌ Request enviado: ${request.toJson()}');
-        debugPrint('❌ Código: ${request.codigo}');
-        debugPrint('❌ URL: $baseUrl/login/verify');
-        debugPrint('❌ Método: PATCH');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al verificar el código';
@@ -403,8 +391,6 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en verifyEmail: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
@@ -414,24 +400,15 @@ class AuthService {
   Future<ForgotPasswordResponse> recoverPassword(ForgotPasswordRequest request) async {
     try {
       final requestData = request.toJson();
-      debugPrint('📤 Request body para recuperación de contraseña: $requestData');
-      debugPrint('📤 Email (userName) a enviar: ${request.userName}');
-      debugPrint('📤 Método HTTP: POST');
-      debugPrint('📤 URL completa: $baseUrl/login/usuario/recuperar/acceso');
 
       final response = await _dio.post(
         '/login/usuario/recuperar/acceso',
         data: requestData,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Headers de respuesta: ${response.headers}');
 
       // Aceptar 200 (OK) y 201 (Created) como respuestas exitosas
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint(
-            '📦 Respuesta de recuperación (${response.statusCode}): ${response.data}');
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
 
         try {
           // Si la respuesta es un String, tratarlo como mensaje de éxito
@@ -451,7 +428,6 @@ class AuthService {
           }
           return ForgotPasswordResponse.fromJson(response.data);
         } catch (parseError) {
-          debugPrint('⚠️ Error al parsear ForgotPasswordResponse: $parseError');
           // Si el parseo falla pero el código es exitoso, crear respuesta básica
           return ForgotPasswordResponse(
             success: true,
@@ -459,7 +435,6 @@ class AuthService {
           );
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -480,16 +455,6 @@ class AuthService {
         final responseData = e.response!.data;
         final responseHeaders = e.response!.headers;
 
-        debugPrint('❌ ========== ERROR EN RECUPERACIÓN ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ Headers de respuesta: $responseHeaders');
-        debugPrint('❌ Request enviado: ${request.toJson()}');
-        debugPrint('❌ Email: ${request.userName}');
-        debugPrint('❌ URL: $baseUrl/login/usuario/recuperar/acceso');
-        debugPrint('❌ Método: POST');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al recuperar contraseña';
@@ -536,8 +501,6 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en recoverPassword: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
@@ -547,24 +510,15 @@ class AuthService {
   Future<ResendCodeResponse> resendCode(ResendCodeRequest request) async {
     try {
       final requestData = request.toJson();
-      debugPrint('📤 Request body para reenvío de código: $requestData');
-      debugPrint('📤 Email (userName) a enviar: ${request.userName}');
-      debugPrint('📤 Método HTTP: POST');
-      debugPrint('📤 URL completa: $baseUrl/login/recuperar/confirmacion');
 
       final response = await _dio.post(
         '/login/recuperar/confirmacion',
         data: requestData,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Headers de respuesta: ${response.headers}');
 
       // Aceptar 200 (OK) y 201 (Created) como respuestas exitosas
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint(
-            '📦 Respuesta de reenvío (${response.statusCode}): ${response.data}');
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
 
         try {
           // Si la respuesta es un String, tratarlo como mensaje de éxito
@@ -584,7 +538,6 @@ class AuthService {
           }
           return ResendCodeResponse.fromJson(response.data);
         } catch (parseError) {
-          debugPrint('⚠️ Error al parsear ResendCodeResponse: $parseError');
           // Si el parseo falla pero el código es exitoso, crear respuesta básica
           return ResendCodeResponse(
             success: true,
@@ -592,7 +545,6 @@ class AuthService {
           );
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -613,16 +565,6 @@ class AuthService {
         final responseData = e.response!.data;
         final responseHeaders = e.response!.headers;
 
-        debugPrint('❌ ========== ERROR EN REENVÍO DE CÓDIGO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ Headers de respuesta: $responseHeaders');
-        debugPrint('❌ Request enviado: ${request.toJson()}');
-        debugPrint('❌ Email: ${request.userName}');
-        debugPrint('❌ URL: $baseUrl/login/recuperar/confirmacion');
-        debugPrint('❌ Método: POST');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al reenviar el código';
@@ -669,8 +611,6 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en resendCode: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
@@ -684,10 +624,6 @@ class AuthService {
   }) async {
     try {
       final requestData = request.toJson();
-      debugPrint('📤 Request body para cambio de contraseña: $requestData');
-      debugPrint('📤 User ID: $userId');
-      debugPrint('📤 Método HTTP: PUT');
-      debugPrint('📤 URL completa: $baseUrl/usuarios/actualizar/contrasena/$userId');
 
       // Agregar token de autenticación si está disponible
       final options = Options(
@@ -700,14 +636,9 @@ class AuthService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Headers de respuesta: ${response.headers}');
 
       // Aceptar 200 (OK) como respuesta exitosa
       if (response.statusCode == 200) {
-        debugPrint(
-            '📦 Respuesta de cambio de contraseña (${response.statusCode}): ${response.data}');
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
 
         try {
           if (response.data is Map<String, dynamic>) {
@@ -720,7 +651,6 @@ class AuthService {
             message: 'Contraseña actualizada correctamente',
           );
         } catch (parseError) {
-          debugPrint('⚠️ Error al parsear ChangePasswordResponse: $parseError');
           // Si el parseo falla pero el código es exitoso, crear respuesta básica
           return ChangePasswordResponse(
             success: true,
@@ -728,7 +658,6 @@ class AuthService {
           );
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -749,16 +678,6 @@ class AuthService {
         final responseData = e.response!.data;
         final responseHeaders = e.response!.headers;
 
-        debugPrint('❌ ========== ERROR EN CAMBIO DE CONTRASEÑA ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ Headers de respuesta: $responseHeaders');
-        debugPrint('❌ Request enviado: ${request.toJson()}');
-        debugPrint('❌ User ID: $userId');
-        debugPrint('❌ URL: $baseUrl/usuarios/actualizar/contrasena/$userId');
-        debugPrint('❌ Método: PUT');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al cambiar la contraseña';
@@ -835,8 +754,6 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en changePassword: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
@@ -860,10 +777,6 @@ class AuthService {
         throw AuthException('En mobile se requiere el archivo (imageFile)');
       }
       
-      debugPrint('📤 Subiendo foto de perfil');
-      debugPrint('📤 URL: $baseUrl/usuarios/foto-perfil');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
 
       // En web, validar existencia del archivo no es posible
       if (!kIsWeb && imageFile != null) {
@@ -879,7 +792,6 @@ class AuthService {
       final bytes = imageBytes ?? (imageFile != null ? await imageFile.readAsBytes() : throw AuthException('Se requiere imageFile o imageBytes'));
       final actualFileSize = bytes.length;
       
-      debugPrint('📤 Tamaño del archivo: ${(actualFileSize / 1024).toStringAsFixed(2)} KB');
       
       // Obtener nombre del archivo de forma segura para web
       String fileName = 'image';
@@ -911,7 +823,6 @@ class AuthService {
               headerBytes[2] == 0x4E &&
               headerBytes[3] == 0x47) {
             mediaType = MediaType('image', 'png');
-            debugPrint('📤 Tipo detectado por header: PNG');
           }
           // Detectar JPEG: FF D8 FF
           else if (headerBytes.length >= 3 &&
@@ -919,21 +830,17 @@ class AuthService {
               headerBytes[1] == 0xD8 &&
               headerBytes[2] == 0xFF) {
             mediaType = MediaType('image', 'jpeg');
-            debugPrint('📤 Tipo detectado por header: JPEG');
           }
           // Si no se puede detectar, usar JPEG por defecto (más común)
           else {
             mediaType = MediaType('image', 'jpeg');
-            debugPrint('📤 Tipo no detectado, usando JPEG por defecto');
           }
         } catch (e) {
           // Si falla la detección, usar JPEG por defecto
           mediaType = MediaType('image', 'jpeg');
-          debugPrint('📤 Error al detectar tipo, usando JPEG por defecto: $e');
         }
       }
 
-      debugPrint('📤 Content-Type detectado: ${mediaType?.toString()}');
       
       // Asegurar que el nombre del archivo tenga una extensión válida
       String filename = 'image';
@@ -966,9 +873,6 @@ class AuthService {
         contentType: mediaType,
       );
 
-      debugPrint('📤 Nombre del archivo: ${multipartFile.filename}');
-      debugPrint('📤 Content-Type del archivo: ${multipartFile.contentType}');
-      debugPrint('📤 Longitud del archivo: ${multipartFile.length} bytes');
 
       // Crear FormData con el archivo
       // El campo debe ser 'foto' según el backend
@@ -995,8 +899,6 @@ class AuthService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       // Aceptar 200 (OK) y 201 (Created) como respuestas exitosas
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1005,19 +907,16 @@ class AuthService {
             final fotoPerfilResponse = FotoPerfilResponse.fromJson(
               response.data as Map<String, dynamic>,
             );
-            debugPrint('✅ Foto de perfil subida exitosamente');
             return fotoPerfilResponse;
           } else {
             throw AuthException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError) {
-          debugPrint('❌ Error al parsear FotoPerfilResponse: $parseError');
           throw AuthException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
       } else {
-        debugPrint('❌ Código de estado inesperado: ${response.statusCode}');
         throw AuthException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
       }
@@ -1037,11 +936,6 @@ class AuthService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN SUBIDA DE FOTO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al subir la foto de perfil';
@@ -1079,19 +973,8 @@ class AuthService {
       if (e is AuthException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en uploadProfilePhoto: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       throw AuthException('Error inesperado: ${e.toString()}');
     }
   }
 }
 
-/// Excepción personalizada para errores de autenticación
-class AuthException implements Exception {
-  final String message;
-
-  AuthException(this.message);
-
-  @override
-  String toString() => message;
-}

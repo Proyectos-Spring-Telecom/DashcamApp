@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/rutas/rutas_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 
 /// * Excepción personalizada para errores del servicio de rutas
 class RutasException implements Exception {
@@ -48,14 +48,10 @@ class RutasService {
         },
       );
 
-      debugPrint('📤 Obteniendo rutas');
-      debugPrint('📤 URL: $baseUrl/rutas/list');
-      debugPrint('📤 Método: GET');
       if (token != null && token.isNotEmpty) {
-        debugPrint(
-            '📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        SecureLog.dAuth('📤 Token', present: true);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
       final response = await _dio.get(
@@ -63,20 +59,12 @@ class RutasService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
           final rutasResponse = RutasResponse.fromJson(response.data);
-          debugPrint('✅ Rutas obtenidas exitosamente');
-          debugPrint('✅ Total de rutas: ${rutasResponse.data.length}');
-          debugPrint('✅ Rutas activas (dropdown): ${rutasResponse.rutasActivas.length}');
-          debugPrint('✅ Rutas para mapa: ${rutasResponse.rutasParaMapa.length}');
           return rutasResponse;
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw RutasException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -101,10 +89,6 @@ class RutasService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER RUTAS ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ =============================================');
 
         String errorMessage = 'Error al obtener las rutas';
         if (responseData is Map<String, dynamic>) {
@@ -140,7 +124,6 @@ class RutasService {
       if (e is RutasException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerRutas: $e');
       throw RutasException('Error inesperado: ${e.toString()}');
     }
   }

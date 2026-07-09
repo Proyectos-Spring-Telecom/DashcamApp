@@ -1,6 +1,8 @@
 import 'package:dashboardpro/model/auth/rol.dart';
 import 'package:dashboardpro/model/auth/permiso.dart';
 import 'package:dashboardpro/model/auth/login_response.dart';
+import 'package:dashboardpro/utils/auth_rol_helper.dart';
+import 'package:dashboardpro/utils/jwt_payload_helper.dart';
 
 class User {
   final int id;
@@ -39,24 +41,47 @@ class User {
     required this.permisos,
   });
 
-  factory User.fromLoginResponse(LoginResponse loginResponse) {
+  factory User.fromLoginResponse(
+    LoginResponse loginResponse, {
+    required String userName,
+  }) {
+    return User.fromAccessToken(loginResponse.token, userName: userName);
+  }
+
+  /// Construye un [User] mínimo a partir de los claims del JWT de acceso.
+  factory User.fromAccessToken(String token, {required String userName}) {
+    final claims = JwtPayloadHelper.decodePayload(token);
+    final email = claims['email']?.toString().trim();
+    final resolvedUserName =
+        (email != null && email.isNotEmpty) ? email : userName.trim();
+
+    final id = int.tryParse(claims['id']?.toString() ?? '') ?? 0;
+    final idCliente =
+        int.tryParse(claims['cliente']?.toString() ?? '') ?? 0;
+    final rolId = claims['rol']?.toString() ?? '';
+    final rolNombre = AuthRolHelper.nombreFromId(rolId);
+
+    final displayName = resolvedUserName.contains('@')
+        ? resolvedUserName.split('@').first
+        : resolvedUserName;
+
     return User(
-      id: loginResponse.id,
-      nombre: loginResponse.nombre,
-      apellidoPaterno: loginResponse.apellidoPaterno,
-      apellidoMaterno: loginResponse.apellidoMaterno,
-      idCliente: loginResponse.idCliente,
-      nombreCliente: loginResponse.nombreCliente,
-      apellidoPaternoCliente: loginResponse.apellidoPaternoCliente,
-      apellidoMaternoCliente: loginResponse.apellidoMaternoCliente,
-      logotipo: loginResponse.logotipo,
-      telefono: loginResponse.telefono,
-      ultimoLogin: loginResponse.ultimoLogin,
-      fechaCreacion: loginResponse.fechaCreacion,
-      fotoPerfil: loginResponse.fotoPerfil,
-      userName: loginResponse.userName,
-      rol: loginResponse.rol,
-      permisos: loginResponse.permisos,
+      id: id,
+      nombre: displayName,
+      apellidoPaterno: '',
+      apellidoMaterno: '',
+      idCliente: idCliente,
+      nombreCliente: '',
+      userName: resolvedUserName,
+      rol: rolId.isNotEmpty
+          ? Rol(
+              id: rolId,
+              nombre: rolNombre,
+              descripcion: '',
+              estatus: 1,
+            )
+          : null,
+      permisos: const [],
     );
   }
 
@@ -68,13 +93,13 @@ class User {
       apellidoMaterno: json['apellidoMaterno']?.toString() ?? '',
       idCliente: json['idCliente'] ?? 0,
       nombreCliente: json['nombreCliente']?.toString() ?? '',
-      apellidoPaternoCliente: json['apellidoPaternoCliente']?.toString(),
-      apellidoMaternoCliente: json['apellidoMaternoCliente']?.toString(),
-      logotipo: json['logotipo']?.toString(),
-      telefono: json['telefono']?.toString(),
-      ultimoLogin: json['ultimoLogin']?.toString(),
-      fechaCreacion: json['fechaCreacion']?.toString(),
-      fotoPerfil: json['fotoPerfil']?.toString(),
+      apellidoPaternoCliente: _optionalString(json['apellidoPaternoCliente']),
+      apellidoMaternoCliente: _optionalString(json['apellidoMaternoCliente']),
+      logotipo: _optionalString(json['logotipo']),
+      telefono: _optionalString(json['telefono']),
+      ultimoLogin: _optionalString(json['ultimoLogin']),
+      fechaCreacion: _optionalString(json['fechaCreacion']),
+      fotoPerfil: _optionalString(json['fotoPerfil']),
       userName: json['userName']?.toString() ?? '',
       rol: json['rol'] != null ? Rol.fromJson(json['rol'] as Map<String, dynamic>) : null,
       permisos: json['permisos'] != null
@@ -109,5 +134,12 @@ class User {
   // Método helper para obtener el nombre completo
   String get nombreCompleto {
     return '$nombre $apellidoPaterno $apellidoMaterno'.trim();
+  }
+
+  static String? _optionalString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
   }
 }

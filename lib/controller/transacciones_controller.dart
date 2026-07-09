@@ -47,7 +47,6 @@ class TransaccionesController extends ChangeNotifier {
   /// Carga los viajes del día actual (máximo 10).
   /// Estados: loading → success | empty | error.
   Future<void> cargarViajesDelDia() async {
-    debugPrint('📤 [ViajesDelDia] Inicio cargarViajesDelDia');
     _status = ViajesDelDiaStatus.loading;
     _errorMessage = null;
     notifyListeners();
@@ -57,23 +56,17 @@ class TransaccionesController extends ChangeNotifier {
 
       if (result.isSuccess && result.data != null) {
         final list = result.data!;
-        debugPrint('📥 [ViajesDelDia] Viajes obtenidos: ${list.length}');
         _viajes = list;
         if (list.isEmpty) {
           _status = ViajesDelDiaStatus.empty;
-          debugPrint('📥 [ViajesDelDia] Estado: empty (sin viajes hoy)');
         } else {
           _status = ViajesDelDiaStatus.success;
-          debugPrint('📥 [ViajesDelDia] Estado: success');
         }
       } else {
         _status = ViajesDelDiaStatus.error;
         _errorMessage = result.errorMessage ?? 'No fue posible obtener los viajes del día.';
-        debugPrint('❌ [ViajesDelDia] Error: $_errorMessage');
       }
     } catch (e, st) {
-      debugPrint('❌ [ViajesDelDia] Excepción: $e');
-      debugPrint('❌ [ViajesDelDia] Stack: $st');
       _status = ViajesDelDiaStatus.error;
       _errorMessage = 'No fue posible obtener los viajes del día.';
     }

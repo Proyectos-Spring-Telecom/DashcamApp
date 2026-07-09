@@ -2,9 +2,7 @@
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:quickalert/quickalert.dart';
@@ -158,10 +156,8 @@ class _TransportePageState extends State<TransportePage> {
   /// ? INFO: Listado para BottomSheet; pintado (polyline + estaciones) al seleccionar
   Future<void> _cargarVariantes() async {
     try {
-      debugPrint('📤 Cargando variantes...');
       await variantesBloc.cargarVariantes();
     } catch (e) {
-      debugPrint('❌ Error al cargar variantes: $e');
     }
   }
 
@@ -169,10 +165,8 @@ class _TransportePageState extends State<TransportePage> {
   /// ? INFO: Filtra estatus === 1 y ruta !== null; el dropdown NO pinta hasta que el usuario seleccione
   Future<void> _cargarRutas() async {
     try {
-      debugPrint('📤 Cargando rutas...');
       await rutasBloc.cargarRutas();
     } catch (e) {
-      debugPrint('❌ Error al cargar rutas: $e');
     }
   }
 
@@ -180,10 +174,8 @@ class _TransportePageState extends State<TransportePage> {
   /// ? INFO: Filtra estatus === 1 y geocerca !== null; el dropdown NO pinta hasta que el usuario seleccione
   Future<void> _cargarZonas() async {
     try {
-      debugPrint('📤 Cargando zonas...');
       await zonasBloc.cargarZonas();
     } catch (e) {
-      debugPrint('❌ Error al cargar zonas: $e');
       // * El error se expone por zonasBloc.errorStream y se muestra con QuickAlert
     }
   }
@@ -192,10 +184,8 @@ class _TransportePageState extends State<TransportePage> {
   /// Filtra automáticamente por cliente del token autenticado y clientes hijos
   Future<void> _cargarUnidades() async {
     try {
-      debugPrint('📤 Cargando unidades de monitoreo...');
       await monitoreoBloc.cargarUnidades();
     } catch (e) {
-      debugPrint('❌ Error al cargar unidades: $e');
       // * El error se manejará a través del stream de errores del bloc
     }
   }
@@ -215,7 +205,6 @@ class _TransportePageState extends State<TransportePage> {
         bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
         if (!mounted) return;
         if (!serviceEnabled) {
-          debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
           _usarPosicionPorDefecto();
           return;
         }
@@ -230,19 +219,16 @@ class _TransportePageState extends State<TransportePage> {
         if (!mounted) return;
       }
       if (permission == geo.LocationPermission.deniedForever) {
-        debugPrint('⚠️ Permisos de ubicación denegados permanentemente');
         _usarPosicionPorDefecto();
         return;
       }
       if (permission != geo.LocationPermission.whileInUse &&
           permission != geo.LocationPermission.always) {
-        debugPrint('⚠️ Permisos de ubicación no otorgados');
         _usarPosicionPorDefecto();
         return;
       }
 
       // * Obtener la ubicación actual (web: usa navigator.geolocation del navegador)
-      debugPrint(kIsWeb ? '🌐 Web: Obteniendo ubicación del navegador...' : '📍 Obteniendo ubicación actual...');
       geo.Position position = await geo.Geolocator.getCurrentPosition(
         desiredAccuracy: geo.LocationAccuracy.high,
         timeLimit: const Duration(seconds: 15),
@@ -252,7 +238,6 @@ class _TransportePageState extends State<TransportePage> {
       if (!mounted) return;
 
       final location = gmaps.LatLng(position.latitude, position.longitude);
-      debugPrint('✅ Ubicación obtenida: lat=${position.latitude}, lng=${position.longitude}');
 
       setState(() {
         _currentLocation = location;
@@ -269,7 +254,6 @@ class _TransportePageState extends State<TransportePage> {
         await _actualizarMapaConUbicacion(location);
       }
     } catch (e) {
-      debugPrint('❌ Error al obtener ubicación: $e');
       // * Verificar que el widget esté montado antes de usar posición por defecto
       if (mounted) {
         _usarPosicionPorDefecto();
@@ -284,7 +268,6 @@ class _TransportePageState extends State<TransportePage> {
         _currentLocation = _mapFallbackIfNoGps;
         _isLoadingLocation = false;
       });
-      debugPrint('⚠️ Sin ubicación del dispositivo; mapa con punto de respaldo: $_mapFallbackIfNoGps');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _startMapLoadingOverlayDebounce();
@@ -307,7 +290,6 @@ class _TransportePageState extends State<TransportePage> {
         ),
       );
     } catch (e) {
-      debugPrint('⚠️ Error al acercar cámara al marker de usuario: $e');
     }
   }
 
@@ -333,7 +315,6 @@ class _TransportePageState extends State<TransportePage> {
         await _acercarCamaraAlMarkerUsuario(location);
       }
     } catch (e) {
-      debugPrint('❌ Error al actualizar mapa con ubicación: $e');
     }
   }
 
@@ -395,16 +376,13 @@ class _TransportePageState extends State<TransportePage> {
   // * Mostrar geocercas en el mapa
   void _onMarkerTapped() {
     if (_currentLocation == null) return;
-    debugPrint('📍 Marker tocado - user_location');
     final position = _currentLocation!;
-    debugPrint('📍 Posición actual: $position');
     
     setState(() {
       _isMarkerTapped = true;
       _selectedMarkerId = 'user_location';
       _selectedMarkerPosition = position;
       _selectedUnidad = null; // * Limpiar unidad seleccionada
-      debugPrint('✅ InfoWindow personalizado activado');
     });
     
     // * Resetear el flag después de un breve delay
@@ -412,7 +390,6 @@ class _TransportePageState extends State<TransportePage> {
       if (mounted) {
         setState(() {
           _isMarkerTapped = false;
-          debugPrint('🔄 Flag _isMarkerTapped reseteado');
         });
       }
     });
@@ -420,7 +397,6 @@ class _TransportePageState extends State<TransportePage> {
 
   /// * UPDATE: Maneja el tap en el marker de una unidad
   void _onUnidadMarkerTapped(UnidadModel unidad) {
-    debugPrint('🚗 Marker de unidad tocado - ${unidad.codigo}');
     final position = gmaps.LatLng(unidad.posicion.lat, unidad.posicion.lng);
     
     setState(() {
@@ -428,7 +404,6 @@ class _TransportePageState extends State<TransportePage> {
       _selectedMarkerId = 'unidad_${unidad.id}';
       _selectedMarkerPosition = position;
       _selectedUnidad = unidad; // * Guardar la unidad seleccionada
-      debugPrint('✅ InfoWindow personalizado activado para unidad ${unidad.codigo}');
     });
     
     // * Resetear el flag después de un breve delay
@@ -436,7 +411,6 @@ class _TransportePageState extends State<TransportePage> {
       if (mounted) {
         setState(() {
           _isMarkerTapped = false;
-          debugPrint('🔄 Flag _isMarkerTapped reseteado');
         });
       }
     });
@@ -555,9 +529,6 @@ class _TransportePageState extends State<TransportePage> {
         await _resizeMarkerImage(bytesFin, routeMarkerSize, pixelRatio: dpr),
       );
     } catch (e) {
-      debugPrint(
-        '⚠️ No se pudieron cargar marker_inicio/marker_fin, usando marcadores por defecto: $e',
-      );
     }
 
     // * Flujo dinámico: usuario seleccionó una ruta en el dropdown (datos desde API)
@@ -758,7 +729,6 @@ class _TransportePageState extends State<TransportePage> {
         await _resizeMarkerImage(dataVar.buffer.asUint8List(), variantMarkerSize, pixelRatio: dpr),
       );
     } catch (e) {
-      debugPrint('⚠️ No se pudo cargar marker_variante.png: $e');
     }
     try {
       final dataInicio = await rootBundle.load('assets/images/marker_inicio.png');
@@ -766,7 +736,6 @@ class _TransportePageState extends State<TransportePage> {
         await _resizeMarkerImage(dataInicio.buffer.asUint8List(), variantInicioFinSize, pixelRatio: dpr),
       );
     } catch (e) {
-      debugPrint('⚠️ No se pudo cargar marker_inicio.png: $e');
     }
     try {
       final dataFin = await rootBundle.load('assets/images/marker_fin.png');
@@ -774,7 +743,6 @@ class _TransportePageState extends State<TransportePage> {
         await _resizeMarkerImage(dataFin.buffer.asUint8List(), variantInicioFinSize, pixelRatio: dpr),
       );
     } catch (e) {
-      debugPrint('⚠️ No se pudo cargar marker_fin.png: $e');
     }
 
     // ? INFO: puntoInicio y puntoFin del JSON (coordenadas); polyline = inicio + recorridoDetallado + fin
@@ -986,18 +954,6 @@ class _TransportePageState extends State<TransportePage> {
 
     final position = _currentLocation!;
     
-    // * Obtener información del usuario logueado
-    final user = authBloc.currentUser;
-    final nombreCompleto = user != null
-        ? '${user.nombre} ${user.apellidoPaterno}${user.apellidoMaterno != null && user.apellidoMaterno!.isNotEmpty ? ' ${user.apellidoMaterno}' : ''}'
-        : 'Usuario';
-    final rolNombre = user?.rol?.nombre ?? 'N/A';
-    
-    // * Construir el snippet con la información del usuario
-    final snippet = '$nombreCompleto\n'
-        'Rol: $rolNombre\n'
-        'Estatus: ✓ Activo';
-    
     // ! IMPORTANTE: Actualizar solo _userLocationMarker y _vehicleMarkers; no tocar _routeMarkers, zonas ni polylines
     final Set<gmaps.Marker> userMarkers = {};
     final Set<gmaps.Marker> vehicleMarkers = {};
@@ -1021,7 +977,6 @@ class _TransportePageState extends State<TransportePage> {
         final Uint8List busResizedBytes = await _resizeMarkerImage(busOriginalBytes, userMarkerSize, pixelRatio: dpr);
         busIcon = gmaps.BitmapDescriptor.fromBytes(busResizedBytes);
       } catch (e) {
-        debugPrint('⚠️ No se pudo cargar marker_bus.png, usando marcador por defecto: $e');
       }
 
       userMarkers.add(
@@ -1034,10 +989,7 @@ class _TransportePageState extends State<TransportePage> {
           onTap: _onMarkerTapped,
         ),
       );
-      debugPrint('✅ Marcador del usuario cargado exitosamente');
     } catch (e, stackTrace) {
-      debugPrint('❌ Error al cargar el marcador personalizado: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       userMarkers.add(
         gmaps.Marker(
           markerId: const gmaps.MarkerId('user_location'),
@@ -1051,7 +1003,6 @@ class _TransportePageState extends State<TransportePage> {
     }
 
     final unidades = monitoreoBloc.unidadesConPosicionValida;
-    debugPrint('🚗 Agregando ${unidades.length} unidades al mapa');
 
     for (var unidad in unidades) {
       try {
@@ -1069,7 +1020,6 @@ class _TransportePageState extends State<TransportePage> {
           ),
         );
       } catch (e) {
-        debugPrint('❌ Error al agregar marker para unidad ${unidad.id}: $e');
       }
     }
 
@@ -1078,7 +1028,6 @@ class _TransportePageState extends State<TransportePage> {
         _userLocationMarker = userMarkers;
         _vehicleMarkers = vehicleMarkers;
       });
-      debugPrint('✅ Markers actualizados: usuario=1, unidades=${vehicleMarkers.length}');
     }
   }
 
@@ -1107,7 +1056,6 @@ class _TransportePageState extends State<TransportePage> {
             ),
           );
         } catch (e) {
-          debugPrint('⚠️ Error al centrar cámara del mapa: $e');
         }
 
         // Cargar los marcadores después de que el mapa esté creado
@@ -1117,17 +1065,12 @@ class _TransportePageState extends State<TransportePage> {
           await _acercarCamaraAlMarkerUsuario(targetPosition);
         }
 
-        debugPrint('✅ Google Maps controller creado exitosamente');
-        debugPrint('📍 Ubicación (centro del mapa): $current');
-        debugPrint('🗺️ Tipo de mapa: $_currentMapType');
-        debugPrint('🌐 Plataforma: ${kIsWeb ? "Web" : "Mobile"}');
 
         // Aplicar estilo para ocultar comercios/POI en el mapa (web y móvil)
         if (mounted) {
           try {
             await controller.setMapStyle(_mapStyleNoPoi);
           } catch (e) {
-            debugPrint('⚠️ Error al aplicar estilo del mapa (ocultar POI): $e');
           }
         }
 
@@ -1139,31 +1082,10 @@ class _TransportePageState extends State<TransportePage> {
             // Nota: Google Maps no proporciona un callback directo para esto,
             // pero podemos mostrar instrucciones si el usuario reporta el problema
             if (!kIsWeb) {
-              debugPrint('⚠️ Verificando estado del mapa después de la inicialización...');
-              debugPrint('📍 Si el mapa muestra solo un fondo café, verifica la autorización de la API key en Google Cloud Console');
-              debugPrint('🔑 API Key: AIzaSyC3vvrNAZOxtjzm0LmdDzSW9gXT1ZZbEYQ');
-              debugPrint('📱 SHA-1 necesario: A8:A9:8A:1C:5E:41:89:4D:74:DD:DF:F3:79:90:2B:CD:58:49:81:62');
-              debugPrint('📦 Package: com.trueuly.dashboardpro');
             } else {
-              debugPrint('🌐 En web, asegúrate de que la API key tenga habilitada la "Maps JavaScript API" en Google Cloud Console');
             }
           }
         });
-    }
-  }
-  
-  void _checkMapAuthorization() {
-    // Este método puede ser llamado manualmente si se detecta un problema
-    // Por ahora, los logs mostrarán las instrucciones necesarias
-    if (mounted) {
-      setState(() {
-        _hasAuthError = true;
-        _errorMessage = 'La API key de Google Maps necesita estar configurada con la restricción SHA-1 en Google Cloud Console.\n\n'
-            'SHA-1 necesario:\n'
-            'A8:A9:8A:1C:5E:41:89:4D:74:DD:DF:F3:79:90:2B:CD:58:49:81:62\n\n'
-            'Package: com.trueuly.dashboardpro\n\n'
-            'Ve a Google Cloud Console > APIs & Services > Credentials y agrega esta restricción a tu API key.';
-      });
     }
   }
 
@@ -1174,7 +1096,6 @@ class _TransportePageState extends State<TransportePage> {
       initialData: themeBloc.currentTheme,
       builder: (context, snapshot) {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
-        final textColor = isDark ? Colors.white : Colors.black;
 
         const systemUiOverlayStyle = SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -1505,28 +1426,24 @@ class _TransportePageState extends State<TransportePage> {
                 // * Cerrar InfoWindow personalizado si el usuario mueve el mapa
                 // * PERO NO si se acaba de tocar el marker
                 if (_selectedMarkerId != null && !_isMarkerTapped) {
-                  debugPrint('🗺️ Cámara movida - cerrando InfoWindow');
                   setState(() {
                     _selectedMarkerId = null;
                     _selectedMarkerPosition = null;
                     _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
                   });
                 } else if (_isMarkerTapped) {
-                  debugPrint('🚫 Ignorando movimiento de cámara porque el marker fue tocado');
                 }
               },
               onTap: (gmaps.LatLng position) {
                 // * Cerrar InfoWindow personalizado si se toca el mapa
                 // * PERO NO si se acaba de tocar el marker (para evitar que se cierre inmediatamente)
                 if (_selectedMarkerId != null && !_isMarkerTapped) {
-                  debugPrint('🗺️ Mapa tocado - cerrando InfoWindow');
                   setState(() {
                     _selectedMarkerId = null;
                     _selectedMarkerPosition = null;
                     _selectedUnidad = null; // * UPDATE: Limpiar unidad seleccionada
                   });
                 } else if (_isMarkerTapped) {
-                  debugPrint('🚫 Ignorando tap del mapa porque el marker fue tocado');
                 }
               },
             ),
@@ -1640,9 +1557,6 @@ class _TransportePageState extends State<TransportePage> {
           if (_selectedMarkerId != null && _selectedMarkerPosition != null) ...[
             Builder(
               builder: (context) {
-                debugPrint('🔍 Renderizando InfoWindow en el Stack');
-                debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
-                debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
                 return _buildCustomInfoWindow(context, isDark);
               },
             ),
@@ -1656,9 +1570,6 @@ class _TransportePageState extends State<TransportePage> {
   /// * Diseño basado en la imagen: gradiente azul, layout horizontal con foto de perfil
   /// * Ahora soporta tanto información del usuario como de unidades
   Widget _buildCustomInfoWindow(BuildContext context, bool isDark) {
-    debugPrint('🎨 Construyendo InfoWindow personalizado');
-    debugPrint('📍 _selectedMarkerId: $_selectedMarkerId');
-    debugPrint('📍 _selectedMarkerPosition: $_selectedMarkerPosition');
     
     // * UPDATE: Determinar si es una unidad o el usuario
     final bool esUnidad = _selectedUnidad != null;
@@ -1684,7 +1595,6 @@ class _TransportePageState extends State<TransportePage> {
         child: GestureDetector(
           onTap: () {
             // * No cerrar al tocar el InfoWindow
-            debugPrint('👆 InfoWindow tocado - no cerrar');
           },
           child: CustomPaint(
             painter: _InfoWindowTailPainter(),

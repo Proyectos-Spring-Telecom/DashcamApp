@@ -17,7 +17,9 @@ Aplicación Flutter multiplataforma (Android, iOS, Web) que funciona como monede
 | **iOS** | Configuración en Xcode para Maps y permisos. |
 | **Web** | Google Maps JavaScript API: carga en `lib/main.dart` con `_ensureGoogleMapsScriptLoaded()` (un solo script, espera a `onLoad` antes de arrancar el mapa) y clave vía `--dart-define=GOOGLE_MAPS_API_KEY`. NetPayJS se referencia en `web/index.html` (CDN) para tokenización en navegador. |
 
-**Dependencias principales:** Flutter SDK ≥3.4.1, Dio (HTTP), go_router, flutter_secure_storage, Firebase (core, Firestore), google_maps_flutter, Syncfusion (charts, maps, PDF, etc.), quickalert, mobile_scanner, qr_flutter, geolocator, NFC (flutter_nfc_kit), number_pagination (^1.0.6, resuelto a 1.1.6), entre otras.
+**Dependencias principales:** Flutter SDK ≥3.4.1, Dio (HTTP), go_router, flutter_secure_storage, flutter_dotenv, google_maps_flutter, calendar_date_picker2, Syncfusion (charts, maps, PDF, etc.), quickalert, mobile_scanner, qr_flutter, geolocator, NFC (flutter_nfc_kit), number_pagination (^1.0.6, resuelto a 1.1.6), entre otras.
+
+**Nota:** Firebase (core, Firestore) fue **eliminado** del proyecto; la app no depende de `google-services.json` ni de inicialización Firebase en `main.dart`.
 
 ---
 
@@ -25,9 +27,11 @@ Aplicación Flutter multiplataforma (Android, iOS, Web) que funciona como monede
 
 | Plataforma | Configuración relevante |
 |------------|-------------------------|
-| **Web** | Build: `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave>`. Opcional: `--no-wasm-dry-run` para suprimir avisos Wasm. La API key se puede leer de `android/local.properties` con `grep 'google.maps.api.key' android/local.properties \| cut -d= -f2`. |
-| **Android** | Plugin de Kotlin **2.3.0** en `android/settings.gradle` (compatible con kotlin-stdlib 2.3.x). API key de Google Maps en `android/local.properties` (`google.maps.api.key`). |
+| **Web** | Build: `flutter build web --release --base-href /dashcampay/ --dart-define=GOOGLE_MAPS_API_KEY=<clave> --dart-define-from-file=.env`. Opcional: `--no-wasm-dry-run`. **Desarrollo local:** requiere proxy CORS (`dart run tool/dev_api_proxy.dart`) — ver §1.6. |
+| **Android** | Plugin de Kotlin **2.3.0** en `android/settings.gradle`. API key de Google Maps en `android/local.properties` (`google.maps.api.key`). Compila sin Firebase/`google-services.json`. |
 | **iOS** | Configuración en Xcode para Maps y permisos. |
+
+**Variables de entorno:** centralizadas en `lib/core/env_config.dart` (`EnvConfig`). Prioridad: `--dart-define` > `.env` (flutter_dotenv) > valores por defecto. Plantillas en `.env.example`, `.env.development.example`, etc. Ver `SETUP_SECRETS.md`.
 
 **Paginación (DataTables):** En `lib/view/plugin/dataTables/components/pagination_datagrid.dart` se usa el paquete `number_pagination` 1.1.6. La API actual del widget `NumberPagination` utiliza `totalPages`, `currentPage` y `visiblePagesCount` (no `pageTotal`, `pageInit`, `threshold` ni `controlButton`).
 
@@ -57,7 +61,7 @@ La solución mezcla patrones en función del módulo:
 
 | Módulo | Descripción | Servicios / Blocs principales |
 |--------|-------------|-----------------------------|
-| **Autenticación** | Login, registro, verificación de correo, recuperación de contraseña, cambio de contraseña, foto de perfil | AuthService, AuthBloc, SecureStorageService |
+| **Autenticación** | Login (token + refresh), perfil vía `/login/me`, registro, verificación de correo (**6 dígitos**), recuperación de contraseña, cambio de contraseña (semáforo de seguridad), foto de perfil | AuthService, AuthApiService, AuthBloc, SecureStorageService |
 | **Monedero** | Wallet del pasajero, monederos activos, recargas, transacciones paginadas, lista de clientes/pasajeros/tipos pasajero, creación de monederos | MonederoService, MonederoBloc |
 | **Transacciones / Viajes del día** | Listado de transacciones del día (POST /transacciones/paginado), filtro por tipo DEBITO y ubicación (lat/lng), Último viaje y Actividad en Dashboard, Códigos QR y Estadísticas | MonederoService (reutilizado), TransaccionesRemoteDataSource, TransaccionesRepository, TransaccionesController |
 | **Transacciones débito QR** | Transacciones débito QR del día (endpoint específico paginado) | TransaccionQrDebitoService, TransaccionQrDebitoBloc |
@@ -70,12 +74,17 @@ La solución mezcla patrones en función del módulo:
 
 ---
 
-## 1.6 API backend
+## 1.6 API backend y configuración
 
-- **Base URL:** `https://dashcampay.com/apidev`
+- **Base URL (producción):** `https://dashcampay.com/apipay` — resuelta por `EnvConfig.apiBaseUrl` (antes `apidev`).
+- **Configuración:** `API_BASE_URL` y opcionalmente `AUTH_API_BASE_URL` vía `--dart-define-from-file=.env` o `--dart-define`. Si no se define `AUTH_API_BASE_URL`, auth usa la misma base que la API general.
 - **Autenticación:** Bearer token en header `Authorization` para la mayoría de los endpoints.
-- **Endpoints públicos (sin token):** login, register, forgot-password, resend-code, verify-code, `clientes/public`.
-- **Interceptor:** `SessionInterceptor` (Dio) detecta respuestas que indican sesión inválida y delega en `SessionManager` para cerrar sesión (por ejemplo redirección a login).
+- **Flujo de sesión:** `POST /login` devuelve solo `{ token, refreshToken }`. El perfil completo (rol, permisos, cliente, etc.) se obtiene con `GET /login/me`. Renovación automática con `POST /login/refresh` ante HTTP 401 (vía `SessionInterceptor` + `TokenRefreshService`).
+- **Endpoints públicos (sin token):** `/login`, `/login/refresh`, `/register`, `/forgot-password`, `/resend-code`, `/verify-code`, `/clientes/public`.
+- **Interceptores Dio:**
+  - `SessionInterceptor`: refresh de token en 401, cierre de sesión si falla, delegación a `SessionManager`.
+  - `RateLimitInterceptor`: HTTP 429 global — alerta QuickAlert “Demasiados intentos” y log debug `[HTTP 429]`.
+- **Desarrollo Web (CORS):** en `localhost` + debug, `EnvConfig` redirige automáticamente a `http://127.0.0.1:8090/apipay`. El proxy local (`tool/dev_api_proxy.dart`) reenvía a `https://dashcampay.com/apipay` e inyecta cabeceras CORS. Android/iOS no requieren proxy.
 
 ---
 
@@ -90,8 +99,10 @@ La solución mezcla patrones en función del módulo:
 
 ## 1.8 Seguridad y persistencia
 
-- **Token y usuario:** persistidos con `SecureStorageService` (flutter_secure_storage); el token se envía en las peticiones que no son públicas.
-- **Expiración de sesión:** manejada por `SessionManager` y `SessionInterceptor`; la UI puede mostrar alertas (p. ej. QuickAlert) y redirigir a login.
+- **Token, refresh token y usuario:** persistidos con `SecureStorageService` (flutter_secure_storage). Tras login/refresh, `AuthBloc.applyRefreshedTokens()` guarda tokens y obtiene perfil con `GET /login/me` (fallback a datos del JWT si el endpoint no responde).
+- **Contraseñas:** reglas compartidas en `lib/utils/password_rules.dart` (12–16 caracteres, minúscula, número, símbolo, sin espacios). Widget visual `PasswordSecurityMeter` en registro y cambio de contraseña.
+- **Expiración de sesión:** manejada por `SessionManager` y `SessionInterceptor` (refresh automático en 401); la UI puede mostrar alertas (QuickAlert) y redirigir a login.
+- **Rate limiting (429):** `RateLimitInterceptor` muestra alerta amigable al usuario y evita alertas duplicadas simultáneas.
 
 ---
 
@@ -99,32 +110,61 @@ La solución mezcla patrones en función del módulo:
 
 ```
 lib/
+├── core/                # EnvConfig, env_loader (dotenv)
 ├── controller/          # Blocs y Controllers (AuthBloc, MonederoBloc, TransaccionesController, etc.)
 ├── data/                # Datasources, repository impl, modelos de data (cliente, extravio, transacciones)
 ├── domain/              # Repositories (abstract), entities, Result, use cases
 ├── model/               # Modelos compartidos (auth, monedero, transaccion, netpay, zonas, etc.)
-├── services/            # Auth, Monedero, NetPay, Zonas, Rutas, Variantes, Monitoreo, Direccion, NFC, etc.
-├── interceptors/        # SessionInterceptor (Dio)
+├── services/            # Auth, AuthApiService, Monedero, NetPay, Zonas, Rutas, Variantes, Monitoreo, Direccion, NFC, etc.
+├── interceptors/        # SessionInterceptor, RateLimitInterceptor (Dio)
 ├── view/                # Pantallas: dashboard, authentications, plugin (charts, maps, calendar), components
-├── widgets/             # Rutas (app_routes, routes_name), scaffold_key, universal_dash, common
-├── utils/               # date_formatter, location_helper, platform_detector, etc.
+├── widgets/             # Rutas (app_routes, routes_name), password_security_meter, scaffold_key, universal_dash, common
+├── utils/               # password_rules, date_formatter, location_helper, platform_detector, etc.
 ├── dashboardpro.dart    # Barrel file (exports)
-└── main.dart            # Inicialización (Firebase, AuthBloc, carga de Google Maps JS en web, runApp)
+└── main.dart            # Inicialización (loadAppEnv, AuthBloc, carga de Google Maps JS en web, runApp)
 ```
 
 ---
 
 ## 1.10 Flujos de datos representativos
 
-1. **Login:** UI → AuthBloc.login → AuthService.post('/login') → SecureStorage (token, user) → AuthBloc actualiza estado → GoRouter redirige.
-2. **Monedero / transacciones general:** UI → MonederoBloc (obtenerWallet, obtenerTransacciones, etc.) → MonederoService (Dio + baseUrl) → API → respuesta parseada a modelos → streams actualizados.
-3. **Viajes del día:** UI (Dashboard/Códigos QR/Estadísticas) → TransaccionesController.cargarViajesDelDia() → TransaccionesRepository → TransaccionesRemoteDataSource → MonederoService.obtenerListaTransacciones(token, page:1, limit:10, fechaInicio/Fin: hoy) → POST /transacciones/paginado → filtrado en UI (esDebito, lat/lng).
-4. **Clientes públicos:** ClienteBloc / uso del repo → ClienteRepositoryImpl → ClienteRemoteDataSource.get('/clientes/public') → Result<List<ClienteEntity>>.
-5. **Extravío:** ExtravioBloc → ExtravioRepository → ExtravioRemoteDataSource → API → Result<ExtravioReportResponse>.
+1. **Login:** UI → AuthBloc.login → AuthApiService.post('/login') → `{ token, refreshToken }` → AuthBloc.applyRefreshedTokens → GET /login/me → SecureStorage → GoRouter redirige según rol.
+2. **Refresh de sesión:** Dio recibe 401 → SessionInterceptor → TokenRefreshService → POST /login/refresh → reintento con nuevo token; si falla → SessionManager cierra sesión.
+3. **Monedero / transacciones general:** UI → MonederoBloc → MonederoService (Dio + EnvConfig.apiBaseUrl) → API → streams actualizados.
+4. **Viajes del día:** UI → TransaccionesController → TransaccionesRepository → TransaccionesRemoteDataSource → MonederoService.obtenerListaTransacciones → POST /transacciones/paginado → filtrado en UI.
+5. **Clientes públicos:** ClienteBloc → ClienteRepositoryImpl → ClienteRemoteDataSource.get('/clientes/public').
+6. **Extravío:** ExtravioBloc → ExtravioRepository → ExtravioRemoteDataSource → API.
+7. **Registro:** formulario con validación de contraseña (PasswordRules + PasswordSecurityMeter), fecha de nacimiento vía CalendarDatePicker2 (diálogo responsive), verificación de correo con código de **6 dígitos**.
 
 ---
 
-## 1.11 Evolución reciente (27 de abril de 2026)
+## 1.11 Evolución reciente (8 de julio de 2026)
+
+Cambios de contexto alineados con el código actual:
+
+### Configuración y API
+
+- **EnvConfig:** centraliza `API_BASE_URL`, `AUTH_API_BASE_URL`, `GOOGLE_MAPS_API_KEY`, `NETPAY_PUBLIC_API_KEY` y `APP_ENV`. Prioridad: `--dart-define` > `.env` > default.
+- **Base URL:** migración de `apidev` a **`apipay`** (`https://dashcampay.com/apipay`).
+- **Proxy Web (CORS):** `tool/dev_api_proxy.dart` en puerto 8090; activo automáticamente en Flutter Web + debug + localhost. Script de atajo: `scripts/run_web_dev.sh`. Documentación en `SETUP_SECRETS.md`.
+- **Firebase eliminado:** sin dependencias ni init en `main.dart`; Android compila sin `google-services.json`.
+
+### Autenticación
+
+- **Login desacoplado del perfil:** `POST /login` → `{ token, refreshToken }`; perfil con `GET /login/me`.
+- **AuthApiService:** cliente Dio dedicado para login/refresh (sin SessionInterceptor, evita ciclos).
+- **Refresh automático:** `SessionInterceptor` + `TokenRefreshService` ante HTTP 401.
+- **Verificación de correo:** código de **6 dígitos** (`email_verify.dart`).
+- **Contraseñas:** `PasswordRules` + `PasswordSecurityMeter` en registro y cambio de contraseña (12–16 chars, minúscula, número, símbolo, sin espacios).
+- **HTTP 429:** `RateLimitInterceptor` global con QuickAlert “Demasiados intentos”.
+
+### Registro (UI)
+
+- **Calendario fecha de nacimiento:** `CalendarDatePicker2` con diálogo responsive — ancho según `MediaQuery`, modo compacto en pantallas estrechas (`disableMonthPicker`, meses abreviados, tipografías reducidas) para evitar overflow del selector mes/año.
+
+---
+
+## 1.12 Evolución anterior (27 de abril de 2026)
 
 Cambios de contexto alineados con el código actual:
 
@@ -144,8 +184,9 @@ Cambios de contexto alineados con el código actual:
 
 ### Claves y configuración
 
-- **Google Maps (web):** `GOOGLE_MAPS_API_KEY` con `--dart-define` (p. ej. leyendo `google.maps.api.key` de `android/local.properties`).
-- **NetPay:** la llave pública de cliente para tokenización se mantiene en el código de servicio NetPay y documentos asociados; actualizar de forma coordinada con backend/NetPay.
+- **Variables de entorno:** `EnvConfig` + `.env` / `--dart-define-from-file` para API, Maps y NetPay. Ver `SETUP_SECRETS.md`.
+- **Google Maps (web):** `GOOGLE_MAPS_API_KEY` con `--dart-define` o `.env` (p. ej. leyendo `google.maps.api.key` de `android/local.properties`).
+- **NetPay:** llave pública `NETPAY_PUBLIC_API_KEY` vía `EnvConfig.netpayPublicApiKey` (solo `pk_*` en cliente).
 
 ---
 

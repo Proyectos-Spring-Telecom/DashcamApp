@@ -9,9 +9,10 @@ build/
 
 # Environment & Secrets (NUNCA subir)
 .env
-*.env
-.env.local
-.env.production
+.env.*
+!.env.example
+!.env.*.example
+*.env.local
 
 # Android
 android/.gradle/

@@ -1,5 +1,4 @@
 import 'package:dashboardpro/data/datasources/cliente_remote_datasource.dart';
-import 'package:dashboardpro/data/models/cliente_model.dart';
 import 'package:dashboardpro/domain/entities/cliente_entity.dart';
 import 'package:dashboardpro/domain/entities/result.dart';
 import 'package:dashboardpro/domain/repositories/cliente_repository.dart';

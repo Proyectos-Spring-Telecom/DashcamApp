@@ -1,5 +1,4 @@
 // Project imports:
-import 'dart:async';
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
 

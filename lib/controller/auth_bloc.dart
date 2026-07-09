@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dashboardpro/model/auth/user.dart';
+import 'package:dashboardpro/model/auth/login_response.dart';
 import 'package:dashboardpro/model/auth/registro_request.dart';
 import 'package:dashboardpro/model/auth/registro_response.dart';
 import 'package:dashboardpro/model/auth/verify_request.dart';
@@ -10,10 +11,9 @@ import 'package:dashboardpro/model/auth/resend_code_request.dart';
 import 'package:dashboardpro/model/auth/resend_code_response.dart';
 import 'package:dashboardpro/model/auth/change_password_request.dart';
 import 'package:dashboardpro/model/auth/change_password_response.dart';
-import 'package:dashboardpro/model/auth/foto_perfil_response.dart';
 import 'package:dashboardpro/services/auth_service.dart';
+import 'package:dashboardpro/services/auth_exception.dart';
 import 'package:dashboardpro/services/secure_storage_service.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 // Imports condicionales para File
 import 'dart:io' if (dart.library.html) 'package:dashboardpro/services/auth_service_file_stub.dart';
@@ -51,21 +51,22 @@ class AuthBloc {
   Future<void> initialize() async {
     try {
       final token = await _storageService.getToken();
-      final user = await _storageService.getUser();
+      var user = await _storageService.getUser();
 
-      if (token != null && token.isNotEmpty && user != null) {
+      if (token != null && token.isNotEmpty) {
+        user ??= User.fromAccessToken(token, userName: '');
         _currentToken = token;
         _currentUser = user;
         _authStatus = AuthStatus.authenticated;
         _authController.add(_authStatus);
         _userController.add(_currentUser);
+        unawaited(refreshUserProfile(token: token));
       } else {
         _authStatus = AuthStatus.unauthenticated;
         _authController.add(_authStatus);
         _userController.add(null);
       }
     } catch (e) {
-      debugPrint('Error al inicializar autenticación: $e');
       _authStatus = AuthStatus.unauthenticated;
       _authController.add(_authStatus);
       _userController.add(null);
@@ -81,18 +82,8 @@ class AuthBloc {
 
       final loginResponse = await _authService.login(userName, password);
 
-      // Guardar token y usuario
-      await _storageService.saveToken(loginResponse.token);
-      final user = User.fromLoginResponse(loginResponse);
-      await _storageService.saveUser(user);
+      await applyRefreshedTokens(loginResponse, userName: userName);
 
-      // Actualizar estado
-      _currentToken = loginResponse.token;
-      _currentUser = user;
-      _authStatus = AuthStatus.authenticated;
-
-      _authController.add(_authStatus);
-      _userController.add(_currentUser);
       _errorController.add(null);
 
       return true;
@@ -155,14 +146,11 @@ class AuthBloc {
 
       return registroResponse;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en registerPasajero: ${e.message}');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en registerPasajero: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -194,14 +182,11 @@ class AuthBloc {
 
       return verifyResponse;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en verifyEmail: ${e.message}');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en verifyEmail: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -231,14 +216,11 @@ class AuthBloc {
 
       return recoverResponse;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en recoverPassword: ${e.message}');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en recoverPassword: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -268,14 +250,11 @@ class AuthBloc {
 
       return resendResponse;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en resendCode: ${e.message}');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en resendCode: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -323,14 +302,11 @@ class AuthBloc {
 
       return changePasswordResponse;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en changePassword: ${e.message}');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en changePassword: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.error;
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -350,7 +326,6 @@ class AuthBloc {
       _userController.add(null);
       _errorController.add(null);
     } catch (e) {
-      debugPrint('Error al cerrar sesión: $e');
       // Aun así, limpiar el estado local
       _currentToken = null;
       _currentUser = null;
@@ -392,17 +367,13 @@ class AuthBloc {
       _authController.add(_authStatus);
       _errorController.add(null);
 
-      final fotoPerfilResponse = await _authService.uploadProfilePhoto(
+      await _authService.uploadProfilePhoto(
         imageFile: imageFile,
         token: _currentToken,
       );
 
-      // Si la respuesta indica éxito, actualizar el usuario
-      // Nota: La respuesta puede incluir la URL de la foto actualizada,
-      // pero si no la incluye, el usuario deberá recargar su perfil.
-      // Por ahora, mantenemos el usuario actual y el cliente deberá refrescar la imagen.
-      // Si el backend retorna la nueva URL, actualizaríamos aquí:
-      
+      await refreshUserProfile();
+
       _authStatus = AuthStatus.authenticated;
       _authController.add(_authStatus);
       _errorController.add(null);
@@ -412,14 +383,11 @@ class AuthBloc {
 
       return true;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en uploadProfilePhoto: ${e.message}');
       _authStatus = AuthStatus.authenticated; // Mantener autenticado aunque falle la subida
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return false;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en uploadProfilePhoto: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.authenticated; // Mantener autenticado aunque falle la subida
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
@@ -443,18 +411,14 @@ class AuthBloc {
       _errorController.add(null);
 
       // En web, pasamos null para imageFile y los bytes directamente
-      final fotoPerfilResponse = await _authService.uploadProfilePhoto(
+      await _authService.uploadProfilePhoto(
         imageFile: null, // No se usa en web
         token: _currentToken,
         imageBytes: imageBytes,
       );
 
-      // Si la respuesta indica éxito, actualizar el usuario
-      // Nota: La respuesta puede incluir la URL de la foto actualizada,
-      // pero si no la incluye, el usuario deberá recargar su perfil.
-      // Por ahora, mantenemos el usuario actual y el cliente deberá refrescar la imagen.
-      // Si el backend retorna la nueva URL, actualizaríamos aquí:
-      
+      await refreshUserProfile();
+
       _authStatus = AuthStatus.authenticated;
       _authController.add(_authStatus);
       _errorController.add(null);
@@ -464,17 +428,74 @@ class AuthBloc {
 
       return true;
     } on AuthException catch (e) {
-      debugPrint('❌ AuthException en uploadProfilePhoto: ${e.message}');
       _authStatus = AuthStatus.authenticated; // Mantener autenticado aunque falle la subida
       _authController.add(_authStatus);
       _errorController.add(e.message);
       return false;
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en uploadProfilePhoto: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _authStatus = AuthStatus.authenticated; // Mantener autenticado aunque falle la subida
       _authController.add(_authStatus);
       _errorController.add('Error inesperado: ${e.toString()}');
+      return false;
+    }
+  }
+
+  /// Persiste y aplica un nuevo par de tokens tras login o refresh.
+  Future<void> applyRefreshedTokens(
+    LoginResponse tokens, {
+    String? userName,
+  }) async {
+    await _storageService.saveToken(tokens.token);
+    if (tokens.refreshToken.isNotEmpty) {
+      await _storageService.saveRefreshToken(tokens.refreshToken);
+    }
+
+    _currentToken = tokens.token;
+
+    final resolvedUserName = userName ?? _currentUser?.userName ?? '';
+    try {
+      _currentUser = await _authService.fetchCurrentUser(token: tokens.token);
+    } catch (e) {
+      _currentUser = User.fromAccessToken(
+        tokens.token,
+        userName: resolvedUserName,
+      );
+    }
+
+    await _storageService.saveUser(_currentUser!);
+
+    _authStatus = AuthStatus.authenticated;
+    _authController.add(_authStatus);
+    _userController.add(_currentUser);
+  }
+
+  /// Obtiene el perfil completo desde GET /login/me y actualiza la sesión.
+  Future<void> refreshUserProfile({String? token}) async {
+    final accessToken =
+        token ?? _currentToken ?? await _storageService.getToken();
+    if (accessToken == null || accessToken.isEmpty) return;
+
+    try {
+      final user = await _authService.fetchCurrentUser(token: accessToken);
+      _currentUser = user;
+      _currentToken = accessToken;
+      await _storageService.saveUser(user);
+      _userController.add(_currentUser);
+    } catch (e) {
+    }
+  }
+
+  /// Renueva la sesión manualmente (p. ej. antes de una operación crítica).
+  Future<bool> refreshSession() async {
+    try {
+      final refreshToken = await _storageService.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return false;
+      }
+      final tokens = await _authService.refreshTokens(refreshToken);
+      await applyRefreshedTokens(tokens);
+      return true;
+    } catch (e) {
       return false;
     }
   }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:geolocator/geolocator.dart' as geo;
 
 /// Helper para solicitar permisos de ubicación
@@ -11,7 +10,6 @@ class LocationPermissionHelper {
       // Verificar si los servicios de ubicación están habilitados
       bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('⚠️ Los servicios de ubicación están deshabilitados');
         return false;
       }
 
@@ -21,31 +19,25 @@ class LocationPermissionHelper {
       // Si los permisos ya están otorgados, retornar true
       if (permission == geo.LocationPermission.whileInUse || 
           permission == geo.LocationPermission.always) {
-        debugPrint('✅ Permisos de ubicación ya otorgados');
         return true;
       }
 
       // Si los permisos están denegados permanentemente, no se puede solicitar
       if (permission == geo.LocationPermission.deniedForever) {
-        debugPrint('⚠️ Permisos de ubicación denegados permanentemente');
         return false;
       }
 
       // Solicitar permisos (esto mostrará el diálogo nativo del sistema)
-      debugPrint('📱 Solicitando permisos de ubicación (diálogo nativo)...');
       permission = await geo.Geolocator.requestPermission();
       
       // Verificar el resultado
       if (permission == geo.LocationPermission.whileInUse || 
           permission == geo.LocationPermission.always) {
-        debugPrint('✅ Permisos de ubicación otorgados');
         return true;
       } else {
-        debugPrint('⚠️ Permisos de ubicación denegados');
         return false;
       }
     } catch (e) {
-      debugPrint('❌ Error al solicitar permisos de ubicación: $e');
       return false;
     }
   }
@@ -57,7 +49,6 @@ class LocationPermissionHelper {
       return permission == geo.LocationPermission.whileInUse || 
              permission == geo.LocationPermission.always;
     } catch (e) {
-      debugPrint('❌ Error al verificar permisos de ubicación: $e');
       return false;
     }
   }
@@ -67,7 +58,6 @@ class LocationPermissionHelper {
     try {
       return await geo.Geolocator.isLocationServiceEnabled();
     } catch (e) {
-      debugPrint('❌ Error al verificar servicios de ubicación: $e');
       return false;
     }
   }

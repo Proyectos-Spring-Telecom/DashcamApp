@@ -1,9 +1,8 @@
 // Project imports:
-import 'dart:async';
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/utils/password_rules.dart';
+import 'package:dashboardpro/widgets/password_security_meter.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:dashboardpro/controller/cliente_bloc.dart';
 import 'package:dashboardpro/domain/entities/cliente_entity.dart';
 import 'package:quickalert/quickalert.dart';
 import 'package:calendar_date_picker2/calendar_date_picker2.dart';
@@ -102,7 +101,6 @@ class _RegisterState extends State<Register> {
       if (_clientes.isEmpty && mounted) {
         // No mostrar diálogo aquí, solo log del error
         // El usuario puede intentar registrar sin compañía si tiene monedero
-        debugPrint('⚠️ Error al cargar clientes: ${result.errorMessage}');
       }
     }
   }
@@ -123,7 +121,6 @@ class _RegisterState extends State<Register> {
   /// Si hay monedero, deshabilita y limpia el dropdown
   void _onMonederoChanged() {
     final tieneMonedero = _monederoController.text.trim().isNotEmpty;
-    final teniaMonedero = _selectedClienteId == null && _monederoController.text.trim().isEmpty;
     
     // Solo actualizar si cambió el estado de tener/no tener monedero
     if (tieneMonedero && _selectedClienteId != null) {
@@ -644,6 +641,12 @@ class _RegisterState extends State<Register> {
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
     ];
 
+    // El diálogo usa insetPadding horizontal de 16 px a cada lado.
+    const dialogHorizontalInset = 32.0;
+    final screenSize = MediaQuery.sizeOf(context);
+    final dialogWidth = (screenSize.width - dialogHorizontalInset).clamp(240.0, 400.0);
+    final isCompact = dialogWidth < 320;
+
     final config = CalendarDatePicker2WithActionButtonsConfig(
       firstDate: firstDate,
       lastDate: lastDate,
@@ -651,20 +654,44 @@ class _RegisterState extends State<Register> {
       selectedDayHighlightColor: colorSeleccion,
       weekdayLabels: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
       firstDayOfWeek: 1,
+      useAbbrLabelForMonthModePicker: isCompact,
+      modePickersGap: isCompact ? 0 : 5,
+      // En pantallas estrechas un solo selector evita overflow en el Row del paquete.
+      disableMonthPicker: isCompact,
       weekdayLabelTextStyle: TextStyle(
         color: textColor.withOpacity(0.7),
-        fontSize: 12,
+        fontSize: isCompact ? 11 : 12,
         fontWeight: FontWeight.w500,
       ),
-      dayTextStyle: TextStyle(color: textColor, fontSize: 14),
-      selectedDayTextStyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-      controlsTextStyle: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
-      yearTextStyle: TextStyle(color: textColor, fontSize: 14),
-      selectedYearTextStyle: TextStyle(color: colorSeleccion, fontWeight: FontWeight.bold, fontSize: 14),
-      monthTextStyle: TextStyle(color: textColor, fontSize: 14),
-      selectedMonthTextStyle: TextStyle(color: colorSeleccion, fontWeight: FontWeight.bold, fontSize: 14),
+      dayTextStyle: TextStyle(color: textColor, fontSize: isCompact ? 13 : 14),
+      selectedDayTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: isCompact ? 13 : 14,
+        fontWeight: FontWeight.w600,
+      ),
+      controlsTextStyle: TextStyle(
+        color: textColor,
+        fontSize: isCompact ? 13 : 15,
+        fontWeight: FontWeight.w600,
+      ),
+      yearTextStyle: TextStyle(color: textColor, fontSize: isCompact ? 13 : 14),
+      selectedYearTextStyle: TextStyle(
+        color: colorSeleccion,
+        fontWeight: FontWeight.bold,
+        fontSize: isCompact ? 13 : 14,
+      ),
+      monthTextStyle: TextStyle(color: textColor, fontSize: isCompact ? 13 : 14),
+      selectedMonthTextStyle: TextStyle(
+        color: colorSeleccion,
+        fontWeight: FontWeight.bold,
+        fontSize: isCompact ? 13 : 14,
+      ),
       modePickerTextHandler: ({required DateTime monthDate, bool? isMonthPicker}) {
-        if (isMonthPicker == true) return mesesEspanol[monthDate.month - 1];
+        if (isMonthPicker == true) {
+          return isCompact
+              ? mesesEspanolAbr[monthDate.month - 1]
+              : mesesEspanol[monthDate.month - 1];
+        }
         return '${mesesEspanolAbr[monthDate.month - 1]} ${monthDate.year}';
       },
       selectableDayPredicate: (day) {
@@ -675,7 +702,7 @@ class _RegisterState extends State<Register> {
     final result = await showCalendarDatePicker2Dialog(
       context: context,
       config: config,
-      dialogSize: const Size(340, 420),
+      dialogSize: Size(dialogWidth, isCompact ? 400 : 420),
       value: _fechaNacimiento != null ? [_fechaNacimiento] : [],
       borderRadius: BorderRadius.circular(15),
       dialogBackgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
@@ -990,38 +1017,7 @@ class _RegisterState extends State<Register> {
           onChanged: (value) {
             setState(() {}); // Actualizar para mostrar validación y habilitar/deshabilitar botón
           },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor ingresa tu contraseña';
-            }
-            
-            // Validar longitud
-            if (value.length < 7 || value.length > 15) {
-              return 'La contraseña debe tener entre 7 y 15 caracteres';
-            }
-            
-            // Validar que no contenga espacios
-            if (value.contains(' ')) {
-              return 'La contraseña no puede contener espacios';
-            }
-            
-            // Validar que tenga al menos una minúscula
-            if (!value.contains(RegExp(r'[a-z]'))) {
-              return 'La contraseña debe tener al menos una minúscula';
-            }
-            
-            // Validar que tenga al menos un número
-            if (!value.contains(RegExp(r'[0-9]'))) {
-              return 'La contraseña debe tener al menos un número';
-            }
-            
-            // Validar que tenga al menos un símbolo
-            if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-              return 'La contraseña debe incluir al menos un símbolo';
-            }
-            
-            return null;
-          },
+          validator: (value) => PasswordRules.validate(value),
           decoration: InputDecoration(
             hintText: "••••••••••••",
             hintStyle: TextStyle(color: hintTextColor),
@@ -1064,113 +1060,18 @@ class _RegisterState extends State<Register> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        // Reglas de contraseña (solo mostrar las que no se cumplen)
-        if (!_isPasswordValid())
-          _buildPasswordRules(isDark: isDark, textColor: textColor),
-        // Mensaje de contraseña válida (solo cuando todas las reglas se cumplan)
-        if (_isPasswordValid())
-          Text(
-            "Contraseña válida",
-            style: TextStyle(
-              color: Colors.green,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+        const SizedBox(height: 12),
+        if (_passwordController.text.isNotEmpty)
+          PasswordSecurityMeter(
+            password: _passwordController.text,
+            isDark: isDark,
+            textColor: textColor,
           ),
       ],
     );
   }
 
-  bool _isPasswordValid() {
-    final password = _passwordController.text;
-    if (password.isEmpty) return false;
-    
-    // Validar todas las reglas
-    if (password.length < 7 || password.length > 15) return false;
-    if (password.contains(' ')) return false;
-    if (!password.contains(RegExp(r'[a-z]'))) return false;
-    if (!password.contains(RegExp(r'[0-9]'))) return false;
-    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return false;
-    
-    return true;
-  }
-
-  Widget _buildPasswordRules({required bool isDark, required Color textColor}) {
-    final password = _passwordController.text;
-    final ruleTextColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    
-    // Verificar cada regla
-    final hasMinLength = password.length >= 7;
-    final hasMaxLength = password.length <= 15;
-    final hasNoSpaces = !password.contains(' ');
-    final hasLowercase = password.contains(RegExp(r'[a-z]'));
-    final hasNumber = password.contains(RegExp(r'[0-9]'));
-    final hasSymbol = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "La contraseña debe:",
-          style: TextStyle(
-            color: textColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        _buildRuleItem(
-          "Tener entre 7 y 15 caracteres",
-          hasMinLength && hasMaxLength,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Tener al menos una minúscula",
-          hasLowercase,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Tener al menos un número",
-          hasNumber,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "Incluir un símbolo",
-          hasSymbol,
-          ruleTextColor,
-        ),
-        _buildRuleItem(
-          "No contener espacios",
-          hasNoSpaces,
-          ruleTextColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRuleItem(String text, bool isValid, Color defaultColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: Row(
-        children: [
-          Icon(
-            isValid ? Icons.check_circle : Icons.circle_outlined,
-            size: 16,
-            color: isValid ? Colors.green : defaultColor,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: isValid ? Colors.green : defaultColor,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  bool _isPasswordValid() => PasswordRules.isValid(_passwordController.text);
 
   bool _isFormValid() {
     // Verificar que todos los campos obligatorios estén llenos

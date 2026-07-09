@@ -1,11 +1,8 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:quickalert/quickalert.dart';
 import 'package:dashboardpro/widgets/nfc_reader_widget.dart';
-import 'package:dashboardpro/model/monedero/monedero_request.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:intl/intl.dart';
 
 class MonederosPage extends StatefulWidget {
@@ -62,7 +59,6 @@ class _MonederosPageState extends State<MonederosPage> {
         final isDark = snapshot.data?.data.brightness == Brightness.dark;
         final backgroundColor = isDark ? const Color(0xFF2C2C2C) : Colors.white;
         final textColor = isDark ? Colors.white : Colors.black;
-        final cardColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
         final inputColor = isDark ? Colors.grey[700]! : Colors.grey[200]!;
 
         final systemUiOverlayStyle = SystemUiOverlayStyle(
@@ -900,14 +896,8 @@ class _MonederosPageState extends State<MonederosPage> {
   }
 
   bool _handleNfcCardRead(String cardId) {
-    if (kDebugMode) {
-      debugPrint('🔵 Tarjeta NFC leída: $cardId');
-    }
 
     if (!mounted) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Widget no montado, ignorando');
-      }
       return false;
     }
 

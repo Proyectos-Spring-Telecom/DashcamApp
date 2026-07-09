@@ -1,7 +1,6 @@
 import 'package:dashboardpro/services/zonas_service.dart';
 import 'package:dashboardpro/model/zonas/zona_model.dart';
 import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 /// * Estados del bloc de zonas
@@ -49,7 +48,6 @@ class ZonasBloc {
             'No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      debugPrint('📤 Cargando zonas...');
 
       final response = await _zonasService.obtenerZonas(token);
       _zonas = response.zonasActivas;
@@ -60,18 +58,13 @@ class ZonasBloc {
       _errorController.add(null);
       _errorMessage = null;
 
-      debugPrint('✅ Zonas cargadas exitosamente');
-      debugPrint('✅ Total de zonas (dropdown): ${_zonas.length}');
     } on ZonasException catch (e) {
-      debugPrint('❌ ZonasException en cargarZonas: ${e.message}');
       _status = ZonasStatus.error;
       _errorMessage = e.message;
       _statusController.add(_status);
       _errorController.add(_errorMessage);
       _zonasController.add([]);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error inesperado en cargarZonas: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
       _status = ZonasStatus.error;
       _errorMessage = 'No se pudieron cargar las zonas. Intenta más tarde.';
       _statusController.add(_status);

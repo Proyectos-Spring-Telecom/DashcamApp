@@ -1,6 +1,6 @@
 import 'package:dashboardpro/core/env_config.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 import 'package:dio/dio.dart';
-import 'package:dashboardpro/model/monedero/monedero_model.dart';
 import 'package:dashboardpro/model/monedero/pasajero_wallet_model.dart';
 import 'package:dashboardpro/model/monedero/qr_wallet_response.dart';
 import 'package:dashboardpro/model/monedero/cliente_model.dart';
@@ -9,14 +9,12 @@ import 'package:dashboardpro/model/monedero/tipo_pasajero_model.dart';
 import 'package:dashboardpro/model/monedero/monedero_request.dart';
 import 'package:dashboardpro/model/monedero/monedero_response.dart';
 import 'package:dashboardpro/model/monedero/monederos_paginados_response.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_request.dart';
 import 'package:dashboardpro/model/transaccion/transaccion_response.dart';
 import 'package:dashboardpro/model/transaccion/transacciones_response.dart';
 import 'package:dashboardpro/model/transaccion/recarga_request.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 
 class MonederoService {
   final Dio _dio;
@@ -50,10 +48,6 @@ class MonederoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo lista de monederos activos paginados');
-      debugPrint('📤 URL: $baseUrl/monederos/paginados/activos?page=$page&limit=$limit');
-      debugPrint('📤 Método: GET');
-      debugPrint('📤 Page: $page, Limit: $limit');
 
       final response = await _dio.get(
         '/monederos/paginados/activos',
@@ -64,23 +58,18 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final monederosResponse = MonederosPaginadosResponse.fromJson(responseData);
-            debugPrint('✅ Monederos obtenidos: ${monederosResponse.data.length}');
-            debugPrint('✅ Paginación: página ${monederosResponse.paginacion.page}/${monederosResponse.paginacion.lastPage} (total: ${monederosResponse.paginacion.total})');
             return monederosResponse;
           } else {
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw MonederoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -105,11 +94,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER MONEDEROS ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la lista de monederos';
@@ -143,7 +127,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerListaMonederos: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -162,10 +145,6 @@ class MonederoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo información del wallet');
-      debugPrint('📤 URL: $baseUrl/pasajeros/wallet?anio=$anioParam');
-      debugPrint('📤 Método: GET');
-      debugPrint('📤 Año: $anioParam');
 
       final response = await _dio.get(
         '/pasajeros/wallet',
@@ -173,8 +152,6 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
@@ -183,20 +160,15 @@ class MonederoService {
           final data = responseData['data'] as Map<String, dynamic>?;
 
           if (data == null) {
-            debugPrint('⚠️ La respuesta no contiene el campo "data"');
             throw MonederoException(
                 'Error al procesar la respuesta del servidor.');
           }
 
           final wallet = PasajeroWalletModel.fromJson(data);
 
-          debugPrint('✅ Wallet obtenido exitosamente');
-          debugPrint('✅ Saldo Total: ${wallet.saldoTotal}');
-          debugPrint('✅ Monederos: ${wallet.monederos}');
 
           return wallet;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw MonederoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -221,11 +193,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER WALLET ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la información del wallet';
@@ -259,7 +226,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerWallet: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -302,10 +268,6 @@ class MonederoService {
       final requestBody = request.toJson();
       final jsonBodyString = jsonEncode(requestBody);
 
-      debugPrint('📤 Realizando recarga a monedero');
-      debugPrint('📤 URL: $baseUrl/transacciones/recarga');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Request Body (JSON): $jsonBodyString');
 
       // Enviar el body como string JSON para que el backend reciba números y no strings (evita "must be a number")
       final response = await _dio.post(
@@ -314,8 +276,6 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       // Aceptar 201 (Created) como respuesta exitosa
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -323,17 +283,12 @@ class MonederoService {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final transaccionResponse = TransaccionResponse.fromJson(responseData);
-            debugPrint('✅ Recarga realizada exitosamente');
-            debugPrint('✅ ID Transacción: ${transaccionResponse.data.id}');
-            debugPrint('✅ Mensaje: ${transaccionResponse.message}');
             return transaccionResponse;
           } else {
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw MonederoException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -358,11 +313,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN REALIZAR CARGO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al realizar el cargo';
@@ -408,7 +358,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en realizarCargo: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -451,9 +400,6 @@ class MonederoService {
       // ! Fix crítico: nunca enviar null en fechas — el API filtra por rango (comportamiento Swagger).
       final inicio = _resolverFechaRequest(fechaInicio);
       final fin = _resolverFechaRequest(fechaFin);
-      debugPrint('📅 Fecha inicio (request): $inicio');
-      debugPrint('📅 Fecha fin (request): $fin');
-      debugPrint('📅 Zona horaria dispositivo: ${DateTime.now().timeZoneName} | now local: ${DateTime.now()}');
 
       // Configurar headers con token de autenticación (Accept alineado a curl / Swagger)
       final headers = <String, dynamic>{
@@ -478,19 +424,12 @@ class MonederoService {
 
       final jsonBodyString = jsonEncode(requestBody);
       
-      debugPrint('📤 Obteniendo lista de transacciones (paginado)');
-      debugPrint('📤 URL: $baseUrl/transacciones/paginado');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Request Body (JSON): $jsonBodyString');
-      debugPrint('📤 Headers enviados: $headers');
       if (token != null && token.isNotEmpty) {
-        debugPrint('📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
-        debugPrint('📤 Token (últimos 10 chars): ...${token.substring(token.length > 10 ? token.length - 10 : 0)}');
+        SecureLog.dAuth('📤 Token', present: true);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
       
-      debugPrint('📤 Parámetros: page=$page, limit=$limit, fechaInicio=$inicio, fechaFin=$fin');
 
       final response = await _dio.post(
         '/transacciones/paginado',
@@ -498,33 +437,21 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code: ${response.statusCode}');
-      debugPrint('📥 Response transacciones (raw): ${response.data}');
       
       // Logging detallado de la respuesta completa
       if (response.data is Map) {
         final responseData = Map<String, dynamic>.from(response.data as Map);
-        debugPrint('📦 Respuesta completa recibida:');
-        debugPrint('📦 Keys: ${responseData.keys.toList()}');
         if (responseData['data'] != null) {
           final data = responseData['data'];
-          debugPrint('📦 data es List: ${data is List}');
           if (data is List) {
-            debugPrint('📦 Cantidad de items en data: ${data.length}');
             if (data.isNotEmpty) {
-              debugPrint('📦 Primer item: ${data.first}');
             }
           } else {
-            debugPrint('📦 Tipo de data: ${data.runtimeType}');
-            debugPrint('📦 Valor de data: $data');
           }
         }
         if (responseData['paginated'] != null) {
-          debugPrint('📦 paginated: ${responseData['paginated']}');
         }
       } else {
-        debugPrint('📦 Tipo de respuesta: ${response.data.runtimeType}');
-        debugPrint('📦 Respuesta completa: ${response.data}');
       }
 
       // Aceptar 201 (Created) como respuesta exitosa
@@ -533,24 +460,17 @@ class MonederoService {
           // ! Dio puede entregar Map<dynamic,dynamic>; `is Map<String,dynamic>` falla y no se parseaba.
           final raw = response.data;
           if (raw is! Map) {
-            debugPrint('❌ La respuesta no es un Map, es: ${response.data.runtimeType}');
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
           final responseData = Map<String, dynamic>.from(raw as Map);
           final transaccionesResponse =
               TransaccionesResponse.fromJson(responseData);
-          debugPrint('✅ Transacciones parseadas: ${transaccionesResponse.data.length}');
-          debugPrint('✅ Paginación: página ${transaccionesResponse.paginacion.page}/${transaccionesResponse.paginacion.lastPage} (total: ${transaccionesResponse.paginacion.total})');
           if (transaccionesResponse.data.isEmpty &&
               transaccionesResponse.paginacion.total > 0) {
-            debugPrint(
-                '⚠️ ADVERTENCIA: total > 0 pero lista vacía. Posible error en parseo.');
           }
           return transaccionesResponse;
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw MonederoException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -575,11 +495,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER TRANSACCIONES ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la lista de transacciones';
@@ -593,8 +508,6 @@ class MonederoService {
           if (errorMessage.toLowerCase().contains('rol') || 
               errorMessage.toLowerCase().contains('role') ||
               errorMessage.toLowerCase().contains('permiso')) {
-            debugPrint('⚠️ Error relacionado con rol o permisos detectado');
-            debugPrint('⚠️ Mensaje completo del servidor: $errorMessage');
             // No cambiar el mensaje, dejarlo tal como viene del servidor para diagnóstico
           }
         } else if (responseData is String) {
@@ -627,7 +540,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerListaTransacciones: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -662,14 +574,10 @@ class MonederoService {
         'numeroPasajes': numeroPasajes,
       };
 
-      debugPrint('📤 Generando código QR para saldo');
-      debugPrint('📤 URL: $baseUrl/monederos/qr/saldo');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Body: $requestBody');
       if (token != null && token.isNotEmpty) {
-        debugPrint('📤 Token (primeros 30 chars): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        SecureLog.dAuth('📤 Token', present: true);
       } else {
-        debugPrint('⚠️ ADVERTENCIA: Token es null o vacío');
+        SecureLog.d('⚠️ ADVERTENCIA: Token es null o vacío');
       }
 
       // * UPDATE: Cambiar de GET a POST y enviar body
@@ -679,8 +587,6 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       // * UPDATE: Aceptar 201 (Created) como respuesta exitosa según especificación
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -688,20 +594,12 @@ class MonederoService {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final qrResponse = QrWalletResponse.fromJson(responseData);
-            debugPrint('✅ QR generado exitosamente');
-            debugPrint('✅ ID QR: ${qrResponse.data.idQR}');
-            debugPrint('✅ Saldo: ${qrResponse.data.saldo}');
-            debugPrint('✅ Número de Serie: ${qrResponse.data.numeroSerie}');
-            debugPrint('✅ Número de Pasajes: ${qrResponse.data.numeroPasajes ?? 'N/A'}');
-            debugPrint('✅ QR Code (primeros 50 chars): ${qrResponse.data.qrCode.substring(0, qrResponse.data.qrCode.length > 50 ? 50 : qrResponse.data.qrCode.length)}...');
             return qrResponse;
           } else {
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw MonederoException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -726,11 +624,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER QR ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ =========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener el código QR';
@@ -767,7 +660,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerQrSaldo: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -781,17 +673,12 @@ class MonederoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo lista de clientes');
-      debugPrint('📤 URL: $baseUrl/clientes/list');
-      debugPrint('📤 Método: GET');
 
       final response = await _dio.get(
         '/clientes/list',
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
@@ -800,7 +687,6 @@ class MonederoService {
           final dataList = responseData['data'] as List<dynamic>?;
 
           if (dataList == null) {
-            debugPrint('⚠️ La respuesta no contiene el campo "data"');
             return [];
           }
 
@@ -808,10 +694,8 @@ class MonederoService {
               .map((item) => ClienteModel.fromJson(item as Map<String, dynamic>))
               .toList();
 
-          debugPrint('✅ Clientes obtenidos: ${clientes.length}');
           return clientes;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw MonederoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -836,11 +720,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER CLIENTES ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la lista de clientes';
@@ -874,7 +753,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerListaClientes: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -888,17 +766,12 @@ class MonederoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo lista de pasajeros');
-      debugPrint('📤 URL: $baseUrl/pasajeros/list');
-      debugPrint('📤 Método: GET');
 
       final response = await _dio.get(
         '/pasajeros/list',
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
@@ -907,7 +780,6 @@ class MonederoService {
           final dataList = responseData['data'] as List<dynamic>?;
 
           if (dataList == null) {
-            debugPrint('⚠️ La respuesta no contiene el campo "data"');
             return [];
           }
 
@@ -915,10 +787,8 @@ class MonederoService {
               .map((item) => PasajeroModel.fromJson(item as Map<String, dynamic>))
               .toList();
 
-          debugPrint('✅ Pasajeros obtenidos: ${pasajeros.length}');
           return pasajeros;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw MonederoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -943,11 +813,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER PASAJEROS ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la lista de pasajeros';
@@ -981,7 +846,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerListaPasajeros: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -996,17 +860,12 @@ class MonederoService {
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
-      debugPrint('📤 Obteniendo lista de tipos de pasajero');
-      debugPrint('📤 URL: $baseUrl/catpasajero/list');
-      debugPrint('📤 Método: GET');
 
       final response = await _dio.get(
         '/catpasajero/list',
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
@@ -1015,7 +874,6 @@ class MonederoService {
           final dataList = responseData['data'] as List<dynamic>?;
 
           if (dataList == null) {
-            debugPrint('⚠️ La respuesta no contiene el campo "data"');
             return [];
           }
 
@@ -1023,10 +881,8 @@ class MonederoService {
               .map((item) => TipoPasajeroModel.fromJson(item as Map<String, dynamic>))
               .toList();
 
-          debugPrint('✅ Tipos de pasajero obtenidos: ${tiposPasajero.length}');
           return tiposPasajero;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw MonederoException(
               'Error al procesar la respuesta del servidor.');
         }
@@ -1051,11 +907,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER TIPOS PASAJERO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al obtener la lista de tipos de pasajero';
@@ -1089,7 +940,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerListaTiposPasajero: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }
@@ -1141,10 +991,6 @@ class MonederoService {
       final requestBody = request.toJson();
       final jsonBodyString = jsonEncode(requestBody);
 
-      debugPrint('📤 Creando nuevo monedero');
-      debugPrint('📤 URL: $baseUrl/monederos');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Request Body (JSON): $jsonBodyString');
 
       final response = await _dio.post(
         '/monederos',
@@ -1152,8 +998,6 @@ class MonederoService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Datos recibidos: ${response.data}');
 
       // Aceptar 201 (Created) o 200 como respuesta exitosa
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -1161,17 +1005,12 @@ class MonederoService {
           if (response.data is Map<String, dynamic>) {
             final responseData = response.data as Map<String, dynamic>;
             final monederoResponse = MonederoResponse.fromJson(responseData);
-            debugPrint('✅ Monedero creado exitosamente');
-            debugPrint('✅ ID Monedero: ${monederoResponse.data.id}');
-            debugPrint('✅ Mensaje: ${monederoResponse.message}');
             return monederoResponse;
           } else {
             throw MonederoException(
                 'Error al procesar la respuesta del servidor: formato de respuesta inválido.');
           }
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
           throw MonederoException(
               'Error al procesar la respuesta del servidor: ${parseError.toString()}');
         }
@@ -1196,11 +1035,6 @@ class MonederoService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN CREAR MONEDERO ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===========================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al crear el monedero';
@@ -1238,7 +1072,6 @@ class MonederoService {
       if (e is MonederoException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en crearMonedero: $e');
       throw MonederoException('Error inesperado: ${e.toString()}');
     }
   }

@@ -1,8 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
+import 'package:dashboardpro/utils/qr_saldo_validator.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:dashboardpro/model/auth/user.dart';
 
 // * UPDATE: Página para generar y mostrar código QR de pago
 class PagoQRPage extends StatefulWidget {
@@ -16,6 +15,7 @@ class PagoQRPage extends StatefulWidget {
 
 class _PagoQRPageState extends State<PagoQRPage> {
   bool _qrLoaded = false;
+  bool _saldoInsuficiente = false;
 
   @override
   void initState() {
@@ -24,6 +24,12 @@ class _PagoQRPageState extends State<PagoQRPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_qrLoaded) {
         _qrLoaded = true;
+        if (!QrSaldoValidator.puedeGenerarQr()) {
+          if (!mounted) return;
+          setState(() => _saldoInsuficiente = true);
+          QrSaldoValidator.mostrarAlertaSaldoInsuficiente(context);
+          return;
+        }
         // * IMPORTANT: Usar numeroPasajes recibido o 1 por defecto (pago individual)
         final numeroPasajes = widget.numeroPasajes ?? 1;
         monederoBloc.obtenerQrSaldo(numeroPasajes: numeroPasajes);
@@ -312,6 +318,52 @@ class _PagoQRPageState extends State<PagoQRPage> {
       builder: (context, statusSnapshot) {
         final status = statusSnapshot.data ?? MonederoStatus.initial;
 
+        if (_saldoInsuficiente) {
+          return SizedBox(
+            width: 250,
+            height: 250,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 48,
+                    color: Colors.orange[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      'Saldo insuficiente para generar un código QR.',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () {
+                      GoRouter.of(context).go(RoutesName.recargar);
+                    },
+                    icon: const Icon(Icons.add_card, size: 16),
+                    label: const Text('Recargar'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF205AA8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         // Loading state
         if (status == MonederoStatus.loading) {
           return Container(
@@ -368,9 +420,16 @@ class _PagoQRPageState extends State<PagoQRPage> {
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: () {
+                      if (!QrSaldoValidator.puedeGenerarQr()) {
+                        QrSaldoValidator.mostrarAlertaSaldoInsuficiente(context);
+                        return;
+                      }
                       // * UPDATE: Reintentar con el mismo numeroPasajes
                       final numeroPasajes = widget.numeroPasajes ?? 1;
-                      monederoBloc.obtenerQrSaldo(numeroPasajes: numeroPasajes, forzarNuevo: true);
+                      monederoBloc.obtenerQrSaldo(
+                        numeroPasajes: numeroPasajes,
+                        forzarNuevo: true,
+                      );
                     },
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('Reintentar'),

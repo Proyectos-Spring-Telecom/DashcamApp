@@ -1,5 +1,4 @@
 export 'package:flutter/material.dart';
-export 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 export 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 export 'dart:async';

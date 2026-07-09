@@ -100,7 +100,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           });
         } catch (e) {
           // Si hay un error al obtener el mensaje, usar el mensaje por defecto
-          debugPrint('Error al obtener mensaje del stream: $e');
         }
 
         if (mounted) {

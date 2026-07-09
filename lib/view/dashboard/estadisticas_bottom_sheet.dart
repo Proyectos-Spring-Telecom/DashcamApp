@@ -1,10 +1,7 @@
 // Project imports:
 import 'package:dashboardpro/controller/transacciones_controller.dart';
 import 'package:dashboardpro/dashboardpro.dart';
-import 'package:dashboardpro/model/transaccion/transaccion_model.dart';
-import 'package:dashboardpro/utils/date_formatter.dart';
 import 'package:dashboardpro/view/dashboard/detalles_viaje_bottom_sheet.dart';
-import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:quickalert/quickalert.dart';
 import 'package:dashboardpro/widgets/routes/app_routes.dart' as app_routes;
@@ -382,8 +379,6 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
                   context: navigatorContext,
                   isDark: isDark,
                   onContinue: (bool esFamiliar, int numeroPasajes) {
-                    debugPrint('📋 Tipo de viaje: ${esFamiliar ? "Familiar" : "Individual"}');
-                    debugPrint('👥 Número de pasajes: $numeroPasajes');
                     // * Esperar otro frame para asegurar que el modal se cerró
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       // * UPDATE: Navegar a pagoQR pasando numeroPasajes en extra
@@ -393,7 +388,6 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
                           extra: {'numeroPasajes': numeroPasajes},
                         );
                       } else {
-                        debugPrint('⚠️ Contexto no montado, usando navigator key');
                         // * Fallback: usar el navigator key global
                         final routerContext = app_routes.rootNavigatorKey.currentContext;
                         if (routerContext != null && routerContext.mounted) {
@@ -1403,7 +1397,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
     );
   }
 
-  Widget _buildStackedBarChart({Color textColor = Colors.white, bool isDark = true}) {
+  Widget _buildStackedBarChart({Color textColor = Colors.white}) {
     return StreamBuilder<PasajeroWalletModel?>(
       stream: monederoBloc.walletStream,
       initialData: monederoBloc.wallet,
@@ -1596,7 +1590,7 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
     );
   }
 
-  Widget _buildGroupedBarChart({Color textColor = Colors.white, bool isDark = true}) {
+  Widget _buildGroupedBarChart({Color textColor = Colors.white}) {
     return StreamBuilder<PasajeroWalletModel?>(
       stream: monederoBloc.walletStream,
       initialData: monederoBloc.wallet,
@@ -1649,7 +1643,6 @@ class _EstadisticasBottomSheetState extends State<EstadisticasBottomSheet>
             tooltipPadding: const EdgeInsets.all(8),
             tooltipMargin: 8,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              String month = expenseData[group.x.toInt()].month;
               double value = rod.toY;
               
               // Formatear: si es menor a 1000, mostrar valor real sin "k"

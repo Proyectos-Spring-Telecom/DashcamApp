@@ -1,11 +1,11 @@
 import 'package:dashboardpro/core/env_config.dart';
+import 'package:dashboardpro/utils/secure_log.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/model/netpay/netpay_customer_model.dart';
 import 'package:dashboardpro/model/netpay/assign_card_token_request.dart';
 import 'package:dashboardpro/model/netpay/create_customer_request.dart';
 import 'package:dashboardpro/model/netpay/create_customer_response.dart';
 import 'package:dashboardpro/interceptors/session_interceptor.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:convert';
 
@@ -59,19 +59,12 @@ class NetPayService {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      debugPrint('📤 Obteniendo información del cliente NetPay');
-      debugPrint('📤 URL base: $baseUrl/netpay/customers');
-      debugPrint('📤 Método: GET');
-      debugPrint('📤 customerId recibido: $customerId');
-      debugPrint('📤 customerId length: ${customerId.length}');
       
       // Construir la URL completa para verificar
       final fullUrl = '$baseUrl/netpay/customers?customerId=${Uri.encodeComponent(customerId)}';
-      debugPrint('📤 URL completa esperada: $fullUrl');
       
       // Asegurar que el customerId esté limpio (sin espacios al inicio/final)
       final cleanCustomerId = customerId.trim();
-      debugPrint('📤 customerId limpio: $cleanCustomerId');
 
       // Usar queryParameters - Dio debería hacer el encoding automáticamente
       // Pero también podemos verificar que se esté enviando correctamente
@@ -82,90 +75,62 @@ class NetPayService {
       );
       
       // Loggear la URL real que se construyó (disponible en requestOptions)
-      debugPrint('📤 URL real construida por Dio: ${response.requestOptions.uri}');
-      debugPrint('📤 Query params enviados: ${response.requestOptions.queryParameters}');
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Tipo de datos recibidos: ${response.data.runtimeType}');
       
       // Solo loggear una muestra de los datos para no saturar los logs
       if (response.data is Map) {
         final data = response.data as Map;
-        debugPrint('📥 Keys en respuesta: ${data.keys.toList()}');
         if (data.containsKey('paymentSources')) {
-          debugPrint('📥 PaymentSources encontrados: ${(data['paymentSources'] as List).length}');
         }
         if (data.containsKey('id')) {
-          debugPrint('📥 Customer ID en respuesta: ${data['id']}');
         }
       } else if (response.data is String) {
-        debugPrint('📥 Respuesta es String: ${response.data}');
       } else {
-        debugPrint('📥 Datos recibidos: ${response.data}');
       }
 
       if (response.statusCode == 200) {
         try {
           // Verificar que la respuesta sea un Map
           if (response.data is! Map<String, dynamic>) {
-            debugPrint('❌ La respuesta no es un Map. Tipo: ${response.data.runtimeType}');
-            debugPrint('❌ Contenido: ${response.data}');
             throw NetPayException('El servidor respondió con un formato inesperado.');
           }
           
           final customerData = response.data as Map<String, dynamic>;
           
           // Debug: imprimir estructura completa de la respuesta
-          debugPrint('🔍 Keys en customerData: ${customerData.keys.toList()}');
           
           // Verificar si existe el arreglo datosTarjeta
           if (customerData.containsKey('datosTarjeta') && customerData['datosTarjeta'] is List) {
             final datosTarjeta = customerData['datosTarjeta'] as List;
-            debugPrint('🔍 datosTarjeta encontrados: ${datosTarjeta.length}');
             for (var i = 0; i < datosTarjeta.length && i < 3; i++) {
               final dt = datosTarjeta[i] as Map<String, dynamic>;
-              debugPrint('   DatoTarjeta $i:');
-              debugPrint('     - Keys: ${dt.keys.toList()}');
               if (dt.containsKey('tokenCard')) {
-                debugPrint('     - tokenCard: ${dt['tokenCard']}');
+                SecureLog.dToken('     - tokenCard', dt['tokenCard']?.toString());
               }
               if (dt.containsKey('idDireccion')) {
-                debugPrint('     - idDireccion: ${dt['idDireccion']}');
               } else {
-                debugPrint('     - idDireccion: NO ENCONTRADO');
               }
             }
           } else {
-            debugPrint('⚠️ datosTarjeta NO ENCONTRADO en la respuesta');
           }
           
           // Debug: imprimir estructura de paymentSources para verificar deviceFingerPrint e idDireccion
           if (customerData.containsKey('paymentSources') && customerData['paymentSources'] is List) {
             final paymentSources = customerData['paymentSources'] as List;
-            debugPrint('🔍 PaymentSources encontrados: ${paymentSources.length}');
             for (var i = 0; i < paymentSources.length && i < 3; i++) {
               final ps = paymentSources[i] as Map<String, dynamic>;
-              debugPrint('   PaymentSource $i:');
-              debugPrint('     - Keys: ${ps.keys.toList()}');
               if (ps.containsKey('deviceFingerPrint')) {
-                debugPrint('     - deviceFingerPrint: ${ps['deviceFingerPrint']}');
               } else {
-                debugPrint('     - deviceFingerPrint: NO ENCONTRADO');
               }
               // Verificar idDireccion en el nivel de paymentSource
               if (ps.containsKey('idDireccion')) {
-                debugPrint('     - idDireccion (paymentSource): ${ps['idDireccion']}');
               } else {
-                debugPrint('     - idDireccion (paymentSource): NO ENCONTRADO');
               }
               if (ps.containsKey('card') && ps['card'] is Map) {
                 final card = ps['card'] as Map<String, dynamic>;
-                debugPrint('     - card.token: ${card['token']}');
-                debugPrint('     - card.keys: ${card.keys.toList()}');
+                SecureLog.dToken('     - card.token', card['token']?.toString());
                 if (card.containsKey('idDireccion')) {
-                  debugPrint('     - card.idDireccion: ${card['idDireccion']}');
                 } else {
-                  debugPrint('     - card.idDireccion: NO ENCONTRADO');
                 }
               }
             }
@@ -173,14 +138,9 @@ class NetPayService {
           
           final customer = NetPayCustomerModel.fromJson(customerData);
 
-          debugPrint('✅ Cliente NetPay obtenido exitosamente');
-          debugPrint('✅ ID: ${customer.id}');
-          debugPrint('✅ Nombre: ${customer.name}');
-          debugPrint('✅ Tarjetas registradas: ${customer.paymentSources.length}');
 
           return customer;
         } catch (parseError) {
-          debugPrint('❌ Error al parsear respuesta: $parseError');
           throw NetPayException('Error al procesar la respuesta del servidor.');
         }
       } else {
@@ -203,21 +163,9 @@ class NetPayService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN OBTENER CLIENTE NETPAY ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ customerId usado: $customerId');
-        debugPrint('❌ customerId length: ${customerId.length}');
-        debugPrint('❌ URL real enviada: ${e.requestOptions.uri}');
-        debugPrint('❌ Query params enviados: ${e.requestOptions.queryParameters}');
-        debugPrint('❌ URL esperada: $baseUrl/netpay/customers?customerId=${Uri.encodeComponent(customerId)}');
-        debugPrint('❌ Status Message: ${e.response?.statusMessage ?? "N/A"}');
         if (e.requestOptions.headers.containsKey('Authorization')) {
           final authHeader = e.requestOptions.headers['Authorization']?.toString() ?? '';
-          debugPrint('❌ Headers enviados: Authorization=${authHeader.length > 20 ? authHeader.substring(0, 20) + "..." : authHeader}');
         }
-        debugPrint('❌ ======================================================');
 
         // Intentar extraer mensaje de error del servidor primero
         String errorMessage = 'Error al obtener información del cliente NetPay.';
@@ -254,8 +202,6 @@ class NetPayService {
       if (e is NetPayException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en obtenerClienteNetPay: $e');
-      debugPrint('❌ Tipo de error: ${e.runtimeType}');
       
       // Proporcionar mensajes más específicos según el tipo de error
       if (e is FormatException) {
@@ -311,14 +257,6 @@ class NetPayService {
 
       final requestBody = request.toJson();
 
-      debugPrint('');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('🔄 INICIANDO: Crear Cliente NetPay (POST /netpay/customers)');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('📤 URL: $baseUrl/netpay/customers');
-      debugPrint('📤 Método: POST');
-      debugPrint('📤 Request Body (sin datos sensibles): ${_sanitizeCreateCustomerRequestForLogging(requestBody)}');
-      debugPrint('───────────────────────────────────────────────────────────');
 
       final response = await _dio.post(
         '/netpay/customers',
@@ -326,8 +264,6 @@ class NetPayService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
-      debugPrint('📥 Response: ${response.data}');
 
       if (response.statusCode == 201) {
         try {
@@ -350,15 +286,9 @@ class NetPayService {
             throw NetPayException('Formato de respuesta inesperado del servidor.');
           }
 
-          debugPrint('───────────────────────────────────────────────────────────');
-          debugPrint('✅ ÉXITO: Cliente creado exitosamente en NetPay');
-          debugPrint('✅ Customer ID: ${customerResponse.customerId}');
-          debugPrint('═══════════════════════════════════════════════════════════');
-          debugPrint('');
 
           return customerResponse;
         } catch (e) {
-          debugPrint('❌ Error al parsear respuesta de crear cliente: $e');
           throw NetPayException('Error al procesar la respuesta del servidor.');
         }
       } else {
@@ -381,11 +311,6 @@ class NetPayService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN CREAR CLIENTE NETPAY ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ======================================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al crear el cliente';
@@ -420,7 +345,6 @@ class NetPayService {
       if (e is NetPayException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en crearClienteNetPay: $e');
       throw NetPayException('Error inesperado: ${e.toString()}');
     }
   }
@@ -463,17 +387,7 @@ class NetPayService {
       );
 
       final requestBody = request.toJson();
-      final jsonBodyString = jsonEncode(requestBody);
 
-      debugPrint('');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('🔄 INICIANDO: Asignar Tarjeta al Cliente NetPay');
-      debugPrint('═══════════════════════════════════════════════════════════');
-      debugPrint('📤 URL: $baseUrl/netpay/customers/$customerId/token');
-      debugPrint('📤 Método: PUT');
-      debugPrint('📤 Customer ID: $customerId');
-      debugPrint('📤 Request Body (sin datos sensibles): ${_sanitizeRequestForLogging(requestBody)}');
-      debugPrint('───────────────────────────────────────────────────────────');
 
       final response = await _dio.put(
         '/netpay/customers/$customerId/token',
@@ -481,15 +395,9 @@ class NetPayService {
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
       
       // No loggear el response completo por seguridad, solo confirmar éxito
       if (response.statusCode == 200) {
-        debugPrint('───────────────────────────────────────────────────────────');
-        debugPrint('✅ ÉXITO: Tarjeta asignada exitosamente al cliente NetPay');
-        debugPrint('✅ Customer ID: $customerId');
-        debugPrint('═══════════════════════════════════════════════════════════');
-        debugPrint('');
       } else {
         throw NetPayException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
@@ -510,11 +418,6 @@ class NetPayService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN ASIGNAR TOKEN DE TARJETA ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ======================================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al asignar la tarjeta';
@@ -555,7 +458,6 @@ class NetPayService {
       if (e is NetPayException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en asignarTokenTarjeta: $e');
       throw NetPayException('Error inesperado: ${e.toString()}');
     }
   }
@@ -611,20 +513,15 @@ class NetPayService {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      debugPrint('📤 Eliminando tarjeta del cliente NetPay');
-      debugPrint('📤 URL: $baseUrl/netpay/customers/$customerId/cards/$tokenCard');
-      debugPrint('📤 Método: DELETE');
-      debugPrint('📤 Token de tarjeta: ${tokenCard.substring(0, 10)}...${tokenCard.substring(tokenCard.length - 5)}');
+      SecureLog.dToken('📤 Token de tarjeta', tokenCard);
 
       final response = await _dio.delete(
         '/netpay/customers/$customerId/cards/$tokenCard',
         options: options,
       );
 
-      debugPrint('📥 Status Code recibido: ${response.statusCode}');
       
       if (response.statusCode == 200) {
-        debugPrint('✅ Tarjeta eliminada exitosamente del cliente');
       } else {
         throw NetPayException(
             'Error en la respuesta del servidor (código: ${response.statusCode})');
@@ -645,11 +542,6 @@ class NetPayService {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
 
-        debugPrint('❌ ========== ERROR EN ELIMINAR TARJETA ==========');
-        debugPrint('❌ Status Code: $statusCode');
-        debugPrint('❌ Tipo de respuesta: ${responseData.runtimeType}');
-        debugPrint('❌ Datos de respuesta: $responseData');
-        debugPrint('❌ ===============================================');
 
         // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al eliminar la tarjeta';
@@ -682,7 +574,6 @@ class NetPayService {
       if (e is NetPayException) {
         rethrow;
       }
-      debugPrint('❌ Error inesperado en eliminarTarjeta: $e');
       throw NetPayException('Error inesperado: ${e.toString()}');
     }
   }

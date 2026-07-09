@@ -1,9 +1,6 @@
 // Project imports:
 import 'package:dashboardpro/dashboardpro.dart';
 import 'package:flutter/services.dart';
-import 'package:dashboardpro/controller/auth_bloc.dart';
-import 'package:dashboardpro/model/auth/user.dart';
-import 'dart:async';
 
 class EmailVerificationWaitingScreen extends StatefulWidget {
   final String? userName;
@@ -25,36 +22,76 @@ class EmailVerificationWaitingScreen extends StatefulWidget {
 
 class _EmailVerificationWaitingScreenState
     extends State<EmailVerificationWaitingScreen> {
-  final List<TextEditingController> _codeControllers = List.generate(
-    4,
-    (index) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    4,
-    (index) => FocusNode(),
-  );
+  static const int _verificationCodeLength = 6;
+
+  late List<TextEditingController> _codeControllers;
+  late List<FocusNode> _focusNodes;
+  var _codeFieldsInitialized = false;
 
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
   bool _isExpired = false;
   
-  // Variables para reenvío de código
-  bool _isResendingCode = false;
-  int _resendCountdown = 0;
-  Timer? _resendTimer;
+  // Variables para mensajes de reenvío (UI legacy; el reenvío usa ResendCodeModal)
   String? _resendSuccessMessage;
   String? _resendErrorMessage;
 
-  @override
-  void dispose() {
-    for (var controller in _codeControllers) {
+  void _initCodeFields() {
+    _disposeCodeFields();
+    _codeControllers = List.generate(
+      _verificationCodeLength,
+      (_) => TextEditingController(),
+    );
+    _focusNodes = List.generate(
+      _verificationCodeLength,
+      (_) => FocusNode(),
+    );
+    _codeFieldsInitialized = true;
+  }
+
+  void _disposeCodeFields() {
+    if (!_codeFieldsInitialized) return;
+
+    for (final controller in _codeControllers) {
       controller.dispose();
     }
-    for (var focusNode in _focusNodes) {
+    for (final focusNode in _focusNodes) {
       focusNode.dispose();
     }
-    _resendTimer?.cancel();
+    _codeFieldsInitialized = false;
+  }
+
+  void _ensureCodeFields() {
+    if (!_codeFieldsInitialized ||
+        _codeControllers.length != _verificationCodeLength ||
+        _focusNodes.length != _verificationCodeLength) {
+      _initCodeFields();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initCodeFields();
+    // Log para debug al inicializar el widget
+    if (widget.userEmail != null) {
+      try {
+        final decoded = Uri.decodeComponent(widget.userEmail!);
+      } catch (e) {
+      }
+    }
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    _ensureCodeFields();
+  }
+
+  @override
+  void dispose() {
+    _disposeCodeFields();
     super.dispose();
   }
 
@@ -64,11 +101,9 @@ class _EmailVerificationWaitingScreenState
     });
 
     if (value.length == 1) {
-      // Mover al siguiente campo si hay uno
-      if (index < 3) {
+      if (index < _verificationCodeLength - 1) {
         _focusNodes[index + 1].requestFocus();
       } else {
-        // Si es el último campo, quitar el foco
         _focusNodes[index].unfocus();
       }
     } else if (value.isEmpty && index > 0) {
@@ -92,10 +127,8 @@ class _EmailVerificationWaitingScreenState
       // Decodificar el email en caso de que venga codificado desde la URL
       try {
         final decodedEmail = Uri.decodeComponent(widget.userEmail!);
-        debugPrint('📧 Email obtenido del parámetro: $decodedEmail');
         return decodedEmail;
       } catch (e) {
-        debugPrint('⚠️ Error al decodificar email: $e');
         return widget.userEmail;
       }
     }
@@ -103,12 +136,10 @@ class _EmailVerificationWaitingScreenState
     // 2. Intentar obtener del usuario logueado (userName puede ser el email)
     final user = authBloc.currentUser;
     if (user?.userName != null && user!.userName.isNotEmpty) {
-      debugPrint('📧 Email obtenido del usuario logueado: ${user.userName}');
       return user.userName;
     }
 
     // 3. Si no hay email disponible, retornar null
-    debugPrint('❌ No se pudo obtener el email del usuario');
     return null;
   }
 
@@ -143,9 +174,10 @@ class _EmailVerificationWaitingScreenState
     }
 
     final code = _getVerificationCode();
-    if (code.length != 4) {
+    if (code.length != _verificationCodeLength) {
       setState(() {
-        _errorMessage = 'Por favor ingresa el código completo de 4 dígitos';
+        _errorMessage =
+            'Por favor ingresa el código completo de $_verificationCodeLength dígitos';
         _successMessage = null;
         _isExpired = false;
       });
@@ -181,9 +213,6 @@ class _EmailVerificationWaitingScreenState
       _isExpired = false;
     });
 
-    debugPrint('📤 Enviando verificación con:');
-    debugPrint('   - Email: $email');
-    debugPrint('   - Código: $code');
 
     try {
       final verifyResponse = await authBloc.verifyEmail(
@@ -191,7 +220,6 @@ class _EmailVerificationWaitingScreenState
         code: code,
       );
 
-      debugPrint('📥 Respuesta de verificación: $verifyResponse');
 
       if (!mounted) return;
 
@@ -247,128 +275,11 @@ class _EmailVerificationWaitingScreenState
     }
   }
 
-  /// Maneja el reenvío del código de verificación
-  Future<void> _handleResendCode() async {
-    // Obtener el email del usuario
-    final email = _getUserEmail();
-    if (email == null || email.isEmpty) {
-      setState(() {
-        _resendErrorMessage =
-            'No se pudo obtener el correo electrónico. Por favor, inicia sesión nuevamente.';
-        _resendSuccessMessage = null;
-      });
-      return;
-    }
-
-    // Validar formato del email
-    if (!_isValidEmail(email)) {
-      setState(() {
-        _resendErrorMessage = 'El formato del correo electrónico no es válido';
-        _resendSuccessMessage = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isResendingCode = true;
-      _resendErrorMessage = null;
-      _resendSuccessMessage = null;
-    });
-
-    debugPrint('📤 Reenviando código a: $email');
-
-    try {
-      final resendResponse = await authBloc.resendCode(userName: email);
-
-      if (!mounted) return;
-
-      setState(() {
-        _isResendingCode = false;
-      });
-
-      if (resendResponse != null && resendResponse.success) {
-        // Mostrar mensaje de éxito
-        setState(() {
-          _resendSuccessMessage = 'Hemos reenviado el código de verificación a tu correo electrónico.';
-          _resendErrorMessage = null;
-        });
-
-        // Iniciar countdown de 1 minuto (60 segundos)
-        _startResendCountdown();
-      } else {
-        // El error fue manejado por el bloc
-        String errorMessage = 'Error al reenviar el código';
-        try {
-          await authBloc.errorStream.first.timeout(
-            const Duration(milliseconds: 500),
-            onTimeout: () => null,
-          ).then((error) {
-            if (error != null && error.isNotEmpty) {
-              errorMessage = error;
-            }
-          });
-        } catch (e) {
-          debugPrint('Error al obtener mensaje del stream: $e');
-        }
-
-        if (mounted) {
-          setState(() {
-            _resendErrorMessage = errorMessage;
-            _resendSuccessMessage = null;
-          });
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isResendingCode = false;
-        _resendErrorMessage = 'Error inesperado: ${e.toString()}';
-        _resendSuccessMessage = null;
-      });
-    }
-  }
-
-  /// Inicia el countdown de 1 minuto para el reenvío de código
-  void _startResendCountdown() {
-    _resendTimer?.cancel();
-    _resendCountdown = 60; // 1 minuto = 60 segundos
-
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      setState(() {
-        if (_resendCountdown > 0) {
-          _resendCountdown--;
-        } else {
-          _resendCountdown = 0;
-          timer.cancel();
-        }
-      });
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Log para debug al inicializar el widget
-    debugPrint('🔍 EmailVerificationWaitingScreen inicializado');
-    debugPrint('   - userName: ${widget.userName}');
-    debugPrint('   - userEmail (raw): ${widget.userEmail}');
-    if (widget.userEmail != null) {
-      try {
-        final decoded = Uri.decodeComponent(widget.userEmail!);
-        debugPrint('   - userEmail (decoded): $decoded');
-      } catch (e) {
-        debugPrint('   - Error al decodificar: $e');
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    _ensureCodeFields();
+
     return StreamBuilder<AppTheme>(
       stream: themeBloc.themeStream,
       initialData: themeBloc.currentTheme,
@@ -477,7 +388,7 @@ class _EmailVerificationWaitingScreenState
                         ),
                         TextSpan(
                           text:
-                              ' — nos alegra que estés aquí. Para terminar el registro, ingresa el código de 4 dígitos que te enviamos a tu correo.',
+                              ' — nos alegra que estés aquí. Para terminar el registro, ingresa el código de 6 dígitos que te enviamos a tu correo.',
                           style: TextStyle(
                             color: lightTextColor,
                           ),
@@ -645,69 +556,17 @@ class _EmailVerificationWaitingScreenState
               ),
             ],
 
-            // Code input fields - Centered
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(4, (index) {
-                final hasUserName = _hasUserName();
-                return Container(
-                  width: 60.0,
-                  height: 60.0,
-                  margin: EdgeInsets.only(
-                    right: index < 3 ? 12.0 : 0,
-                  ),
-                  child: TextField(
-                    controller: _codeControllers[index],
-                    focusNode: _focusNodes[index],
-                    enabled: hasUserName && !_isLoading,
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                      color: hasUserName ? textColor : Colors.grey,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    onChanged: (value) => _onCodeChanged(index, value),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[800] : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey[300]!,
-                          width: 1.0,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey[300]!,
-                          width: 1.0,
-                        ),
-                      ),
-                      disabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey[400]!,
-                          width: 1.0,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF205AA8),
-                          width: 2.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
+            Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: _buildCodeInputRow(
+                  isDark: isDark,
+                  textColor: textColor,
+                  fieldSize: 52,
+                  fontSize: 22,
+                  spacing: 8,
+                ),
+              ),
             ),
             const SizedBox(height: 40.0),
 
@@ -897,7 +756,7 @@ class _EmailVerificationWaitingScreenState
                             ),
                             TextSpan(
                               text:
-                                  ' — nos alegra que estés aquí. Para terminar el registro, ingresa el código de 4 dígitos que te enviamos a tu correo.',
+                                  ' — nos alegra que estés aquí. Para terminar el registro, ingresa el código de 6 dígitos que te enviamos a tu correo.',
                               style: TextStyle(
                                 color: lightTextColor,
                               ),
@@ -1064,69 +923,14 @@ class _EmailVerificationWaitingScreenState
                   ),
                 ],
 
-                // Code input fields - Centered
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(4, (index) {
-                    final hasUserName = _hasUserName();
-                    return Container(
-                      width: 70.0,
-                      height: 70.0,
-                      margin: EdgeInsets.only(
-                        right: index < 3 ? 16.0 : 0,
-                      ),
-                      child: TextField(
-                        controller: _codeControllers[index],
-                        focusNode: _focusNodes[index],
-                        enabled: hasUserName && !_isLoading,
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        maxLength: 1,
-                        style: TextStyle(
-                          fontSize: 28.0,
-                          fontWeight: FontWeight.bold,
-                          color: hasUserName ? textColor : Colors.grey,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        onChanged: (value) => _onCodeChanged(index, value),
-                        decoration: InputDecoration(
-                          counterText: '',
-                          filled: true,
-                          fillColor: isDark ? Colors.grey[800] : Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: Colors.grey[300]!,
-                              width: 1.0,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: Colors.grey[300]!,
-                              width: 1.0,
-                            ),
-                          ),
-                          disabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: Colors.grey[400]!,
-                              width: 1.0,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF205AA8),
-                              width: 2.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
+                Center(
+                  child: _buildCodeInputRow(
+                    isDark: isDark,
+                    textColor: textColor,
+                    fieldSize: 64,
+                    fontSize: 28,
+                    spacing: 12,
+                  ),
                 ),
                 const SizedBox(height: 40.0),
 
@@ -1238,6 +1042,79 @@ class _EmailVerificationWaitingScreenState
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCodeInputRow({
+    required bool isDark,
+    required Color textColor,
+    required double fieldSize,
+    required double fontSize,
+    required double spacing,
+  }) {
+    final hasUserName = _hasUserName();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(_verificationCodeLength, (index) {
+        return Container(
+          width: fieldSize,
+          height: fieldSize,
+          margin: EdgeInsets.only(
+            right: index < _verificationCodeLength - 1 ? spacing : 0,
+          ),
+          child: TextField(
+            controller: _codeControllers[index],
+            focusNode: _focusNodes[index],
+            enabled: hasUserName && !_isLoading,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            maxLength: 1,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: hasUserName ? textColor : Colors.grey,
+            ),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            onChanged: (value) => _onCodeChanged(index, value),
+            decoration: InputDecoration(
+              counterText: '',
+              filled: true,
+              fillColor: isDark ? Colors.grey[800] : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                  width: 1.0,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                  width: 1.0,
+                ),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.grey[400]!,
+                  width: 1.0,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF205AA8),
+                  width: 2.0,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 

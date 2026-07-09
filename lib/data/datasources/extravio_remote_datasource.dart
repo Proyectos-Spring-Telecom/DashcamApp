@@ -1,4 +1,5 @@
 import 'package:dashboardpro/core/env_config.dart';
+import 'package:dashboardpro/interceptors/rate_limit_interceptor.dart';
 import 'package:dio/dio.dart';
 import 'package:dashboardpro/data/models/extravio_report_response_model.dart';
 import 'package:dashboardpro/domain/entities/extravio_report_request.dart';
@@ -15,7 +16,7 @@ class ExtravioRemoteDataSource {
                 connectTimeout: const Duration(seconds: 30),
                 receiveTimeout: const Duration(seconds: 30),
               ),
-            );
+            )..interceptors.add(RateLimitInterceptor());
 
   Future<ExtravioReportResponseModel> reportarExtravio({
     required ExtravioReportRequest request,

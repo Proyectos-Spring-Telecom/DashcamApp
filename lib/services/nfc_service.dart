@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Conditional import: usa la versión web si es web, sino usa el stub
 import 'nfc_user_agent_stub.dart'
@@ -43,14 +41,10 @@ class NfcService {
                     (userAgent.contains('macintosh') && userAgent.contains('mobile'));
       
       if (kDebugMode && isIos) {
-        debugPrint('🔍 iOS detectado desde User-Agent: $userAgent');
       }
       
       return isIos;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Error al detectar iOS desde User-Agent: $e');
-      }
       return false;
     }
   }
@@ -64,8 +58,6 @@ class NfcService {
         // Verificar si es iOS web
         if (_isIosWeb()) {
           if (kDebugMode) {
-            debugPrint('⚠️ NFC no está disponible en iOS Safari/PWA');
-            debugPrint('⚠️ iOS Safari no soporta Web NFC API');
           }
           return false;
         }
@@ -73,8 +65,6 @@ class NfcService {
         // En Android Chrome, podría estar disponible vía WebUSB
         // pero requiere hardware específico y configuración
         if (kDebugMode) {
-          debugPrint('⚠️ NFC en web tiene soporte limitado');
-          debugPrint('⚠️ Solo funciona en Android Chrome con hardware compatible');
         }
         // Intentar verificar disponibilidad real
       }
@@ -83,9 +73,6 @@ class NfcService {
       // El error se manejará en readCard() si realmente no está disponible
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Error al verificar disponibilidad NFC: $e');
-      }
       return false;
     }
   }
@@ -107,9 +94,6 @@ class NfcService {
     
     // Si hay una sesión activa, esperar y cerrarla primero
     if (_isSessionActive) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Hay una sesión activa, cerrando...');
-      }
       try {
         await FlutterNfcKit.finish();
         // Esperar un momento para que el sistema libere los recursos
@@ -124,13 +108,6 @@ class NfcService {
 
     try {
       if (kDebugMode) {
-        debugPrint('');
-        debugPrint('═══════════════════════════════════════════');
-        debugPrint('📱 SESIÓN NFC ACTIVADA');
-        debugPrint('📱 ✅ AHORA SÍ puedes acercar el tag');
-        debugPrint('📱 Esperando tarjeta NFC (máximo 30 segundos)...');
-        debugPrint('═══════════════════════════════════════════');
-        debugPrint('');
       }
 
       // IMPORTANTE: poll() inicia una sesión NFC activa que toma el control
@@ -152,10 +129,6 @@ class NfcService {
 
       try {
         if (kDebugMode) {
-          debugPrint('📱 Tag NFC detectado');
-          debugPrint('📱 Tipo: ${tag.type}');
-          debugPrint('📱 Estándar: ${tag.standard}');
-          debugPrint('📱 ID: ${tag.id}');
         }
 
         // Intentar leer el número de tarjeta
@@ -164,18 +137,9 @@ class NfcService {
         final hasCardNumber = cardNumber?.isNotEmpty ?? false;
         if (hasCardNumber) {
           if (kDebugMode) {
-            debugPrint('');
-            debugPrint('═══════════════════════════════════════════');
-            debugPrint('✅ TARJETA LEÍDA EXITOSAMENTE');
-            debugPrint('✅ Número de tarjeta NFC: $cardNumber');
-            debugPrint('═══════════════════════════════════════════');
-            debugPrint('');
           }
         } else {
           if (kDebugMode) {
-            debugPrint('⚠️ No se pudo extraer el número de tarjeta del tag');
-            debugPrint('📱 Tipo de tag: ${tag.type}');
-            debugPrint('📱 Estándar: ${tag.standard}');
           }
         }
 
@@ -188,9 +152,6 @@ class NfcService {
         // Pequeño delay para asegurar que el sistema libere los recursos
         await Future.delayed(const Duration(milliseconds: 200));
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('❌ Error al procesar tag NFC: $e');
-        }
         _isSessionActive = false;
         try {
           await FlutterNfcKit.finish();
@@ -201,9 +162,6 @@ class NfcService {
         rethrow;
       }
     } on NfcException catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error NFC: ${e.message}');
-      }
       _isSessionActive = false;
       try {
         await FlutterNfcKit.finish();
@@ -213,9 +171,6 @@ class NfcService {
       }
       rethrow;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error inesperado al leer NFC: $e');
-      }
       _isSessionActive = false;
       try {
         await FlutterNfcKit.finish();
@@ -237,9 +192,6 @@ class NfcService {
         // Esto puede ocurrir si la app no se recompiló correctamente o después de múltiples usos
         if (errorStr.contains('missingplugin') || errorStr.contains('no implementation')) {
           if (retryCount < _maxRetries) {
-            if (kDebugMode) {
-              debugPrint('⚠️ MissingPluginException detectado, reintentando... (intento ${retryCount + 1}/$_maxRetries)');
-            }
             // Esperar antes de reintentar
             await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
             // Reintentar la lectura
@@ -275,23 +227,15 @@ class NfcService {
       final idString = tag.id;
       
       if (idString.isEmpty) {
-        if (kDebugMode) {
-          debugPrint('⚠️ El tag no tiene ID');
-        }
         return null;
       }
 
       // El ID ya está en formato hexadecimal, lo retornamos directamente
       if (kDebugMode) {
-        debugPrint('📱 Identifier extraído (hex): $idString');
-        debugPrint('📱 Longitud: ${idString.length} caracteres');
       }
 
       return idString;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error al extraer número de tarjeta: $e');
-      }
       return null;
     }
   }
@@ -305,14 +249,8 @@ class NfcService {
       await FlutterNfcKit.finish();
       await Future.delayed(const Duration(milliseconds: 200));
       _isSessionActive = false;
-      if (kDebugMode) {
-        debugPrint('🛑 Sesión NFC cancelada');
-      }
     } catch (e) {
       _isSessionActive = false;
-      if (kDebugMode) {
-        debugPrint('⚠️ Error al cancelar sesión NFC: $e');
-      }
     }
   }
 }

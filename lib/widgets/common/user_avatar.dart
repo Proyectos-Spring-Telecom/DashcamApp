@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 
 class UserAvatar extends StatelessWidget {
   final String? imageUrl;
@@ -43,8 +42,6 @@ class UserAvatar extends StatelessWidget {
         height: radius * 2,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          debugPrint('Error loading profile image from S3: $error');
-          debugPrint('Image URL: $imageUrl');
           return _buildDefaultIcon();
         },
         loadingBuilder: (context, child, loadingProgress) {
