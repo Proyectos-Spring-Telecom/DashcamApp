@@ -23,11 +23,37 @@ if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
 
-// Google Maps API Key - desde variable de entorno (recomendado) o local.properties
-// NUNCA hardcodear la clave aquí. Usar .env y export GOOGLE_MAPS_API_KEY antes de flutter run si hace falta.
+// Google Maps API Key para AndroidManifest (com.google.android.geo.API_KEY).
+// Prioridad: env GOOGLE_MAPS_API_KEY > android/local.properties > ../.env
+// NUNCA hardcodear la clave aquí.
+def readGoogleMapsApiKeyFromEnvFile() {
+    def envFile = rootProject.file("../.env")
+    if (!envFile.exists()) {
+        return ""
+    }
+    def key = ""
+    envFile.eachLine { line ->
+        def trimmed = line.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+            return
+        }
+        if (trimmed.startsWith("GOOGLE_MAPS_API_KEY=")) {
+            key = trimmed.substring("GOOGLE_MAPS_API_KEY=".length()).trim()
+            if ((key.startsWith('"') && key.endsWith('"')) ||
+                (key.startsWith("'") && key.endsWith("'"))) {
+                key = key.substring(1, key.length() - 1)
+            }
+        }
+    }
+    return key
+}
+
 def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY")
 if (googleMapsApiKey == null || googleMapsApiKey.isEmpty()) {
     googleMapsApiKey = localProperties.getProperty("google.maps.api.key") ?: ""
+}
+if (googleMapsApiKey == null || googleMapsApiKey.isEmpty()) {
+    googleMapsApiKey = readGoogleMapsApiKeyFromEnvFile()
 }
 
 android {
