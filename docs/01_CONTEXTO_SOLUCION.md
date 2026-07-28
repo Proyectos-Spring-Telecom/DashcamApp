@@ -76,7 +76,8 @@ La solución mezcla patrones en función del módulo:
 
 ## 1.6 API backend y configuración
 
-- **Base URL (producción):** `https://dashcampay.com/apipay` — resuelta por `EnvConfig.apiBaseUrl` (antes `apidev`).
+- **Base URL (desarrollo):** `https://dashcampay.com/apidev` — resuelta por `EnvConfig.apiBaseUrl` (plantilla `.env.development.example`).
+- **Base URL (producción):** `https://dashcampay.com/api` — plantilla `.env.production.example` vía `--dart-define-from-file`.
 - **Configuración:** `API_BASE_URL` y opcionalmente `AUTH_API_BASE_URL` vía `--dart-define-from-file=.env` o `--dart-define`. Si no se define `AUTH_API_BASE_URL`, auth usa la misma base que la API general.
 - **Autenticación:** Bearer token en header `Authorization` para la mayoría de los endpoints.
 - **Flujo de sesión:** `POST /login` devuelve solo `{ token, refreshToken }`. El perfil completo (rol, permisos, cliente, etc.) se obtiene con `GET /login/me`. Renovación automática con `POST /login/refresh` ante HTTP 401 (vía `SessionInterceptor` + `TokenRefreshService`).
@@ -84,7 +85,7 @@ La solución mezcla patrones en función del módulo:
 - **Interceptores Dio:**
   - `SessionInterceptor`: refresh de token en 401, cierre de sesión si falla, delegación a `SessionManager`.
   - `RateLimitInterceptor`: HTTP 429 global — alerta QuickAlert “Demasiados intentos” y log debug `[HTTP 429]`.
-- **Desarrollo Web (CORS):** en `localhost` + debug, `EnvConfig` redirige automáticamente a `http://127.0.0.1:8090/apipay`. El proxy local (`tool/dev_api_proxy.dart`) reenvía a `https://dashcampay.com/apipay` e inyecta cabeceras CORS. Android/iOS no requieren proxy.
+- **Desarrollo Web (CORS):** en `localhost` + debug, `EnvConfig` redirige automáticamente a `http://127.0.0.1:8090/apidev`. El proxy local (`tool/dev_api_proxy.dart`) reenvía a `https://dashcampay.com/apidev` e inyecta cabeceras CORS. Android/iOS no requieren proxy.
 
 ---
 
@@ -145,7 +146,7 @@ Cambios de contexto alineados con el código actual:
 ### Configuración y API
 
 - **EnvConfig:** centraliza `API_BASE_URL`, `AUTH_API_BASE_URL`, `GOOGLE_MAPS_API_KEY`, `NETPAY_PUBLIC_API_KEY` y `APP_ENV`. Prioridad: `--dart-define` > `.env` > default.
-- **Base URL:** migración de `apidev` a **`apipay`** (`https://dashcampay.com/apipay`).
+- **Base URL:** entornos **`apidev`** (desarrollo) y **`api`** (producción). Ver plantillas `.env.*.example`.
 - **Proxy Web (CORS):** `tool/dev_api_proxy.dart` en puerto 8090; activo automáticamente en Flutter Web + debug + localhost. Script de atajo: `scripts/run_web_dev.sh`. Documentación en `SETUP_SECRETS.md`.
 - **Firebase eliminado:** sin dependencias ni init en `main.dart`; Android compila sin `google-services.json`.
 

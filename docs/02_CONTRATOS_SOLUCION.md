@@ -6,9 +6,9 @@ Contratos por capa y módulo para toda la aplicación (API, dominio, datos, serv
 
 ## 2.1 Convenciones generales
 
-- **Base URL API:** `EnvConfig.apiBaseUrl` — por defecto `https://dashcampay.com/apipay` (configurable vía `API_BASE_URL` en `.env` o `--dart-define`).
+- **Base URL API:** `EnvConfig.apiBaseUrl` — por defecto `https://dashcampay.com/apidev` (Dev). Producción: `https://dashcampay.com/api` vía `.env.production` / `--dart-define`.
 - **Base URL auth:** `EnvConfig.authApiBaseUrl` — igual a `apiBaseUrl` salvo que se defina `AUTH_API_BASE_URL`.
-- **Desarrollo Web (localhost):** en debug, `EnvConfig` redirige a `http://127.0.0.1:8090/apipay` (proxy CORS). Flag `EnvConfig.usesWebDevProxy`.
+- **Desarrollo Web (localhost):** en debug, `EnvConfig` redirige a `http://127.0.0.1:8090/apidev` (proxy CORS). Flag `EnvConfig.usesWebDevProxy`.
 - **Autenticación:** `Authorization: Bearer {token}` salvo en endpoints públicos.
 - **Headers habituales:** `Content-Type: application/json`, `Accept: application/json`
 - **Manejo de errores:** los servicios suelen lanzar excepciones propias (AuthException, MonederoException, etc.); los repositorios que siguen el patrón Result devuelven `Result.failure(message, statusCode)`.
@@ -39,14 +39,14 @@ Contratos por capa y módulo para toda la aplicación (API, dominio, datos, serv
 
 | Propiedad / getter | Descripción |
 |--------------------|-------------|
-| `configuredApiBaseUrl` | URL configurada sin proxy (p. ej. `https://dashcampay.com/apipay`). |
+| `configuredApiBaseUrl` | URL configurada sin proxy (p. ej. `https://dashcampay.com/apidev` o `/api`). |
 | `apiBaseUrl` | URL efectiva para servicios; en Web localhost debug → proxy local. |
 | `authApiBaseUrl` | Base para auth; usa `AUTH_API_BASE_URL` si existe, si no `apiBaseUrl`. |
 | `googleMapsApiKey` | Clave Maps (`--dart-define` o `.env`). |
 | `netpayPublicApiKey` | Llave pública NetPay `pk_*` (nunca `sk_*` en cliente). |
 | `appEnv` | Ambiente: `development`, `qa`, `production`. |
 | `usesWebDevProxy` | `true` si Web + debug + localhost y proxy habilitado. |
-| `webDevProxyUrl` | `http://127.0.0.1:8090/apipay` (puerto configurable con `WEB_DEV_PROXY_PORT`). |
+| `webDevProxyUrl` | `http://127.0.0.1:8090/apidev` (puerto configurable con `WEB_DEV_PROXY_PORT`). |
 
 **Prioridad de resolución:** `--dart-define` > `flutter_dotenv` (`.env`) > valor por defecto.
 
@@ -164,7 +164,7 @@ Los servicios usan Dio contra la base URL indicada. Resumen por servicio:
 | POST | /verify-code | verificación de correo (**código 6 dígitos**) | No |
 | POST | /forgot-password | recuperación de contraseña | No |
 | POST | /resend-code | reenvío de código | No |
-| POST | /change-password | cambio de contraseña | Sí |
+| PUT | /usuarios/actualizar/contrasena | cambio de contraseña (body: passwordActual, passwordNueva, passwordNuevaConfirmacion; sin id en ruta) | Sí |
 | POST | (upload) | foto de perfil | Sí |
 
 **LoginResponse** (`lib/model/auth/login_response.dart`):
@@ -470,6 +470,6 @@ Los modelos suelen exponer `fromJson` / `toJson` y getters de negocio (por ejemp
 | **Autenticación (UI)** | Ver §2.16: PasswordRules, verificación 6 dígitos, CalendarDatePicker2 responsive. |
 | **Movilidad Inteligente (mapa)** | Ver §2.13: ubicación actual obligatoria para instanciar mapa, zoom en dos fases, debounce de overlay, sin `dispose` manual del controlador. |
 | **NetPay (cliente)** | Ver §2.14: tokenización web vs WebView, `saveCard` / vault, recarga con `paymentSource.source`, llave vía EnvConfig. |
-| **API** | POST/GET contra `EnvConfig.apiBaseUrl` (apipay); auth: /login, /login/refresh, /login/me; Bearer salvo endpoints públicos. |
+| **API** | POST/GET contra `EnvConfig.apiBaseUrl` (`apidev` / `api`); auth: /login, /login/refresh, /login/me; Bearer salvo endpoints públicos. |
 
-Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código. **Actualización:** 8 de julio de 2026 (EnvConfig, apipay, auth, interceptores, contraseñas, calendario responsive).
+Este documento describe los contratos de **toda** la solución; para detalles de request/response de un endpoint concreto, consultar el servicio o datasource correspondiente en el código. **Actualización:** 28 de julio de 2026 (ambientes Dev `apidev` / Prod `api`, cambio de contraseña sin id en ruta).

@@ -290,7 +290,6 @@ class AuthBloc {
       );
 
       final changePasswordResponse = await _authService.changePassword(
-        userId: _currentUser!.id,
         request: request,
         token: _currentToken,
       );
