@@ -5,7 +5,7 @@ import 'package:dashboardpro/interceptors/rate_limit_interceptor.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 
-/// Cliente HTTP dedicado a la API de autenticación (apipay).
+/// Cliente HTTP dedicado a la API de autenticación.
 /// Sin interceptores para evitar ciclos en refresh de token.
 class AuthApiService {
   AuthApiService._();

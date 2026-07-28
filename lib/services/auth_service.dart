@@ -62,7 +62,7 @@ class AuthService {
     return responseData.toString().trim();
   }
 
-  /// Realiza el login del usuario (API apipay: token + refreshToken).
+  /// Realiza el login del usuario (token + refreshToken).
   Future<LoginResponse> login(String userName, String password) async {
     try {
       return await AuthApiService.login(
@@ -615,46 +615,41 @@ class AuthService {
     }
   }
 
-  /// Cambia la contraseña del usuario autenticado
-  /// El endpoint espera: PUT /usuarios/actualizar/contrasena/{id} con body { "passwordActual": "...", "passwordNueva": "...", "passwordNuevaConfirmacion": "..." }
+  /// Cambia la contraseña del usuario autenticado.
+  /// PUT /usuarios/actualizar/contrasena
+  /// Body: { passwordActual, passwordNueva, passwordNuevaConfirmacion }
+  /// Respuestas: 200 OK | 400 Contraseña inválida | 404 Usuario no encontrado
   Future<ChangePasswordResponse> changePassword({
-    required int userId,
     required ChangePasswordRequest request,
     String? token,
   }) async {
     try {
       final requestData = request.toJson();
 
-      // Agregar token de autenticación si está disponible
       final options = Options(
         headers: token != null ? {'Authorization': 'Bearer $token'} : {},
       );
 
       final response = await _dio.put(
-        '/usuarios/actualizar/contrasena/$userId',
+        '/usuarios/actualizar/contrasena',
         data: requestData,
         options: options,
       );
 
-
-      // Aceptar 200 (OK) como respuesta exitosa
       if (response.statusCode == 200) {
-
         try {
           if (response.data is Map<String, dynamic>) {
             return ChangePasswordResponse.fromJson(
                 response.data as Map<String, dynamic>);
           }
-          // Si la respuesta no es un Map, crear respuesta básica
           return ChangePasswordResponse(
             success: true,
-            message: 'Contraseña actualizada correctamente',
+            message: 'Contraseña actualizada exitosamente',
           );
-        } catch (parseError) {
-          // Si el parseo falla pero el código es exitoso, crear respuesta básica
+        } catch (_) {
           return ChangePasswordResponse(
             success: true,
-            message: 'Contraseña actualizada correctamente',
+            message: 'Contraseña actualizada exitosamente',
           );
         }
       } else {
@@ -676,68 +671,68 @@ class AuthService {
       if (e.response != null) {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
-        final responseHeaders = e.response!.headers;
 
-
-        // Intentar extraer mensaje de error del servidor
         String errorMessage = 'Error al cambiar la contraseña';
         bool isCurrentPasswordIncorrect = false;
         bool isPasswordMismatch = false;
         bool isPasswordInvalid = false;
         bool isUserNotFound = false;
 
-        // Si la respuesta es un String
         if (responseData is String) {
           errorMessage = responseData;
-          isCurrentPasswordIncorrect = responseData.toLowerCase().contains('actual') ||
-              responseData.toLowerCase().contains('incorrecta') ||
-              responseData.toLowerCase().contains('incorrect');
-          isPasswordMismatch = responseData.toLowerCase().contains('coinciden') ||
-              responseData.toLowerCase().contains('match');
-          isPasswordInvalid = responseData.toLowerCase().contains('requisitos') ||
-              responseData.toLowerCase().contains('requirements');
-          isUserNotFound = responseData.toLowerCase().contains('no encontrado') ||
-              responseData.toLowerCase().contains('not found');
+          final lower = responseData.toLowerCase();
+          isCurrentPasswordIncorrect = lower.contains('actual') ||
+              lower.contains('incorrecta') ||
+              lower.contains('incorrect');
+          isPasswordMismatch =
+              lower.contains('coinciden') || lower.contains('match');
+          isPasswordInvalid = lower.contains('inválida') ||
+              lower.contains('invalida') ||
+              lower.contains('requisitos') ||
+              lower.contains('requirements');
+          isUserNotFound =
+              lower.contains('no encontrado') || lower.contains('not found');
         } else if (responseData is Map<String, dynamic>) {
           errorMessage = responseData['message']?.toString() ??
               responseData['error']?.toString() ??
               errorMessage;
-          isCurrentPasswordIncorrect = errorMessage.toLowerCase().contains('actual') ||
-              errorMessage.toLowerCase().contains('incorrecta') ||
-              errorMessage.toLowerCase().contains('incorrect');
-          isPasswordMismatch = errorMessage.toLowerCase().contains('coinciden') ||
-              errorMessage.toLowerCase().contains('match');
-          isPasswordInvalid = errorMessage.toLowerCase().contains('requisitos') ||
-              errorMessage.toLowerCase().contains('requirements');
-          isUserNotFound = errorMessage.toLowerCase().contains('no encontrado') ||
-              errorMessage.toLowerCase().contains('not found');
+          final lower = errorMessage.toLowerCase();
+          isCurrentPasswordIncorrect = lower.contains('actual') ||
+              lower.contains('incorrecta') ||
+              lower.contains('incorrect');
+          isPasswordMismatch =
+              lower.contains('coinciden') || lower.contains('match');
+          isPasswordInvalid = lower.contains('inválida') ||
+              lower.contains('invalida') ||
+              lower.contains('requisitos') ||
+              lower.contains('requirements');
+          isUserNotFound =
+              lower.contains('no encontrado') || lower.contains('not found');
         }
 
         if (statusCode == 400) {
-          // Mensajes específicos según el tipo de error
           if (isCurrentPasswordIncorrect) {
             throw AuthException('La contraseña actual es incorrecta.');
           } else if (isPasswordMismatch) {
             throw AuthException('Las contraseñas nuevas no coinciden.');
           } else if (isPasswordInvalid) {
-            throw AuthException('La contraseña no cumple con los requisitos de seguridad.');
+            throw AuthException('Contraseña inválida.');
           } else {
             throw AuthException(errorMessage.isNotEmpty
                 ? errorMessage
-                : 'Datos inválidos. Verifica la información ingresada.');
+                : 'Contraseña inválida.');
           }
         } else if (statusCode == 404) {
           throw AuthException('Usuario no encontrado.');
         } else if (statusCode == 500) {
           throw AuthException('Error en el servidor. Intenta más tarde.');
         } else {
-          // Si el mensaje indica un error específico, lanzarlo
           if (isCurrentPasswordIncorrect) {
             throw AuthException('La contraseña actual es incorrecta.');
           } else if (isPasswordMismatch) {
             throw AuthException('Las contraseñas nuevas no coinciden.');
           } else if (isPasswordInvalid) {
-            throw AuthException('La contraseña no cumple con los requisitos de seguridad.');
+            throw AuthException('Contraseña inválida.');
           } else if (isUserNotFound) {
             throw AuthException('Usuario no encontrado.');
           }

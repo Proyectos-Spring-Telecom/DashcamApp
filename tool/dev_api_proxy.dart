@@ -5,8 +5,12 @@ import 'dart:typed_data';
 
 /// Proxy local para desarrollo Flutter Web.
 ///
-/// Reenvía `http://127.0.0.1:<port>/apipay/*` → `https://dashcampay.com/apipay/*`
+/// Reenvía `http://127.0.0.1:<port>/apidev/*` → `https://dashcampay.com/apidev/*`
 /// e inyecta cabeceras CORS (el navegador bloquea localhost → dashcampay.com).
+///
+/// Importante: no reenvía `Origin`/`Referer` al backend. Algunos entornos Dev
+/// responden 500 ante `Origin: http://localhost:*`; el proxy gestiona CORS solo
+/// hacia el navegador.
 ///
 /// Uso:
 ///   dart run tool/dev_api_proxy.dart
@@ -15,12 +19,35 @@ const _defaultPort = 8090;
 const _targetHost = 'dashcampay.com';
 const _targetScheme = 'https';
 
+/// Cabeceras hop-by-hop / de navegador que no deben ir al upstream.
+const _blockedUpstreamRequestHeaders = {
+  'host',
+  'connection',
+  'content-length',
+  'transfer-encoding',
+  'origin',
+  'referer',
+};
+
+/// Cabeceras CORS del upstream: las sustituye el proxy hacia el navegador.
+const _blockedUpstreamResponseHeaders = {
+  'transfer-encoding',
+  'content-encoding',
+  'access-control-allow-origin',
+  'access-control-allow-credentials',
+  'access-control-allow-methods',
+  'access-control-allow-headers',
+  'access-control-expose-headers',
+  'access-control-max-age',
+  'vary',
+};
+
 Future<void> main(List<String> args) async {
   final port = args.isNotEmpty ? int.tryParse(args.first) ?? _defaultPort : _defaultPort;
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
 
-  stdout.writeln('🌐 Dev API proxy escuchando en http://127.0.0.1:$port/apipay');
-  stdout.writeln('   → $_targetScheme://$_targetHost/apipay');
+  stdout.writeln('🌐 Dev API proxy escuchando en http://127.0.0.1:$port/apidev');
+  stdout.writeln('   → $_targetScheme://$_targetHost/apidev');
   stdout.writeln('   Detén con Ctrl+C');
 
   await for (final request in server) {
@@ -73,10 +100,7 @@ Future<void> _handleRequest(HttpRequest request) async {
 
     request.headers.forEach((name, values) {
       final lower = name.toLowerCase();
-      if (lower == 'host' ||
-          lower == 'connection' ||
-          lower == 'content-length' ||
-          lower == 'transfer-encoding') {
+      if (_blockedUpstreamRequestHeaders.contains(lower)) {
         return;
       }
       for (final value in values) {
@@ -94,15 +118,16 @@ Future<void> _handleRequest(HttpRequest request) async {
     final upstreamResponse = await upstream.close();
     final responseBytes = await _collectResponseBody(upstreamResponse);
 
-    _writeCorsHeaders(request.response, origin);
     request.response.statusCode = upstreamResponse.statusCode;
     upstreamResponse.headers.forEach((name, values) {
       final lower = name.toLowerCase();
-      if (lower == 'transfer-encoding' || lower == 'content-encoding') return;
+      if (_blockedUpstreamResponseHeaders.contains(lower)) return;
       for (final value in values) {
         request.response.headers.set(name, value);
       }
     });
+    // CORS hacia el navegador (nunca reenviar Origin al backend).
+    _writeCorsHeaders(request.response, origin);
     request.response.add(responseBytes);
     await request.response.close();
     client.close(force: true);

@@ -8,7 +8,7 @@ cd "$ROOT"
 PROXY_PORT="${WEB_DEV_PROXY_PORT:-8090}"
 MAPS_KEY="$(grep 'google.maps.api.key' android/local.properties | cut -d= -f2)"
 
-echo "▶ Iniciando proxy API en http://127.0.0.1:${PROXY_PORT}/apipay"
+echo "▶ Iniciando proxy API en http://127.0.0.1:${PROXY_PORT}/apidev"
 dart run tool/dev_api_proxy.dart "$PROXY_PORT" &
 PROXY_PID=$!
 

@@ -10,7 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class EnvConfig {
   EnvConfig._();
 
-  static const String _defaultApiBaseUrl = 'https://dashcampay.com/apipay';
+  static const String _defaultApiBaseUrl = 'https://dashcampay.com/apidev';
 
   static const String _apiBaseUrlDefine =
       String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -35,7 +35,7 @@ class EnvConfig {
   }
 
   static String get webDevProxyUrl =>
-      'http://127.0.0.1:$_webDevProxyPort/apipay';
+      'http://127.0.0.1:$_webDevProxyPort/apidev';
 
   static String _fromDotenv(String key) => dotenv.env[key]?.trim() ?? '';
 
@@ -59,10 +59,10 @@ class EnvConfig {
         host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
     if (!isLocalDev) return configuredUrl;
 
-    return 'http://127.0.0.1:$_webDevProxyPort/apipay';
+    return 'http://127.0.0.1:$_webDevProxyPort/apidev';
   }
 
-  /// URL configurada sin redirección al proxy (p. ej. https://dashcampay.com/apipay).
+  /// URL configurada sin redirección al proxy (p. ej. https://dashcampay.com/apidev).
   static String get configuredApiBaseUrl => _resolveConfiguredApiBaseUrl();
 
   static String get apiBaseUrl {
